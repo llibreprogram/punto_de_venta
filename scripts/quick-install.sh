@@ -42,6 +42,13 @@ fi
 
 cd "$APP_DIR"
 
+if [[ -d .git ]]; then
+  echo "==> Actualizando código (git pull)"
+  git fetch --depth=1 origin "$BRANCH" || true
+  git checkout "$BRANCH" 2>/dev/null || true
+  git pull --ff-only origin "$BRANCH" || true
+fi
+
 echo "==> Instalando dependencias (npm ci)"
 npm ci --no-audit --no-fund
 
