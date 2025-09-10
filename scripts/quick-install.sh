@@ -49,6 +49,15 @@ if [[ -d .git ]]; then
   git pull --ff-only origin "$BRANCH" || true
 fi
 
+# Asegurar propiedad del directorio al usuario que ejecutará el servicio
+SERVICE_USER="$(logname)"
+SERVICE_GROUP="$(id -gn $(logname))"
+echo "==> Ajustando permisos a ${SERVICE_USER}:${SERVICE_GROUP}"
+chown -R "$SERVICE_USER":"$SERVICE_GROUP" "$APP_DIR" || true
+
+# Evitar advertencia de 'dubious ownership' en git para este path
+sudo -u "$SERVICE_USER" git config --global --add safe.directory "$APP_DIR" || true
+
 echo "==> Instalando dependencias (npm ci)"
 npm ci --no-audit --no-fund
 
