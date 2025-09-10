@@ -1,26 +1,71 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Light default for un look fast-food moderno (amber/rojo) */
+  --background: #f8fafc; /* slate-50 */
+  --foreground: #0f172a; /* slate-900 */
+  --card: #ffffff;
+  --muted: #64748b;
+  --primary: #f59e0b;    /* amber-500 */
+  --primary-600: #d97706;/* amber-600 */
+  --accent: #ef4444;     /* red-500 */
+  --ring: rgba(245,158,11,.35);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+/* CSS variables already defined above; remove unsupported @theme at-rule */
 
+/* dark mode overrides */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #0f172a; /* slate-900 */
+    --foreground: #e2e8f0; /* slate-200 */
+    --card: #111827;       /* gray-900 */
+    --muted: #94a3b8;      /* slate-400 */
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
 }
+
+/* Mejoras visuales sutiles */
+button { transition: all .15s ease; }
+button:active { transform: translateY(1px); }
+
+/* Cards y superficies */
+.card { background: var(--card); border: 1px solid rgba(148,163,184,.15); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.muted { color: var(--muted); }
+
+/* Botones refinados */
+.btn { border: 1px solid rgba(148,163,184,.25); background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(0,0,0,.02)); border-radius: .6rem; padding: .6rem 1rem; }
+.btn:hover { border-color: rgba(148,163,184,.45); }
+.btn:focus { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+.btn-primary { background: var(--primary); border-color: var(--primary-600); color: white; }
+.btn-primary:hover { background: var(--primary-600); }
+.chip { border: 1px solid rgba(148,163,184,.25); border-radius: 9999px; padding: .25rem .75rem; }
+.chip-active { background: var(--primary); color: #fff; border-color: var(--primary-600); }
+
+/* Inputs */
+.input { background: transparent; border: 1px solid rgba(148,163,184,.35); border-radius: .5rem; padding: .5rem .75rem; }
+.input:focus { outline: none; box-shadow: 0 0 0 3px var(--ring); border-color: var(--primary); }
+
+/* Scrollbar sutil */
+* { scrollbar-width: thin; scrollbar-color: rgba(148,163,184,.5) transparent; }
+*::-webkit-scrollbar { height: 10px; width: 10px; }
+*::-webkit-scrollbar-thumb { background: rgba(148,163,184,.35); border-radius: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }
+
+/* Modo táctil: clases aplicadas cuando el body raíz tiene .touch-mode */
+.touch-mode body { --touch-scale: 1; }
+.touch-mode .btn { padding: 0.9rem 1.25rem; font-size: 1.05rem; }
+.touch-mode .chip { padding: .45rem 1rem; font-size: .95rem; }
+.touch-mode .input { padding: .75rem 1rem; font-size: 1.05rem; }
+.touch-mode select, .touch-mode textarea { font-size: 1.05rem; }
+.touch-mode .card button, .touch-mode .card { font-size: 1.02rem; }
+.touch-mode [role="dialog"] .btn { font-size: 1rem; }
+.touch-mode .touch-target { min-height: 52px; min-width: 52px; }
+.touch-mode * { -webkit-tap-highlight-color: rgba(0,0,0,0); }
+.touch-mode .no-select, .touch-mode button, .touch-mode .btn { user-select: none; }
+.touch-mode input[type=number]::-webkit-inner-spin-button { height: 2em; }

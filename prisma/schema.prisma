@@ -1,0 +1,151 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Enums
+enum OrderStatus {
+  ABIERTO
+  PAGADO
+  CANCELADO
+}
+
+enum PaymentMethod {
+  EFECTIVO
+  TARJETA
+  TRANSFERENCIA
+}
+
+enum ItemStatus {
+  PENDIENTE
+  EN_PROCESO
+  LISTO
+}
+
+// Modelos principales
+model Categoria {
+  id        Int       @id @default(autoincrement())
+  nombre    String
+  activa    Boolean   @default(true)
+  productos Producto[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Producto {
+  id          Int       @id @default(autoincrement())
+  nombre      String
+  precioCents Int       // precio en centavos
+  costoCents  Int       @default(0) // costo unitario en centavos
+  ingredientes Json?
+  extras       Json?
+  sku         String?   @unique
+  activo      Boolean   @default(true)
+  categoria   Categoria @relation(fields: [categoriaId], references: [id])
+  categoriaId Int
+  imagenUrl   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  items       PedidoItem[]
+}
+
+model Mesa {
+  id        Int       @id @default(autoincrement())
+  nombre    String    @unique
+  activa    Boolean   @default(true)
+  pedidos   Pedido[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Pedido {
+  id          Int          @id @default(autoincrement())
+  numero      Int          @unique
+  estado      OrderStatus  @default(ABIERTO)
+  mesa        Mesa?        @relation(fields: [mesaId], references: [id])
+  mesaId      Int?
+  items       PedidoItem[]
+  subtotalCents  Int
+  impuestoCents  Int        @default(0)
+  descuentoCents Int        @default(0)
+  totalCents     Int
+  pagos       Pago[]
+  notas       String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model PedidoItem {
+  id         Int      @id @default(autoincrement())
+  pedido     Pedido   @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  pedidoId   Int
+  producto   Producto @relation(fields: [productoId], references: [id])
+  productoId Int
+  cantidad   Int      @default(1)
+  precioCents Int     // precio unitario al momento de la venta (centavos)
+  costoCents  Int     @default(0) // costo unitario al momento de la venta (centavos)
+  totalCents  Int
+  notas      String?
+  removidos  Json?
+  extras     Json?
+  extrasCents Int     @default(0) // suma de extras por unidad en centavos
+  estado     ItemStatus @default(PENDIENTE)
+}
+
+model Pago {
+  id         Int           @id @default(autoincrement())
+  pedido     Pedido        @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  pedidoId   Int
+  metodo     PaymentMethod
+  montoCents Int
+  referencia String?
+  createdAt  DateTime       @default(now())
+}
+
+model Usuario {
+  id        Int      @id @default(autoincrement())
+  nombre    String
+  email     String   @unique
+  rol       String   // admin, cajero, mesero
+  activo    Boolean  @default(true)
+  passwordHash String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  sessions  Session[]
+}
+
+// Ajustes de la aplicación (singleton)
+model Ajustes {
+  id            Int     @id @default(1)
+  locale        String  @default("es-ES")
+  currency      String  @default("EUR")
+  taxPct        Int     @default(0)
+  businessName  String  @default("Mi Restaurante")
+  ticketFooter  String  @default("¡Gracias por su compra!")
+  logoUrl       String  @default("/logo.png")
+  // Impresoras
+  printerIp     String?
+  printerPort   Int?    @default(9100)
+  serialBaud    Int?    @default(115200)
+  autoKitchenOnCreate Boolean @default(false)
+  autoKitchenOnReady  Boolean @default(false)
+  touchMode     Boolean @default(false)
+  updatedAt     DateTime @updatedAt
+}
+
+// Sesiones para autenticación con cookies
+model Session {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  user      Usuario  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    Int
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}

@@ -1,0 +1,20 @@
+version: '3.9'
+services:
+  pos:
+    build: .
+    image: pos-fastfood:latest
+    container_name: pos_fastfood
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=file:/app/data/prod.db
+      - NEXT_PUBLIC_BASE_URL=${NEXT_PUBLIC_BASE_URL:-http://localhost:3000}
+    ports:
+      - "3000:3000"
+    volumes:
+      - pos_data:/app/data
+    # Optional: network printing requires LAN access
+    network_mode: bridge
+
+volumes:
+  pos_data:
