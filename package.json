@@ -13,7 +13,8 @@
   "user:reset": "tsx scripts/reset-user-password.ts",
   "user:list": "tsx scripts/list-users.ts",
   "session:list": "tsx scripts/list-sessions.ts",
-  "session:cleanup": "tsx scripts/cleanup-sessions.ts"
+  "session:cleanup": "tsx scripts/cleanup-sessions.ts",
+  "session:clear": "tsx scripts/clear-sessions.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.14.0",
