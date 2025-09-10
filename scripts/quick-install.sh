@@ -1,13 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Permitir pasar argumentos KEY=VAL para sobreescribir variables sin export previo.
+for arg in "$@"; do
+  if [[ "$arg" == *=* ]]; then
+    key="${arg%%=*}"; val="${arg#*=}"; export "$key"="$val"
+  fi
+done
+
 REPO_URL="${REPO_URL:-}"       # Opcional: si se ejecuta fuera del repo
 BRANCH="${BRANCH:-main}"
 APP_DIR="${APP_DIR:-/opt/punto_de_venta}"
 SERVICE_NAME="pos"
 PORT="${PORT:-3000}"
 
-echo "==> Instalador rápido POS"
+echo "==> Instalador rápido POS (branch: $BRANCH, dir: $APP_DIR, puerto: $PORT)"
 
 if [[ $EUID -ne 0 ]]; then
   echo "Ejecuta con sudo o como root" >&2
@@ -80,8 +87,10 @@ systemctl enable --now ${SERVICE_NAME}.service
 echo "==> Servicio iniciado. Estado:" 
 systemctl --no-pager status ${SERVICE_NAME}.service || true
 
-echo "==> Listo. Accede en: http://$(hostname -I | awk '{print $1}'):$PORT"
+IP_LOCAL=$(hostname -I | awk '{print $1}') || IP_LOCAL=localhost
+echo "==> Listo. Accede en: http://$IP_LOCAL:$PORT"
 echo "   Usuario inicial: admin@local  (cambia la contraseña)."
 echo "   Para logs: journalctl -u ${SERVICE_NAME} -f"
+echo "   Reinstalar/actualizar: cd $APP_DIR && git pull && NODE_ENV=production npm run build && systemctl restart ${SERVICE_NAME}"
 
 exit 0

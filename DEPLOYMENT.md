@@ -6,8 +6,15 @@ Este proyecto es una app Next.js con Prisma. Puedes desplegarlo de varias formas
 
 En una máquina Ubuntu limpia (con git y curl):
 
+### One‑liner usando quick-install directamente
 ```bash
-sudo bash -c "curl -fsSL https://raw.githubusercontent.com/USUARIO/REPO/main/scripts/quick-install.sh -o /tmp/pos-install.sh && bash /tmp/pos-install.sh REPO_URL=https://github.com/USUARIO/REPO.git"
+sudo bash -c "curl -fsSL https://raw.githubusercontent.com/llibreprogram/punto_de_venta/main/scripts/quick-install.sh -o /tmp/pos-install.sh && bash /tmp/pos-install.sh REPO_URL=https://github.com/llibreprogram/punto_de_venta.git"
+```
+
+### Método alterno (script clonador remoto)
+```bash
+curl -fsSL https://raw.githubusercontent.com/llibreprogram/punto_de_venta/main/scripts/remote-install.sh -o remote-install.sh
+bash remote-install.sh https://github.com/llibreprogram/punto_de_venta.git
 ```
 
 Después:
