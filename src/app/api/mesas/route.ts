@@ -35,7 +35,7 @@ export async function PUT(req: Request) {
   if (!(await requireAdmin(req))) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   const body = await req.json().catch(()=>({})) as { id?: number; nombre?: string; activa?: boolean }
   if (!body.id) return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
-  const data: any = {}
+  const data: { nombre?: string; activa?: boolean } = {}
   if (typeof body.nombre === 'string') {
     const n = body.nombre.trim(); if (n) data.nombre = n
   }

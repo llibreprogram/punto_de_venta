@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 type Mesa = { id:number; nombre:string; activa:boolean }
 
@@ -9,14 +9,14 @@ export default function AdminMesasPage() {
   const [mostrarInactivas, setMostrarInactivas] = useState(false)
   const [loading, setLoading] = useState(true)
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true)
     const res = await fetch(`/api/mesas?${mostrarInactivas ? 'all=1':''}`, { cache:'no-store' })
     const j: Mesa[] = await res.json()
     setMesas(j.filter(m=> mostrarInactivas || m.activa))
     setLoading(false)
-  }
-  useEffect(()=>{ load() }, [mostrarInactivas])
+  }, [mostrarInactivas])
+  useEffect(()=>{ load() }, [load])
 
   const crear = async () => {
     const n = nombre.trim(); if (!n) return
