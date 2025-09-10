@@ -4,6 +4,8 @@ Este proyecto es una app Next.js con Prisma. Puedes desplegarlo de varias formas
 
 ## Instalación Rápida (Ubuntu) 🏎️
 
+Durante esta instalación, si no existe `.env` se genera automáticamente a partir de `.env.example` (o un fallback mínimo con `DATABASE_URL="file:./dev.db"`). Luego se aplica el esquema (`prisma db push`) y, si está disponible, se ejecuta el seed inicial para crear usuarios y ajustes.
+
 En una máquina Ubuntu limpia (con git y curl):
 
 ### One‑liner usando quick-install directamente

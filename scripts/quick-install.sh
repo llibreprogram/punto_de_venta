@@ -45,15 +45,36 @@ cd "$APP_DIR"
 echo "==> Instalando dependencias (npm ci)"
 npm ci --no-audit --no-fund
 
+if [[ ! -f .env ]]; then
+  if [[ -f .env.example ]]; then
+    echo "==> Creando .env desde .env.example"
+    cp .env.example .env
+  else
+    echo "==> .env.example no encontrado, creando .env mínimo"
+    cat > .env <<EOF
+DATABASE_URL="file:./dev.db"
+NEXT_PUBLIC_LOCALE=es-DO
+NEXT_PUBLIC_CURRENCY=DOP
+NEXT_PUBLIC_TAX_PCT=0
+EOF
+  fi
+fi
+
+# Si el usuario pasó DATABASE_URL=... como argumento y no está reflejado en .env, lo añadimos preservando el archivo existente.
+if [[ -n "${DATABASE_URL:-}" ]] && ! grep -q "DATABASE_URL" .env; then
+  echo "DATABASE_URL=\"${DATABASE_URL}\"" >> .env
+fi
+
 echo "==> Generando Prisma client"
 npm run prisma:generate
 
 echo "==> Aplicando esquema (db push)"
 NODE_ENV=production npx prisma db push
 
-if [[ ! -f .env ]]; then
-  echo "==> Creando .env desde .env.example"
-  cp .env.example .env
+# Ejecutar seed si existe script
+if grep -q '"db:seed"' package.json; then
+  echo "==> Seed inicial (usuarios, ajustes)"
+  NODE_ENV=production npm run db:seed || echo "(aviso) Seed falló, continúa instalación"
 fi
 
 echo "==> Build producción"
