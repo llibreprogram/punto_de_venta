@@ -11,7 +11,9 @@
     "prisma:push": "prisma db push",
   "db:seed": "tsx prisma/seed.ts",
   "user:reset": "tsx scripts/reset-user-password.ts",
-  "user:list": "tsx scripts/list-users.ts"
+  "user:list": "tsx scripts/list-users.ts",
+  "session:list": "tsx scripts/list-sessions.ts",
+  "session:cleanup": "tsx scripts/cleanup-sessions.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.14.0",
