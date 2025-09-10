@@ -45,15 +45,18 @@ async function main() {
   }
 
   // Usuarios iniciales
-  const adminEmail = 'admin@local'
-  const cajeroEmail = 'cajero@local'
+  // Permitir override mediante variables de entorno
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@local'
+  const adminPassword = process.env.ADMIN_PASSWORD || 'admin123'
+  const cajeroEmail = process.env.CAJERO_EMAIL || 'cajero@local'
+  const cajeroPassword = process.env.CAJERO_PASSWORD || 'cajero123'
   const admin = await prisma.usuario.findUnique({ where: { email: adminEmail } })
   if (!admin) {
-    await prisma.usuario.create({ data: { nombre: 'Administrador', email: adminEmail, rol: 'admin', passwordHash: hashPassword('admin123') } })
+    await prisma.usuario.create({ data: { nombre: 'Administrador', email: adminEmail, rol: 'admin', passwordHash: hashPassword(adminPassword) } })
   }
   const cajero = await prisma.usuario.findUnique({ where: { email: cajeroEmail } })
   if (!cajero) {
-    await prisma.usuario.create({ data: { nombre: 'Cajero', email: cajeroEmail, rol: 'cajero', passwordHash: hashPassword('cajero123') } })
+    await prisma.usuario.create({ data: { nombre: 'Cajero', email: cajeroEmail, rol: 'cajero', passwordHash: hashPassword(cajeroPassword) } })
   }
 
   console.log('Seed completado')
