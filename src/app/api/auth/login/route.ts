@@ -11,7 +11,9 @@ export async function POST(req: Request) {
   }
   const { token, expiresAt } = await createSession(user.id)
   const res = NextResponse.json({ id: user.id, nombre: user.nombre, email: user.email, rol: user.rol })
-  const isProd = process.env.NODE_ENV === 'production'
-  res.cookies.set('session', token, { httpOnly: true, sameSite: 'lax', secure: isProd, expires: expiresAt, path: '/' })
+  // Evitar problema de login loop en entornos LAN sin HTTPS: permitir desactivar secure.
+  const secureEnv = process.env.COOKIE_SECURE
+  const useSecure = secureEnv ? secureEnv === 'true' : (process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_BASE_URL?.startsWith('https://'))
+  res.cookies.set('session', token, { httpOnly: true, sameSite: 'lax', secure: useSecure, expires: expiresAt, path: '/' })
   return res
 }
