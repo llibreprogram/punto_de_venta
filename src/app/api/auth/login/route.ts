@@ -5,7 +5,10 @@ import { createSession, verifyPassword } from '@/lib/auth'
 export async function POST(req: Request) {
   const { email, password } = await req.json()
   if (!email || !password) return NextResponse.json({ error: 'Faltan credenciales' }, { status: 400 })
-  const user = await prisma.usuario.findUnique({ where: { email } })
+  // Normalizar email para evitar fallos por mayúsculas o espacios
+  const normalizedEmail = String(email).trim().toLowerCase()
+  if (!normalizedEmail) return NextResponse.json({ error: 'Faltan credenciales' }, { status: 400 })
+  const user = await prisma.usuario.findUnique({ where: { email: normalizedEmail } })
   if (!user || !user.activo || !user.passwordHash || !verifyPassword(password, user.passwordHash)) {
     return NextResponse.json({ error: 'Credenciales inválidas' }, { status: 401 })
   }
