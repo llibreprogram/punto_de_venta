@@ -23,7 +23,7 @@ El proyecto incluye un script (`scripts/update.sh`) que automatiza todos los pas
 
 3.  **Ejecuta el script de actualización:**
     ```bash
-    sudo ./scripts/update.sh
+    sudo bash ./scripts/update.sh
     ```
 
 El script se encargará de detener la aplicación, descargar el nuevo código, reconstruir el proyecto y volver a iniciarlo. Al final, te mostrará el estado del servicio para confirmar que todo ha ido bien.
