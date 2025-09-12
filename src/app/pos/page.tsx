@@ -362,15 +362,15 @@ export default function POSPage() {
           <button onClick={async()=>{ await fetch('/api/auth/logout', { method:'POST' }); location.href='/login' }} className="btn">Salir</button>
         </div>
       </header>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 flex-1 overflow-y-auto">
-        <aside className="md:col-span-2 overflow-y-auto">
-          <div className="flex gap-2 mb-3 flex-wrap sticky top-16 z-10 py-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 flex-1 overflow-y-hidden">
+        <aside className="md:col-span-2 flex flex-col">
+          <div className="flex gap-2 mb-3 flex-wrap py-2">
             <button className={`chip ${catFiltro===null?'chip-active':''}`} onClick={()=>setCatFiltro(null)}>Todo</button>
             {categorias.map(c => (
               <button key={c} className={`chip ${catFiltro===c?'chip-active':''}`} onClick={()=>setCatFiltro(c)}>{c}</button>
             ))}
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 overflow-y-auto flex-1">
             {cargando ?
               Array.from({length:8}).map((_,i)=> (
                 <div key={i} className="card rounded-lg p-3">
@@ -541,7 +541,7 @@ export default function POSPage() {
               </div>
             ))}
           </div>
-          <div className="pt-2 border-t grid gap-2 sticky bottom-0 bg-background/60 backdrop-blur-sm" aria-live="polite">
+          <div className="pt-2 border-t grid gap-2 bg-background/60 backdrop-blur-sm" aria-live="polite">
             <div className="flex items-center justify-between text-sm">
               <span>Subtotal</span>
               <span>{fmtCurrency(subtotal)}</span>
