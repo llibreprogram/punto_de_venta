@@ -97,6 +97,36 @@ button:active { transform: translateY(1px); }
 *::-webkit-scrollbar-thumb { background: rgba(148,163,184,.35); border-radius: 8px; }
 *::-webkit-scrollbar-track { background: transparent; }
 
+/* Products grid responsive: columnas mínimas adaptables por breakpoint */
+.products-grid {
+  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+}
+@media (min-width: 480px) {
+  .products-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+}
+@media (min-width: 640px) {
+  .products-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  }
+}
+@media (min-width: 768px) {
+  .products-grid {
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  }
+}
+@media (min-width: 1024px) {
+  .products-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  }
+}
+@media (min-width: 1280px) {
+  .products-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+}
+
 /* Modo táctil: clases aplicadas cuando el body raíz tiene .touch-mode */
 .touch-mode body { --touch-scale: 1; }
 .touch-mode .btn { padding: 0.9rem 1.25rem; font-size: 1.05rem; }

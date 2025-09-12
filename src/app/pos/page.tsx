@@ -291,9 +291,9 @@ export default function POSPage() {
   }
 
   return (
-    <div className={`h-screen flex flex-col ${ajustes?.touchMode ? 'touch-mode' : ''}`}>
-      <header className="p-2 flex gap-3 items-center justify-between z-10 gradient-header flex-shrink-0">
-        <div className="flex gap-3 items-center">
+    <div className={`min-h-dvh flex flex-col ${ajustes?.touchMode ? 'touch-mode' : ''}`}>
+      <header className="p-2 md:p-3 flex gap-2 md:gap-3 items-center justify-between z-10 gradient-header flex-shrink-0 flex-wrap md:flex-nowrap">
+        <div className="flex gap-2 md:gap-3 items-center min-w-0 flex-1">
           <h1 className="text-xl font-semibold">Punto de Venta</h1>
           <span className="text-sm muted">Fast Food</span>
           {tipo==='Mesa' && mesaId && (
@@ -303,7 +303,7 @@ export default function POSPage() {
             <span className="text-xs px-2 py-1 rounded bg-amber-100 text-amber-800 shadow-sm">Editando orden #{editingPedidoId}</span>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap md:flex-nowrap">
           <select value={tipo} onChange={(e)=>{
             const v = e.target.value
             const isTipo = (x: string): x is TipoOrden => x==='Mostrador' || x==='Mesa' || x==='Delivery'
@@ -341,7 +341,7 @@ export default function POSPage() {
             onChange={e => setBusqueda(e.target.value)}
             placeholder="Buscar productos..."
             id={searchId}
-            className="input w-64"
+            className="input w-32 sm:w-48 md:w-64"
             aria-label="Buscar productos"
           />
           <a href="/pos/abiertas" className="btn" title="Órdenes abiertas">🧾</a>
@@ -355,15 +355,15 @@ export default function POSPage() {
           <button onClick={async()=>{ await fetch('/api/auth/logout', { method:'POST' }); location.href='/login' }} className="btn">Salir</button>
         </div>
       </header>
-      <main className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 p-4 overflow-y-hidden">
-        <aside className="md:col-span-2 flex flex-col overflow-y-hidden">
+      <main className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4 p-2 md:p-4 overflow-y-hidden">
+        <aside className="md:col-span-2 flex flex-col overflow-y-hidden min-w-0">
           <div className="flex gap-2 mb-3 flex-wrap py-2 flex-shrink-0">
             <button className={`chip ${catFiltro===null?'chip-active':''}`} onClick={()=>setCatFiltro(null)}>Todo</button>
             {categorias.map(c => (
               <button key={c} className={`chip ${catFiltro===c?'chip-active':''}`} onClick={()=>setCatFiltro(c)}>{c}</button>
             ))}
           </div>
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-3 flex-1 overflow-y-auto">
+          <div className="grid products-grid gap-3 flex-1 overflow-y-auto">
             {cargando ?
               Array.from({length:8}).map((_,i)=> (
                 <div key={i} className="card rounded-lg p-3">
@@ -391,9 +391,9 @@ export default function POSPage() {
             ))}
           </div>
         </aside>
-	      <section className="md:col-span-1 glass-panel rounded-xl p-4 flex flex-col overflow-y-hidden">
+	      <section className="md:col-span-1 glass-panel rounded-xl p-4 flex flex-col overflow-y-hidden min-w-0">
           <h2 className="font-semibold mb-2 flex-shrink-0">Orden actual</h2>
-          <div className="flex-1 overflow-y-auto soft-divider">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden soft-divider min-w-0">
             {Object.values(carrito).length === 0 && (
               <div className="text-sm muted">Agrega productos para comenzar</div>
             )}
