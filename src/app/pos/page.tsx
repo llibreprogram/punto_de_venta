@@ -296,7 +296,7 @@ export default function POSPage() {
   }
 
   return (
-  <div className={`min-h-screen grid grid-rows-[auto_1fr] ${ajustes?.touchMode ? 'touch-mode' : ''}`}>
+  <div className={`h-screen flex flex-col ${ajustes?.touchMode ? 'touch-mode' : ''}`}>
   <header className="p-4 flex gap-3 items-center justify-between sticky top-0 z-10 gradient-header">
         <div className="flex gap-3 items-center">
           <h1 className="text-xl font-semibold">Punto de Venta</h1>
@@ -362,8 +362,8 @@ export default function POSPage() {
           <button onClick={async()=>{ await fetch('/api/auth/logout', { method:'POST' }); location.href='/login' }} className="btn">Salir</button>
         </div>
       </header>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4">
-        <aside className="md:col-span-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 flex-1 overflow-y-auto">
+        <aside className="md:col-span-2 overflow-y-auto">
           <div className="flex gap-2 mb-3 flex-wrap sticky top-16 z-10 py-2">
             <button className={`chip ${catFiltro===null?'chip-active':''}`} onClick={()=>setCatFiltro(null)}>Todo</button>
             {categorias.map(c => (
@@ -396,7 +396,7 @@ export default function POSPage() {
             ))}
           </div>
         </aside>
-	<section className="md:col-span-1 glass-panel rounded-xl p-4 grid grid-rows-[auto_1fr_auto] h-[80vh]">
+	<section className="md:col-span-1 glass-panel rounded-xl p-4 flex flex-col">
           <h2 className="font-semibold mb-2">Orden actual</h2>
           <div className="overflow-auto soft-divider">
             {Object.values(carrito).length === 0 && (
