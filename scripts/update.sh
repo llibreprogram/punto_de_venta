@@ -16,6 +16,7 @@ cd /opt/punto_de_venta
 # 3. Actualizar el código desde GitHub
 echo "
 [3/7] Actualizando el código desde GitHub..."
+sudo git config --global --add safe.directory /opt/punto_de_venta # Añadir excepción de seguridad para Git
 sudo git fetch origin
 sudo git reset --hard origin/main
 
