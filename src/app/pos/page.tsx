@@ -47,11 +47,11 @@ export default function POSPage() {
       setProductos(prods)
       setMesas(mesas)
       if (ajustes?.taxPct != null) setIVA(ajustes.taxPct)
-  if (ajustes) setAjustes({ locale: ajustes.locale, currency: ajustes.currency, touchMode: ajustes.touchMode })
+      if (ajustes) setAjustes({ locale: ajustes.locale, currency: ajustes.currency, touchMode: ajustes.touchMode })
       // Si viene ?load=ID, cargar la orden abierta al carrito
       const url = new URL(window.location.href)
       const loadId = url.searchParams.get('load')
-  if (loadId) {
+      if (loadId) {
         const res = await fetch(`/api/pedidos/${loadId}`, { cache: 'no-store' })
         if (res.ok) {
           const pedido = await res.json()
@@ -71,7 +71,7 @@ export default function POSPage() {
               nuevo[prod.id] = linea
             }
             setCarrito(nuevo)
-    setEditingPedidoId(Number(loadId))
+            setEditingPedidoId(Number(loadId))
             if (pedido.mesaId) {
               setTipo('Mesa')
               setMesaId(pedido.mesaId)
@@ -88,13 +88,10 @@ export default function POSPage() {
   // Cargar subcuentas abiertas de la mesa seleccionada (solo cuando cambia mesa o tipo)
   useEffect(()=>{
     if (tipo !== 'Mesa' || !mesaId) { setSubCuentasDisponibles([1]); setSubCuenta(1); return }
-  console.log('[POS] Cargando subcuentas abiertas mesa', mesaId)
-  fetch(`/api/pedidos?mesaId=${mesaId}&estado=ABIERTO`, { cache:'no-store' })
+    fetch(`/api/pedidos?mesaId=${mesaId}&estado=ABIERTO`, { cache:'no-store' })
       .then(r=>r.json())
       .then((ps: Array<{ subCuenta?: number }>)=> {
-    console.log('[POS] Subcuentas desde backend:', ps.map(p=>p.subCuenta))
         const nums = Array.from(new Set(ps.map(p=> p.subCuenta || 1))).sort((a,b)=>a-b)
-        // Si el usuario creó una nueva subCuenta local (con "+") aún no guardada, conservarla
         if (!nums.includes(subCuenta)) {
           setSubCuentasDisponibles([...nums, subCuenta].sort((a,b)=>a-b))
         } else {
@@ -115,9 +112,9 @@ export default function POSPage() {
       try {
         const r = await fetch(`/api/pedidos?mesaId=${mesaId}&estado=ABIERTO&subCuenta=${subCuenta}`, { cache:'no-store' })
         if (!r.ok) return
-  const lista: Array<{ id:number }> = await r.json()
-  if (!Array.isArray(lista) || !lista.length) return
-  const ord = lista.sort((a,b)=> b.id - a.id)[0]
+        const lista: Array<{ id:number }> = await r.json()
+        if (!Array.isArray(lista) || !lista.length) return
+        const ord = lista.sort((a,b)=> b.id - a.id)[0]
         const det = await fetch(`/api/pedidos/${ord.id}`, { cache:'no-store' })
         if (!det.ok) return
         const pedido = await det.json()
@@ -146,7 +143,6 @@ export default function POSPage() {
         el?.focus()
       }
       if (!e.ctrlKey && !e.metaKey) {
-        // números 1..9 cambian categoría
         if (/^[1-9]$/.test(e.key)) {
           const idx = Number(e.key) - 1
           const cats = Array.from(new Set(productos.map(p=>p.categoria.nombre)))
@@ -195,7 +191,7 @@ export default function POSPage() {
 
   const precioLinea = (l: Linea) => {
     const base = l.producto.precioCents
-  const extraSum = (l.extras||[]).reduce((s, name)=> s + (((l.producto.extras||[]).find(e=>e.nombre===name)?.precioCents) ?? 0), 0)
+    const extraSum = (l.extras||[]).reduce((s, name)=> s + (((l.producto.extras||[]).find(e=>e.nombre===name)?.precioCents) ?? 0), 0)
     return base + extraSum
   }
   const subtotal = useMemo(() => Object.values(carrito).reduce((acc, l) => acc + precioLinea(l) * l.cantidad, 0), [carrito])
@@ -288,16 +284,15 @@ export default function POSPage() {
         try { await fetch(`/api/print/kitchen/${data.pedidoId}`) } catch {}
       }
       // Notificación simple
-      console.log('Orden abierta actualizada/creada', { pedidoId: data?.pedidoId })
-  push('Orden abierta guardada', 'success')
+      push('Orden abierta guardada', 'success')
     } else {
-  push('No se pudo guardar la orden', 'error')
+      push('No se pudo guardar la orden', 'error')
     }
   }
 
   return (
-  <div className={`h-screen flex flex-col ${ajustes?.touchMode ? 'touch-mode' : ''}`}>
-  <header className="p-4 flex gap-3 items-center justify-between sticky top-0 z-10 gradient-header">
+    <div className={`h-screen flex flex-col ${ajustes?.touchMode ? 'touch-mode' : ''}`}>
+      <header className="p-2 flex gap-3 items-center justify-between z-10 gradient-header flex-shrink-0">
         <div className="flex gap-3 items-center">
           <h1 className="text-xl font-semibold">Punto de Venta</h1>
           <span className="text-sm muted">Fast Food</span>
@@ -308,7 +303,7 @@ export default function POSPage() {
             <span className="text-xs px-2 py-1 rounded bg-amber-100 text-amber-800 shadow-sm">Editando orden #{editingPedidoId}</span>
           )}
         </div>
-  <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
           <select value={tipo} onChange={(e)=>{
             const v = e.target.value
             const isTipo = (x: string): x is TipoOrden => x==='Mostrador' || x==='Mesa' || x==='Delivery'
@@ -331,10 +326,8 @@ export default function POSPage() {
                   ))}
                   <button type="button" onClick={()=>{
                     const next = Math.max(...subCuentasDisponibles, 1) + 1
-                    console.log('[POS] Añadiendo subCuenta local', next)
                     setSubCuentasDisponibles(prev=> {
                       const arr = [...prev, next]
-                      console.log('[POS] Nuevo listado subCuentasDisponibles', arr)
                       return arr
                     })
                     setSubCuenta(next)
@@ -362,15 +355,15 @@ export default function POSPage() {
           <button onClick={async()=>{ await fetch('/api/auth/logout', { method:'POST' }); location.href='/login' }} className="btn">Salir</button>
         </div>
       </header>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 flex-1 overflow-y-hidden">
-        <aside className="md:col-span-2 flex flex-col">
-          <div className="flex gap-2 mb-3 flex-wrap py-2">
+      <main className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 p-4 overflow-y-hidden">
+        <aside className="md:col-span-2 flex flex-col overflow-y-hidden">
+          <div className="flex gap-2 mb-3 flex-wrap py-2 flex-shrink-0">
             <button className={`chip ${catFiltro===null?'chip-active':''}`} onClick={()=>setCatFiltro(null)}>Todo</button>
             {categorias.map(c => (
               <button key={c} className={`chip ${catFiltro===c?'chip-active':''}`} onClick={()=>setCatFiltro(c)}>{c}</button>
             ))}
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 overflow-y-auto flex-1">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-3 flex-1 overflow-y-auto">
             {cargando ?
               Array.from({length:8}).map((_,i)=> (
                 <div key={i} className="card rounded-lg p-3">
@@ -380,25 +373,27 @@ export default function POSPage() {
                 </div>
               ))
             : visibles.map(p => (
-              <button key={p.id} onClick={()=>agregar(p)} className="product-card text-left focus:outline-none focus:ring-2" style={{outlineColor:'var(--ring)'}}>
-                <div className="relative aspect-video bg-gray-50/40 rounded-lg mb-2 overflow-hidden">
+              <button key={p.id} onClick={()=>agregar(p)} className="product-card text-left focus:outline-none focus:ring-2 flex items-center gap-3 p-2" style={{outlineColor:'var(--ring)'}}>
+                <div className="relative aspect-square w-16 h-16 bg-gray-50/40 rounded-lg overflow-hidden flex-shrink-0">
                   {p.imagenUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={p.imagenUrl} alt={p.nombre} className="w-full h-full object-cover" />
                   ) : (
-                    <div className="w-full h-full grid place-items-center text-gray-400 text-sm">Sin imagen</div>
+                    <div className="w-full h-full grid place-items-center text-gray-400 text-xs">Sin imagen</div>
                   )}
-                  <span className="absolute top-2 right-2 price-badge text-white text-xs px-2 py-1 rounded-lg shadow">{fmtCurrency(p.precioCents)}</span>
                 </div>
-                <div className="font-medium truncate" title={p.nombre}>{p.nombre}</div>
-                <div className="text-xs muted">{p.categoria.nombre}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium truncate" title={p.nombre}>{p.nombre}</div>
+                  <div className="text-sm font-bold">{fmtCurrency(p.precioCents)}</div>
+                  <div className="text-xs muted">{p.categoria.nombre}</div>
+                </div>
               </button>
             ))}
           </div>
         </aside>
-	<section className="md:col-span-1 glass-panel rounded-xl p-4 flex flex-col">
-          <h2 className="font-semibold mb-2">Orden actual</h2>
-          <div className="flex-1 overflow-auto soft-divider">
+	      <section className="md:col-span-1 glass-panel rounded-xl p-4 flex flex-col overflow-y-hidden">
+          <h2 className="font-semibold mb-2 flex-shrink-0">Orden actual</h2>
+          <div className="flex-1 overflow-y-auto soft-divider">
             {Object.values(carrito).length === 0 && (
               <div className="text-sm muted">Agrega productos para comenzar</div>
             )}
@@ -541,7 +536,7 @@ export default function POSPage() {
               </div>
             ))}
           </div>
-          <div className="pt-2 border-t grid gap-2 bg-background/60 backdrop-blur-sm" aria-live="polite">
+          <div className="pt-2 border-t grid gap-2 bg-background/60 backdrop-blur-sm flex-shrink-0" aria-live="polite">
             <div className="flex items-center justify-between text-sm">
               <span>Subtotal</span>
               <span>{fmtCurrency(subtotal)}</span>
@@ -621,7 +616,7 @@ export default function POSPage() {
             </div>
           </div>
         </section>
-      </div>
+      </main>
       {cobrando && (
         <div role="dialog" aria-modal="true" className="fixed inset-0 bg-black/40 grid place-items-center p-4">
           <div className="bg-white text-black rounded-lg w-full max-w-md p-4 grid gap-3">
@@ -653,7 +648,7 @@ export default function POSPage() {
             </div>
             <div className="flex gap-2 justify-end">
               <button className="btn" onClick={()=>setCobrando(false)}>Cancelar</button>
-      <button className="btn btn-primary" onClick={async ()=>{
+              <button className="btn btn-primary" onClick={async ()=>{
                 const items = Object.values(carrito).map(l=> ({
                   productoId: l.producto.id,
                   cantidad: l.cantidad,
@@ -665,14 +660,14 @@ export default function POSPage() {
                 }))
                 const url = editingPedidoId ? `/api/pedidos/${editingPedidoId}` : '/api/pedidos'
                 const method = editingPedidoId ? 'PUT' : 'POST'
-        const res = await fetch(url, {
+                const res = await fetch(url, {
                   method,
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
-          ...(editingPedidoId ? {} : { tipo, mesaId, subCuenta }),
+                    ...(editingPedidoId ? {} : { tipo, mesaId, subCuenta }),
                     items,
-        impuestoCents: impuesto,
-        descuentoCents: descuentoCents,
+                    impuestoCents: impuesto,
+                    descuentoCents: descuentoCents,
                     pago: { metodo, montoCents: total },
                   })
                 })
@@ -772,13 +767,13 @@ export default function POSPage() {
                   extrasCents: ((carrito[s.id].extras||[]).reduce((sum, name)=> sum + (((carrito[s.id].producto.extras||[]).find(e=>e.nombre===name)?.precioCents) ?? 0), 0)),
                   notas: (carrito[s.id].nota||'').trim() || undefined,
                 }))
-        const res = await fetch('/api/pedidos', {
+                const res = await fetch('/api/pedidos', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
-          tipo,
-          mesaId,
-          subCuenta,
+                    tipo,
+                    mesaId,
+                    subCuenta,
                     items,
                     impuestoCents: impuestoSel,
                     descuentoCents: descuentoSelCents,
