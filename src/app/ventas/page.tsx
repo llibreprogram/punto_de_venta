@@ -1,9 +1,10 @@
 "use client"
 import Link from 'next/link'
+import AdminLayout from '@/components/AdminLayout'
 import { LOCALE, CURRENCY, toCurrency } from '@/lib/money'
 import { useEffect, useMemo, useState } from 'react'
 
-type PedidoRow = { id:number; numero:number; createdAt:string; totalCents:number; estado:string }
+type PedidoRow = { id:number; numero:number; createdAt:string; totalCents:number; estado:string; subCuenta?: number | null; mesa?: { nombre: string } | null }
 type PedidoDetalle = { id:number; numero:number; items: Array<{ id:number; cantidad:number; precioCents:number; totalCents:number; producto:{nombre:string}; extras?: string[]|null; removidos?: string[]|null; notas?: string|null }> }
 
 export default function VentasPage() {
@@ -47,26 +48,36 @@ export default function VentasPage() {
   const totalDia = useMemo(()=> data.reduce((a,p)=>a+p.totalCents,0), [data])
 
   return (
-    <main className="p-4 max-w-5xl mx-auto grid gap-3">
-      <h1 className="text-xl font-semibold">Ventas</h1>
-      <div className="flex gap-2 items-end">
+    <AdminLayout title="Ventas">
+    <div className="grid gap-4">
+      <div className="flex flex-wrap gap-2 items-end glass-panel p-3 rounded-lg">
         <label className="grid text-sm">
           Desde
-          <input type="datetime-local" value={from} onChange={e=>setFrom(e.target.value)} className="border rounded px-2 py-1" />
+          <input type="datetime-local" value={from} onChange={e=>setFrom(e.target.value)} className="input" />
         </label>
         <label className="grid text-sm">
           Hasta
-          <input type="datetime-local" value={to} onChange={e=>setTo(e.target.value)} className="border rounded px-2 py-1" />
+          <input type="datetime-local" value={to} onChange={e=>setTo(e.target.value)} className="input" />
         </label>
-        <button className="border rounded px-3 py-2" onClick={load}>Aplicar</button>
+        <button className="btn" onClick={load}>Aplicar</button>
+        <button className="btn" onClick={()=>{
+          const params = new URLSearchParams()
+          if (from) params.set('from', from)
+          if (to) params.set('to', to)
+          params.set('format','csv')
+          const url = `/api/pedidos?${params.toString()}`
+          window.open(url, '_blank')
+        }}>CSV</button>
         <div className="ml-auto text-sm">Total listado: <strong>{toCurrency(totalDia)}</strong></div>
       </div>
-      <div className="border rounded overflow-hidden">
+      <div className="glass-panel rounded-lg overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-gray-50">
             <tr>
               <th className="text-left p-2">#</th>
               <th className="text-left p-2">Fecha</th>
+              <th className="text-left p-2">Mesa</th>
+              <th className="text-left p-2">Sub</th>
               <th className="text-left p-2">Total</th>
               <th className="text-left p-2">Estado</th>
               <th className="text-left p-2">Acciones</th>
@@ -74,9 +85,9 @@ export default function VentasPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td className="p-4" colSpan={5}>Cargando…</td></tr>
+              <tr><td className="p-4" colSpan={7}>Cargando…</td></tr>
             ) : data.length === 0 ? (
-              <tr><td className="p-4" colSpan={5}>Sin resultados</td></tr>
+              <tr><td className="p-4" colSpan={7}>Sin resultados</td></tr>
             ) : data.map((p) => (
               <>
                 <tr key={p.id} className="border-t">
@@ -92,13 +103,15 @@ export default function VentasPage() {
                     {p.numero}
                   </td>
                   <td className="p-2">{fmt.format(new Date(p.createdAt))}</td>
+                  <td className="p-2">{p.mesa?.nombre || ''}</td>
+                  <td className="p-2">{p.mesa?.nombre ? p.subCuenta : ''}</td>
                   <td className="p-2">{toCurrency(p.totalCents, ajustes?.locale || LOCALE, ajustes?.currency || CURRENCY)}</td>
                   <td className="p-2">{p.estado}</td>
                   <td className="p-2"><Link className="underline" href={`/ticket/${p.id}`}>Ticket</Link></td>
                 </tr>
                 {open[p.id] && (
                   <tr className="bg-gray-50">
-                    <td colSpan={5} className="p-2">
+                    <td colSpan={7} className="p-2">
                       <div className="text-xs grid gap-1">
                         {(detalles[p.id]?.items||[]).map((it)=> (
                           <div key={it.id} className="flex justify-between">
@@ -127,6 +140,7 @@ export default function VentasPage() {
           </tbody>
         </table>
       </div>
-    </main>
+  </div>
+  </AdminLayout>
   )
 }

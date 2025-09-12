@@ -25,8 +25,8 @@ COPY --from=builder /app/public ./public
 
 # Default DB path for SQLite (override via env)
 ENV DATABASE_URL=file:/app/data/prod.db
-ENV PORT=3000
-EXPOSE 3000
+ENV PORT=3001
+EXPOSE 3001
 
 # Apply schema and start server
 CMD sh -c "npx prisma db push && next start -p $PORT"

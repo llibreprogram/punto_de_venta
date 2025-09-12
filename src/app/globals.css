@@ -10,6 +10,11 @@
   --primary-600: #d97706;/* amber-600 */
   --accent: #ef4444;     /* red-500 */
   --ring: rgba(245,158,11,.35);
+  --gradient-1: linear-gradient(135deg,#f59e0b 0%,#f97316 50%,#ef4444 100%);
+  --gradient-2: linear-gradient(135deg,#0ea5e9 0%,#6366f1 50%,#8b5cf6 100%);
+  --surface-glass: rgba(255,255,255,0.55);
+  --surface-glass-border: rgba(255,255,255,0.35);
+  --shadow-soft: 0 4px 8px -2px rgba(0,0,0,.05),0 2px 4px -2px rgba(0,0,0,.04);
 }
 
 /* CSS variables already defined above; remove unsupported @theme at-rule */
@@ -30,6 +35,18 @@ body {
   font-family: var(--font-geist-sans), system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
 }
 
+/* Dark mode manual toggle when body[data-theme='dark'] */
+body[data-theme='dark'] {
+  --background: #0f172a;
+  --foreground: #e2e8f0;
+  --card: #1e293b;
+  --muted: #94a3b8;
+  color: var(--foreground);
+}
+
+@keyframes fade-in { from { opacity:0; transform: translateY(-4px);} to { opacity:1; transform: translateY(0);} }
+.animate-fade-in { animation: fade-in .25s ease; }
+
 /* Mejoras visuales sutiles */
 button { transition: all .15s ease; }
 button:active { transform: translateY(1px); }
@@ -38,14 +55,37 @@ button:active { transform: translateY(1px); }
 .card { background: var(--card); border: 1px solid rgba(148,163,184,.15); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
 .muted { color: var(--muted); }
 
+/* Product cards refinadas */
+.product-card { position: relative; overflow: hidden; background: var(--card); border: 1px solid rgba(148,163,184,.2); border-radius: 1rem; padding: .85rem; display: flex; flex-direction: column; gap: .35rem; box-shadow: var(--shadow-soft); }
+.product-card:hover { transform: translateY(-3px); box-shadow: 0 6px 14px -4px rgba(0,0,0,.12),0 4px 6px -2px rgba(0,0,0,.08); }
+.product-card:active { transform: translateY(-1px) scale(.985); }
+.product-card img { transition: transform .5s ease; }
+.product-card:hover img { transform: scale(1.08); }
+.price-badge { backdrop-filter: blur(6px); background: rgba(0,0,0,.72); font-weight: 500; }
+
+/* Header gradient glass */
+.gradient-header { background: linear-gradient(120deg,rgba(255,255,255,.85) 0%,rgba(255,255,255,.65) 55%,rgba(255,255,255,.4) 100%), var(--gradient-1); border-bottom: 1px solid rgba(148,163,184,.25); box-shadow: 0 4px 16px -8px rgba(0,0,0,.18); backdrop-filter: blur(10px); }
+
+/* Chips */
+.chip { border: 1px solid rgba(148,163,184,.25); border-radius: 9999px; padding: .38rem .9rem; background: rgba(255,255,255,.55); backdrop-filter: blur(8px); font-weight: 500; display: inline-flex; align-items: center; gap:.4rem; }
+.chip:hover { background: rgba(255,255,255,.75); }
+.chip-active { background: var(--primary); color:#fff; border-color: var(--primary-600); box-shadow: 0 0 0 2px rgba(255,255,255,.7) inset; }
+
+/* Subcuenta pill */
+.pill { background: linear-gradient(135deg,#0ea5e9,#6366f1); color:#fff; font-size:.65rem; letter-spacing:.5px; padding:.25rem .55rem; border-radius: .5rem; font-weight:600; box-shadow: 0 2px 4px -2px rgba(0,0,0,.35); }
+
+/* Glass panel (lado derecho) */
+.glass-panel { background: var(--surface-glass); border:1px solid var(--surface-glass-border); backdrop-filter: blur(14px) saturate(140%); box-shadow: var(--shadow-soft); }
+
+/* Divider soft */
+.soft-divider > * + * { border-top: 1px solid rgba(148,163,184,.15); }
+
 /* Botones refinados */
 .btn { border: 1px solid rgba(148,163,184,.25); background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(0,0,0,.02)); border-radius: .6rem; padding: .6rem 1rem; }
 .btn:hover { border-color: rgba(148,163,184,.45); }
 .btn:focus { outline: none; box-shadow: 0 0 0 3px var(--ring); }
 .btn-primary { background: var(--primary); border-color: var(--primary-600); color: white; }
 .btn-primary:hover { background: var(--primary-600); }
-.chip { border: 1px solid rgba(148,163,184,.25); border-radius: 9999px; padding: .25rem .75rem; }
-.chip-active { background: var(--primary); color: #fff; border-color: var(--primary-600); }
 
 /* Inputs */
 .input { background: transparent; border: 1px solid rgba(148,163,184,.35); border-radius: .5rem; padding: .5rem .75rem; }

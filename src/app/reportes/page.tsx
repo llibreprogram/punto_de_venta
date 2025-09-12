@@ -1,6 +1,7 @@
 "use client"
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toCurrency, LOCALE, CURRENCY } from '@/lib/money'
+import AdminLayout from '@/components/AdminLayout'
 
 type Tipo = 'dia'|'categoria'|'producto'|'hora'
 
@@ -41,20 +42,20 @@ export default function ReportesPage() {
   }, [type])
 
   return (
-    <main className="p-4 max-w-5xl mx-auto grid gap-4">
-      <h1 className="text-xl font-semibold">Reportes</h1>
-      <div className="flex items-end gap-2">
-        <div className="flex gap-1 border rounded p-1">
-          <button className={`px-3 py-1 rounded ${type==='dia'?'bg-black text-white':''}`} onClick={()=>setType('dia')}>Por día</button>
-          <button className={`px-3 py-1 rounded ${type==='hora'?'bg-black text-white':''}`} onClick={()=>setType('hora')}>Por hora</button>
-          <button className={`px-3 py-1 rounded ${type==='categoria'?'bg-black text-white':''}`} onClick={()=>setType('categoria')}>Por categoría</button>
-          <button className={`px-3 py-1 rounded ${type==='producto'?'bg-black text-white':''}`} onClick={()=>setType('producto')}>Por producto</button>
+    <AdminLayout title="Reportes">
+    <div className="grid gap-4">
+      <div className="flex flex-wrap items-end gap-2 glass-panel p-3 rounded-lg">
+        <div className="flex gap-1 p-1 rounded-lg bg-white/50 border">
+          <button className={`btn text-xs ${type==='dia'?'btn-primary':''}`} onClick={()=>setType('dia')}>Por día</button>
+          <button className={`btn text-xs ${type==='hora'?'btn-primary':''}`} onClick={()=>setType('hora')}>Por hora</button>
+          <button className={`btn text-xs ${type==='categoria'?'btn-primary':''}`} onClick={()=>setType('categoria')}>Por categoría</button>
+          <button className={`btn text-xs ${type==='producto'?'btn-primary':''}`} onClick={()=>setType('producto')}>Por producto</button>
         </div>
         {(type==='categoria' || type==='producto') && (
           <>
             <label className="grid text-sm">
               Métrica
-              <select className="border rounded px-2 py-1" value={metric} onChange={e=>setMetric(e.target.value as 'total'|'cantidad'|'margen')}>
+              <select className="input" value={metric} onChange={e=>setMetric(e.target.value as 'total'|'cantidad'|'margen')}>
                 <option value="total">Total</option>
                 <option value="cantidad">Cantidad</option>
                 <option value="margen">Margen</option>
@@ -62,22 +63,22 @@ export default function ReportesPage() {
             </label>
             <label className="grid text-sm">
               Top N
-              <input className="border rounded px-2 py-1" placeholder="ej. 10" value={top} onChange={e=>setTop(e.target.value)} />
+              <input className="input" placeholder="ej. 10" value={top} onChange={e=>setTop(e.target.value)} />
             </label>
           </>
         )}
         <label className="grid text-sm">
           Desde
-          <input type="datetime-local" value={from} onChange={e=>setFrom(e.target.value)} className="border rounded px-2 py-1" />
+          <input type="datetime-local" value={from} onChange={e=>setFrom(e.target.value)} className="input" />
         </label>
         <label className="grid text-sm">
           Hasta
-          <input type="datetime-local" value={to} onChange={e=>setTo(e.target.value)} className="border rounded px-2 py-1" />
+          <input type="datetime-local" value={to} onChange={e=>setTo(e.target.value)} className="input" />
         </label>
-        <button className="border rounded px-3 py-2" onClick={load}>Aplicar</button>
-  <a className="ml-auto border rounded px-3 py-2" href={`/api/reportes?type=${type}${from?`&from=${encodeURIComponent(from)}`:''}${to?`&to=${encodeURIComponent(to)}`:''}${(type==='categoria'||type==='producto')?`&metric=${metric}${top?`&top=${encodeURIComponent(top)}`:''}`:''}&format=csv`} target="_blank">Exportar CSV</a>
+        <button className="btn" onClick={load}>Aplicar</button>
+  <a className="ml-auto btn" href={`/api/reportes?type=${type}${from?`&from=${encodeURIComponent(from)}`:''}${to?`&to=${encodeURIComponent(to)}`:''}${(type==='categoria'||type==='producto')?`&metric=${metric}${top?`&top=${encodeURIComponent(top)}`:''}`:''}&format=csv`} target="_blank">Exportar CSV</a>
       </div>
-      <div className="border rounded overflow-hidden">
+      <div className="glass-panel rounded-lg overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-gray-50">
             <tr>
@@ -99,6 +100,7 @@ export default function ReportesPage() {
           </tbody>
         </table>
       </div>
-    </main>
+  </div>
+  </AdminLayout>
   )
 }

@@ -71,6 +71,7 @@ model Pedido {
   estado      OrderStatus  @default(ABIERTO)
   mesa        Mesa?        @relation(fields: [mesaId], references: [id])
   mesaId      Int?
+  subCuenta   Int          @default(1) // número de sub-cuenta dentro de la mesa
   items       PedidoItem[]
   subtotalCents  Int
   impuestoCents  Int        @default(0)
@@ -80,6 +81,7 @@ model Pedido {
   notas       String?
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
+  ticketAccesses TicketAccess[]
 }
 
 model PedidoItem {
@@ -148,4 +150,14 @@ model Session {
   userId    Int
   expiresAt DateTime
   createdAt DateTime @default(now())
+}
+
+// Auditoría de accesos a tickets (opcional)
+model TicketAccess {
+  id        Int      @id @default(autoincrement())
+  pedido    Pedido   @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  pedidoId  Int
+  at        DateTime @default(now())
+  ip        String?
+  signed    Boolean  @default(false)
 }

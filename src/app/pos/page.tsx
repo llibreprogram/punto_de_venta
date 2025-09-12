@@ -1,5 +1,6 @@
 "use client"
 import { useEffect, useMemo, useState } from 'react'
+import { useToast, useConfirm } from '@/components/ui/Providers'
 import { toCurrency, LOCALE, CURRENCY } from '@/lib/money'
 
 type Producto = {
@@ -25,12 +26,16 @@ export default function POSPage() {
   const [tipo, setTipo] = useState<TipoOrden>('Mostrador')
   const [mesas, setMesas] = useState<{id:number; nombre:string}[]>([])
   const [mesaId, setMesaId] = useState<number|undefined>(undefined)
+  const [subCuenta, setSubCuenta] = useState<number>(1)
+  const [subCuentasDisponibles, setSubCuentasDisponibles] = useState<number[]>([1])
   const [IVA_PCT, setIVA] = useState<number>(0)
   const [ajustes, setAjustes] = useState<{ locale?: string; currency?: string; touchMode?: boolean } | null>(null)
   const [lastAdded, setLastAdded] = useState<number | null>(null)
   const [customOpen, setCustomOpen] = useState<Record<number, boolean>>({})
   const [editingPedidoId, setEditingPedidoId] = useState<number|null>(null)
   const searchId = 'search-input'
+  const { push } = useToast()
+  const { confirm } = useConfirm()
 
   useEffect(() => {
     setCargando(true)
@@ -79,6 +84,58 @@ export default function POSPage() {
       }
     }).finally(()=> setCargando(false))
   }, [])
+
+  // Cargar subcuentas abiertas de la mesa seleccionada (solo cuando cambia mesa o tipo)
+  useEffect(()=>{
+    if (tipo !== 'Mesa' || !mesaId) { setSubCuentasDisponibles([1]); setSubCuenta(1); return }
+  console.log('[POS] Cargando subcuentas abiertas mesa', mesaId)
+  fetch(`/api/pedidos?mesaId=${mesaId}&estado=ABIERTO`, { cache:'no-store' })
+      .then(r=>r.json())
+      .then((ps: Array<{ subCuenta?: number }>)=> {
+    console.log('[POS] Subcuentas desde backend:', ps.map(p=>p.subCuenta))
+        const nums = Array.from(new Set(ps.map(p=> p.subCuenta || 1))).sort((a,b)=>a-b)
+        // Si el usuario creó una nueva subCuenta local (con "+") aún no guardada, conservarla
+        if (!nums.includes(subCuenta)) {
+          setSubCuentasDisponibles([...nums, subCuenta].sort((a,b)=>a-b))
+        } else {
+          setSubCuentasDisponibles(nums.length?nums:[1])
+        }
+      }).catch(()=>{})
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tipo, mesaId])
+
+  // Autocargar pedido existente para mesa/subCuenta cuando cambia selección y carrito vacío
+  useEffect(()=>{
+    if (tipo!=='Mesa' || !mesaId) return
+    if (editingPedidoId) return
+    if (!subCuenta) return
+    if (Object.values(carrito).length>0) return
+    let abort = false
+    ;(async()=>{
+      try {
+        const r = await fetch(`/api/pedidos?mesaId=${mesaId}&estado=ABIERTO&subCuenta=${subCuenta}`, { cache:'no-store' })
+        if (!r.ok) return
+  const lista: Array<{ id:number }> = await r.json()
+  if (!Array.isArray(lista) || !lista.length) return
+  const ord = lista.sort((a,b)=> b.id - a.id)[0]
+        const det = await fetch(`/api/pedidos/${ord.id}`, { cache:'no-store' })
+        if (!det.ok) return
+        const pedido = await det.json()
+        if (abort) return
+        if (pedido?.estado==='ABIERTO' && Array.isArray(pedido.items)) {
+          const nuevo: Record<number, Linea> = {}
+          for (const it of pedido.items) {
+            const prod = productos.find(p=> p.id === it.productoId)
+            if (!prod) continue
+            nuevo[prod.id] = { producto: prod, cantidad: it.cantidad, removidos: it.removidos||undefined, extras: it.extras||undefined, nota: it.notas||undefined }
+          }
+          setCarrito(nuevo)
+          setEditingPedidoId(pedido.id)
+        }
+      } catch {}
+    })()
+    return ()=>{ abort = true }
+  }, [tipo, mesaId, subCuenta, editingPedidoId, carrito, productos])
 
   // Atajos: Ctrl+K (focus búsqueda), 1-9 para categorías, +/- para última línea
   useEffect(() => {
@@ -193,7 +250,7 @@ export default function POSPage() {
     return Math.max(0, Math.round(entr*100) - totalSel)
   }, [entregadoSel, totalSel])
 
-  // Guardar orden abierta
+  // Guardar orden abierta (reutiliza pedido existente por mesa/subCuenta)
   const guardarAbierta = async () => {
     if (Object.values(carrito).length === 0) return
     const items = Object.values(carrito).map(l=> ({
@@ -205,31 +262,50 @@ export default function POSPage() {
       extrasCents: ((l.extras||[]).reduce((s, name)=> s + (((l.producto.extras||[]).find(e=>e.nombre===name)?.precioCents) ?? 0), 0)),
       notas: (l.nota||'').trim() || undefined,
     }))
-    const url = editingPedidoId ? `/api/pedidos/${editingPedidoId}` : '/api/pedidos'
-    const method = editingPedidoId ? 'PUT' : 'POST'
-    const body = editingPedidoId ? { items, impuestoCents: impuesto, descuentoCents } : { tipo, mesaId, items, impuestoCents: impuesto, descuentoCents }
+    let pedidoIdForUpdate = editingPedidoId
+    if (!pedidoIdForUpdate && tipo==='Mesa' && mesaId) {
+      try {
+        const r = await fetch(`/api/pedidos?mesaId=${mesaId}&estado=ABIERTO&subCuenta=${subCuenta}`, { cache:'no-store' })
+        if (r.ok) {
+          const lista: Array<{ id:number }> = await r.json()
+          if (Array.isArray(lista) && lista.length) {
+            const ord = lista.sort((a,b)=> b.id - a.id)[0]
+            pedidoIdForUpdate = ord.id
+            setEditingPedidoId(ord.id)
+          }
+        }
+      } catch {}
+    }
+    const url = pedidoIdForUpdate ? `/api/pedidos/${pedidoIdForUpdate}` : '/api/pedidos'
+    const method = pedidoIdForUpdate ? 'PUT' : 'POST'
+    const body = pedidoIdForUpdate ? { items, impuestoCents: impuesto, descuentoCents } : { tipo, mesaId, subCuenta, items, impuestoCents: impuesto, descuentoCents }
     const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
     if (res.ok) {
       const data = await res.json().catch(()=>null)
-      setCarrito({})
-      setEditingPedidoId(null)
+      // Mantener carrito para seguir agregando; asegurar editingPedidoId
+      if (data?.pedidoId) setEditingPedidoId(data.pedidoId)
       if (data?.autoKitchen && data?.pedidoId) {
         try { await fetch(`/api/print/kitchen/${data.pedidoId}`) } catch {}
       }
-      alert('Orden guardada como ABIERTA')
+      // Notificación simple
+      console.log('Orden abierta actualizada/creada', { pedidoId: data?.pedidoId })
+  push('Orden abierta guardada', 'success')
     } else {
-      alert('No se pudo guardar la orden')
+  push('No se pudo guardar la orden', 'error')
     }
   }
 
   return (
-    <div className={`min-h-screen grid grid-rows-[auto_1fr] ${ajustes?.touchMode ? 'touch-mode' : ''}`}>
-    <header className="p-4 border-b flex gap-3 items-center justify-between sticky top-0 bg-background/80 backdrop-blur z-10 bg-gradient-to-r from-cyan-500/5 to-emerald-500/5">
+  <div className={`min-h-screen grid grid-rows-[auto_1fr] ${ajustes?.touchMode ? 'touch-mode' : ''}`}>
+  <header className="p-4 flex gap-3 items-center justify-between sticky top-0 z-10 gradient-header">
         <div className="flex gap-3 items-center">
           <h1 className="text-xl font-semibold">Punto de Venta</h1>
           <span className="text-sm muted">Fast Food</span>
+          {tipo==='Mesa' && mesaId && (
+            <span className="pill">Mesa {mesas.find(m=>m.id===mesaId)?.nombre}{subCuenta?` · C${subCuenta}`:''}</span>
+          )}
           {editingPedidoId && (
-            <span className="text-xs px-2 py-1 rounded bg-amber-100 text-amber-800">Editando orden #{editingPedidoId}</span>
+            <span className="text-xs px-2 py-1 rounded bg-amber-100 text-amber-800 shadow-sm">Editando orden #{editingPedidoId}</span>
           )}
         </div>
   <div className="flex items-center gap-2">
@@ -243,10 +319,29 @@ export default function POSPage() {
             <option>Delivery</option>
           </select>
           {tipo==='Mesa' && (
-            <select value={mesaId ?? ''} onChange={e=>setMesaId(Number(e.target.value)||undefined)} className="input">
-              <option value="">Selecciona mesa</option>
-              {mesas.map(m=> (<option key={m.id} value={m.id}>{m.nombre}</option>))}
-            </select>
+            <div className="flex items-center gap-2">
+              <select value={mesaId ?? ''} onChange={e=>{ const v=Number(e.target.value)||undefined; setMesaId(v); }} className="input">
+                <option value="">Selecciona mesa</option>
+                {mesas.map(m=> (<option key={m.id} value={m.id}>{m.nombre}</option>))}
+              </select>
+              {mesaId && (
+                <div className="flex items-center gap-1">
+                  {subCuentasDisponibles.map(n => (
+                    <button key={n} type="button" onClick={()=>{ setSubCuenta(n); }} className={`px-2 py-1 rounded text-xs border ${n===subCuenta?'bg-black text-white':'bg-white'}`}>C{n}</button>
+                  ))}
+                  <button type="button" onClick={()=>{
+                    const next = Math.max(...subCuentasDisponibles, 1) + 1
+                    console.log('[POS] Añadiendo subCuenta local', next)
+                    setSubCuentasDisponibles(prev=> {
+                      const arr = [...prev, next]
+                      console.log('[POS] Nuevo listado subCuentasDisponibles', arr)
+                      return arr
+                    })
+                    setSubCuenta(next)
+                  }} className="px-2 py-1 rounded text-xs border" title="Nueva subcuenta">+</button>
+                </div>
+              )}
+            </div>
           )}
           <input
             value={busqueda}
@@ -257,6 +352,7 @@ export default function POSPage() {
             aria-label="Buscar productos"
           />
           <a href="/pos/abiertas" className="btn" title="Órdenes abiertas">🧾</a>
+          <a href="/admin/mesas" className="btn" title="Gestionar mesas">🍽️</a>
           <a href="/kds" className="btn" title="Cocina (KDS)">🍳</a>
           <a href="/configuracion" className="btn" title="Configuración">⚙️</a>
           <button type="button" className="btn" title="Pantalla completa" onClick={()=>{
@@ -268,10 +364,10 @@ export default function POSPage() {
       </header>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4">
         <aside className="md:col-span-2">
-          <div className="flex gap-2 mb-3 flex-wrap sticky top-16 bg-background/80 backdrop-blur z-10 py-2">
-            <button className={`chip ${catFiltro===null?'bg-white/10 border-white/30':''}`} onClick={()=>setCatFiltro(null)}>Todo</button>
+          <div className="flex gap-2 mb-3 flex-wrap sticky top-16 z-10 py-2">
+            <button className={`chip ${catFiltro===null?'chip-active':''}`} onClick={()=>setCatFiltro(null)}>Todo</button>
             {categorias.map(c => (
-              <button key={c} className={`chip ${catFiltro===c?'bg-white/10 border-white/30':''}`} onClick={()=>setCatFiltro(c)}>{c}</button>
+              <button key={c} className={`chip ${catFiltro===c?'chip-active':''}`} onClick={()=>setCatFiltro(c)}>{c}</button>
             ))}
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -284,15 +380,15 @@ export default function POSPage() {
                 </div>
               ))
             : visibles.map(p => (
-              <button key={p.id} onClick={()=>agregar(p)} className="card rounded-lg p-3 text-left hover:shadow-md focus:outline-none focus:ring-2" style={{outlineColor:'var(--ring)'}}>
-                <div className="relative aspect-video bg-gray-50/40 rounded mb-2 overflow-hidden">
+              <button key={p.id} onClick={()=>agregar(p)} className="product-card text-left focus:outline-none focus:ring-2" style={{outlineColor:'var(--ring)'}}>
+                <div className="relative aspect-video bg-gray-50/40 rounded-lg mb-2 overflow-hidden">
                   {p.imagenUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={p.imagenUrl} alt={p.nombre} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full grid place-items-center text-gray-400 text-sm">Sin imagen</div>
                   )}
-                  <span className="absolute top-2 right-2 bg-black/80 text-white text-xs px-2 py-1 rounded">{fmtCurrency(p.precioCents)}</span>
+                  <span className="absolute top-2 right-2 price-badge text-white text-xs px-2 py-1 rounded-lg shadow">{fmtCurrency(p.precioCents)}</span>
                 </div>
                 <div className="font-medium truncate" title={p.nombre}>{p.nombre}</div>
                 <div className="text-xs muted">{p.categoria.nombre}</div>
@@ -300,9 +396,9 @@ export default function POSPage() {
             ))}
           </div>
         </aside>
-  <section className="md:col-span-1 card rounded-lg p-3 grid grid-rows-[auto_1fr_auto] h-[80vh]">
+	<section className="md:col-span-1 glass-panel rounded-xl p-4 grid grid-rows-[auto_1fr_auto] h-[80vh]">
           <h2 className="font-semibold mb-2">Orden actual</h2>
-          <div className="overflow-auto divide-y">
+          <div className="overflow-auto soft-divider">
             {Object.values(carrito).length === 0 && (
               <div className="text-sm muted">Agrega productos para comenzar</div>
             )}
@@ -445,7 +541,7 @@ export default function POSPage() {
               </div>
             ))}
           </div>
-          <div className="pt-2 border-t grid gap-2 sticky bottom-0 bg-background" aria-live="polite">
+          <div className="pt-2 border-t grid gap-2 sticky bottom-0 bg-background/60 backdrop-blur-sm" aria-live="polite">
             <div className="flex items-center justify-between text-sm">
               <span>Subtotal</span>
               <span>{fmtCurrency(subtotal)}</span>
@@ -480,33 +576,38 @@ export default function POSPage() {
               <span className="text-lg font-bold">{fmtCurrency(total)}</span>
             </div>
             <div className="flex gap-2">
-              <button onClick={()=>{ if (total===0) return; if (window.confirm('¿Vaciar la orden?')) setCarrito({}) }} disabled={total===0} className="btn w-1/3 disabled:opacity-50">Vaciar</button>
+              <button onClick={async()=>{ if (total===0) return; const ok = await confirm({ message: '¿Vaciar la orden?' }); if (ok) setCarrito({}) }} disabled={total===0} className="btn w-1/3 disabled:opacity-50">Vaciar</button>
               <button onClick={guardarAbierta} disabled={Object.values(carrito).length===0 || (tipo==='Mesa' && !mesaId)} title={tipo==='Mesa' && !mesaId ? 'Selecciona una mesa' : ''} className="btn w-1/3 disabled:opacity-50">Guardar</button>
               <button disabled={total===0} onClick={()=>setCobrando(true)} className="btn btn-primary w-2/3 disabled:opacity-50">Cobrar</button>
             </div>
             {editingPedidoId && (
-              <div className="flex gap-2 mt-2">
+              <div className="flex flex-wrap gap-2 mt-2">
+                <button
+                  className="btn"
+                  onClick={()=>{ setCarrito({}); setEditingPedidoId(null) }}
+                  title="Iniciar una nueva orden abierta para esta mesa"
+                >Nueva orden</button>
                 <button
                   className="btn text-red-600 border-red-300"
                   onClick={async ()=>{
                     if (!editingPedidoId) return
-                    const confirma = window.confirm('¿Cancelar y eliminar esta orden?')
+                    const confirma = await confirm({ message: '¿Cancelar y eliminar esta orden?' })
                     if (!confirma) return
                     const res = await fetch(`/api/pedidos/${editingPedidoId}`, { method: 'DELETE' })
                     if (res.ok) {
                       setCarrito({})
                       setEditingPedidoId(null)
-                      alert('Orden eliminada')
+                      push('Orden eliminada', 'success')
                     } else {
                       const j = await res.json().catch(()=>null)
-                      alert(j?.error || 'No se pudo eliminar la orden')
+                      push(j?.error || 'No se pudo eliminar la orden', 'error')
                     }
                   }}
-                >Cancelar orden</button>
+                >Eliminar orden</button>
                 <button
                   className="btn"
                   onClick={()=> setEditingPedidoId(null)}
-                  title="Salir de edición"
+                  title="Salir de edición (mantiene la orden abierta)"
                 >Salir de edición</button>
               </div>
             )}
@@ -564,11 +665,11 @@ export default function POSPage() {
                 }))
                 const url = editingPedidoId ? `/api/pedidos/${editingPedidoId}` : '/api/pedidos'
                 const method = editingPedidoId ? 'PUT' : 'POST'
-                const res = await fetch(url, {
+        const res = await fetch(url, {
                   method,
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
-                    ...(editingPedidoId ? {} : { tipo, mesaId }),
+          ...(editingPedidoId ? {} : { tipo, mesaId, subCuenta }),
                     items,
         impuestoCents: impuesto,
         descuentoCents: descuentoCents,
@@ -581,13 +682,22 @@ export default function POSPage() {
                   setCobrando(false)
                   setEditingPedidoId(null)
                   if (data?.pedidoId) {
-                    window.open(`/ticket/${data.pedidoId}`, '_blank')
+                    try {
+                      const linkRes = await fetch(`/api/tickets/signed-link/${data.pedidoId}`)
+                      if (linkRes.ok) {
+                        const j = await linkRes.json()
+                        if (j?.url) window.open(j.url + (j.url.includes('?')?'&':'?') + 'print=1', '_blank')
+                        else window.open(`/ticket/${data.pedidoId}?print=1`, '_blank')
+                      } else {
+                        window.open(`/ticket/${data.pedidoId}?print=1`, '_blank')
+                      }
+                    } catch { window.open(`/ticket/${data.pedidoId}?print=1`, '_blank') }
                     if (data?.autoKitchen) {
                       try { await fetch(`/api/print/kitchen/${data.pedidoId}`) } catch {}
                     }
                   }
                 } else {
-                  alert('Error al cobrar')
+                  push('Error al cobrar', 'error')
                 }
               }}>Confirmar cobro</button>
             </div>
@@ -662,12 +772,13 @@ export default function POSPage() {
                   extrasCents: ((carrito[s.id].extras||[]).reduce((sum, name)=> sum + (((carrito[s.id].producto.extras||[]).find(e=>e.nombre===name)?.precioCents) ?? 0), 0)),
                   notas: (carrito[s.id].nota||'').trim() || undefined,
                 }))
-                const res = await fetch('/api/pedidos', {
+        const res = await fetch('/api/pedidos', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
-                    tipo,
-                    mesaId,
+          tipo,
+          mesaId,
+          subCuenta,
                     items,
                     impuestoCents: impuestoSel,
                     descuentoCents: descuentoSelCents,
@@ -693,9 +804,20 @@ export default function POSPage() {
                   setDescSelValor('')
                   setEntregadoSel('')
                   setCobrandoSel(false)
-                  if (data?.pedidoId) window.open(`/ticket/${data.pedidoId}`, '_blank')
+                  if (data?.pedidoId) {
+                    try {
+                      const linkRes = await fetch(`/api/tickets/signed-link/${data.pedidoId}`)
+                      if (linkRes.ok) {
+                        const j = await linkRes.json()
+                        if (j?.url) window.open(j.url + (j.url.includes('?')?'&':'?') + 'print=1', '_blank')
+                        else window.open(`/ticket/${data.pedidoId}?print=1`, '_blank')
+                      } else {
+                        window.open(`/ticket/${data.pedidoId}?print=1`, '_blank')
+                      }
+                    } catch { window.open(`/ticket/${data.pedidoId}?print=1`, '_blank') }
+                  }
                 } else {
-                  alert('Error al cobrar seleccionados')
+                  push('Error al cobrar seleccionados', 'error')
                 }
               }}>Confirmar cobro</button>
             </div>

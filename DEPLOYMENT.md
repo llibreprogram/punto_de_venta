@@ -20,7 +20,7 @@ bash remote-install.sh https://github.com/llibreprogram/punto_de_venta.git
 ```
 
 Después:
-- Abrir en navegador: http://IP_DEL_SERVIDOR:3000
+- Abrir en navegador: http://IP_DEL_SERVIDOR:3001
 - Login: admin@local (cambia la contraseña en Usuarios)
 
 El script crea servicio systemd (pos.service). Logs:
@@ -41,7 +41,7 @@ docker compose build
 docker compose up -d
 ```
 
-- App en http://localhost:3000
+- App en http://localhost:3001
 - La base de datos SQLite persiste en el volumen `pos_data`.
 - Cambia `NEXT_PUBLIC_BASE_URL` en `.env` al dominio real.
 
@@ -69,7 +69,7 @@ npm run build
 ```bash
 export NODE_ENV=production
 npx prisma db push
-npx pm2 start "next start -p 3000" --name pos
+npx pm2 start "next start -p 3001" --name pos
 npx pm2 save
 ```
 
@@ -97,7 +97,7 @@ server {
     proxy_set_header Host $host;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
-    proxy_pass http://127.0.0.1:3000;
+  proxy_pass http://127.0.0.1:3001;
   }
 }
 ```

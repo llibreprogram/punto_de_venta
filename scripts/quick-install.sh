@@ -12,7 +12,7 @@ REPO_URL="${REPO_URL:-}"       # Opcional: si se ejecuta fuera del repo
 BRANCH="${BRANCH:-main}"
 APP_DIR="${APP_DIR:-/opt/punto_de_venta}"
 SERVICE_NAME="pos"
-PORT="${PORT:-3000}"
+PORT="${PORT:-3001}"
 
 echo "==> Instalador rápido POS (branch: $BRANCH, dir: $APP_DIR, puerto: $PORT)"
 

@@ -1,5 +1,7 @@
 "use client"
 import { useEffect, useState } from 'react'
+import { useToast, useConfirm } from '@/components/ui/Providers'
+import AdminLayout from '@/components/AdminLayout'
 
 type Categoria = { id:number; nombre:string; activa:boolean }
 
@@ -24,16 +26,21 @@ export default function AdminCategoriasPage() {
     setNombre('')
     load(true)
   }
+  const { push } = useToast()
+  const { confirm } = useConfirm()
 
   return (
-    <main className="p-4 max-w-3xl mx-auto grid gap-4">
-      <h1 className="text-xl font-semibold">Categorías</h1>
-      <div className="flex gap-2">
-        <input value={nombre} onChange={e=>setNombre(e.target.value)} placeholder="Nueva categoría" className="border rounded px-3 py-2 flex-1" />
-        <button onClick={crear} className="border rounded px-3 py-2">Crear</button>
-        <button onClick={()=>load(true)} className="border rounded px-3 py-2">Refrescar</button>
-      </div>
-      <div className="border rounded overflow-hidden">
+    <AdminLayout
+      title="Categorías"
+      actions={(
+        <div className="flex gap-2 w-full sm:w-auto">
+          <input value={nombre} onChange={e=>setNombre(e.target.value)} placeholder="Nueva categoría" className="input flex-1" />
+          <button onClick={crear} className="btn btn-primary">Crear</button>
+          <button onClick={()=>load(true)} className="btn">Refrescar</button>
+        </div>
+      )}
+    >
+      <div className="glass-panel rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-gray-50">
             <tr>
@@ -52,7 +59,7 @@ export default function AdminCategoriasPage() {
               <tr key={c.id} className="border-t">
                 <td className="p-2">{c.id}</td>
                 <td className="p-2">
-                  <input className="border rounded px-2 py-1 w-full" defaultValue={c.nombre} onBlur={async(e)=>{
+                  <input className="input w-full" defaultValue={c.nombre} onBlur={async(e)=>{
                     const nombre = e.currentTarget.value.trim(); if (!nombre || nombre===c.nombre) return
                     await fetch(`/api/categorias/${c.id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ nombre }) })
                     load(true)
@@ -65,8 +72,9 @@ export default function AdminCategoriasPage() {
                   }} />
                 </td>
                 <td className="p-2">
-                  <button className="text-red-600 border rounded px-2 py-1" onClick={async()=>{
-                    if (!confirm(`¿Borrar "${c.nombre}"?`)) return
+                  <button className="btn text-red-600 border-red-300" onClick={async()=>{
+                    const ok = await confirm({ message: `¿Borrar "${c.nombre}"?` })
+                    if (!ok) return
                     await fetch(`/api/categorias/${c.id}`, { method:'DELETE' })
                     load(true)
                   }}>Borrar</button>
@@ -76,6 +84,6 @@ export default function AdminCategoriasPage() {
           </tbody>
         </table>
       </div>
-    </main>
+    </AdminLayout>
   )
 }

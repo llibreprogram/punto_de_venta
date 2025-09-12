@@ -8,6 +8,7 @@ type Item = { productoId: number; cantidad: number; precioCents: number; removid
 type Body = {
   tipo: 'Mostrador' | 'Mesa' | 'Delivery'
   mesaId?: number
+  subCuenta?: number
   items: Item[]
   impuestoCents: number
   descuentoCents?: number
@@ -36,17 +37,35 @@ export async function POST(req: Request) {
       const last = await tx.pedido.findFirst({ orderBy: { numero: 'desc' }, select: { numero: true } })
       const numero = (last?.numero ?? 0) + 1
 
-      const pedido = await tx.pedido.create({
+      // Calcular subCuenta: si es mesa y no viene, tomar siguiente
+      let subCuenta = 1
+      if (data.tipo === 'Mesa' && data.mesaId) {
+        if (data.subCuenta && Number.isFinite(data.subCuenta) && data.subCuenta > 0) {
+          subCuenta = Math.round(data.subCuenta)
+        } else {
+          // Buscar el max(subCuenta) existente con Prisma y sumar 1
+          const max = await tx.pedido.findFirst({
+            where: { mesaId: data.mesaId },
+            orderBy: { subCuenta: 'desc' },
+            select: { subCuenta: true }
+          })
+          subCuenta = (max?.subCuenta || 0) + 1
+        }
+      }
+  const pedidoCreated = await tx.pedido.create({
         data: {
           numero,
-          mesaId: data.tipo === 'Mesa' ? data.mesaId ?? null : null,
+          estado: data.pago ? 'PAGADO' : 'ABIERTO',
+          mesaId: data.tipo === 'Mesa' && data.mesaId ? data.mesaId : null,
+          subCuenta,
           subtotalCents: subtotal,
           impuestoCents: impuesto,
           descuentoCents: descuento,
           totalCents: total,
-          estado: data.pago ? 'PAGADO' : 'ABIERTO',
         },
+        select: { id: true }
       })
+  const pedidoId = pedidoCreated.id
       // Obtener costos actuales de los productos para congelarlos en el item
       const ids = Array.from(new Set(data.items.map(i=>i.productoId)))
   const select = { id: true, costoCents: true } satisfies Record<string, boolean>
@@ -55,7 +74,7 @@ export async function POST(req: Request) {
   const costoMap = new Map(productos.map((p:{id:number;costoCents:number})=>[p.id, p.costoCents || 0]))
       await tx.pedidoItem.createMany({
         data: data.items.map(i => ({
-          pedidoId: pedido.id,
+          pedidoId: pedidoId,
           productoId: i.productoId,
           cantidad: i.cantidad,
           precioCents: i.precioCents,
@@ -72,7 +91,7 @@ export async function POST(req: Request) {
   if (data.pago) {
         const pago = await tx.pago.create({
           data: {
-            pedidoId: pedido.id,
+            pedidoId: pedidoId,
             metodo: data.pago.metodo,
             montoCents: data.pago.montoCents,
             referencia: data.pago.referencia,
@@ -80,7 +99,7 @@ export async function POST(req: Request) {
         })
         pagoId = pago.id
       }
-      return { pedidoId: pedido.id, numero, pagoId }
+  return { pedidoId, numero, pagoId, subCuenta }
     })
     // Auto imprimir cocina al crear
     try {
@@ -90,7 +109,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: true, ...result, autoKitchen: true })
       }
     } catch {}
-    return NextResponse.json({ ok: true, ...result })
+  return NextResponse.json({ ok: true, ...result })
   } catch (e) {
     console.error(e)
     return NextResponse.json({ error: 'Error al crear pedido' }, { status: 500 })
@@ -103,7 +122,9 @@ export async function GET(req: Request) {
   const to = searchParams.get('to')
   const estado = searchParams.get('estado') as ('ABIERTO'|'PAGADO'|'CANCELADO'|null)
   const mesaId = searchParams.get('mesaId')
-  const where: { createdAt?: { gte?: Date; lte?: Date }; estado?: OrderStatus; mesaId?: number } = {}
+  const subCuentaParam = searchParams.get('subCuenta')
+  const format = searchParams.get('format')
+  const where: { createdAt?: { gte?: Date; lte?: Date }; estado?: OrderStatus; mesaId?: number; subCuenta?: number } = {}
   if (from || to) {
     where.createdAt = {}
     if (from) where.createdAt.gte = new Date(from)
@@ -111,11 +132,35 @@ export async function GET(req: Request) {
   }
   if (estado === 'ABIERTO' || estado === 'PAGADO' || estado === 'CANCELADO') where.estado = estado as OrderStatus
   if (mesaId) where.mesaId = Number(mesaId)
+  if (subCuentaParam) {
+    const sc = Number(subCuentaParam)
+    if (Number.isFinite(sc) && sc > 0) where.subCuenta = sc
+  }
   const pedidos = await prisma.pedido.findMany({
     where,
     include: { pagos: true, mesa: true },
     orderBy: { createdAt: 'desc' },
     take: 200,
   })
+  if (format === 'csv') {
+    const headers = ['numero','fecha','mesa','subCuenta','subtotalCents','impuestoCents','descuentoCents','totalCents','estado']
+    const escape = (v: unknown) => {
+      const s = String(v ?? '')
+      return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s
+    }
+    const rows = pedidos.map(p=>[
+      p.numero,
+      p.createdAt.toISOString(),
+      p.mesa?.nombre || '',
+      p.mesa ? p.subCuenta : '',
+      p.subtotalCents,
+      p.impuestoCents,
+      p.descuentoCents,
+      p.totalCents,
+      p.estado
+    ])
+    const csv = [headers.join(','), ...rows.map(r=>r.map(escape).join(','))].join('\n')
+    return new NextResponse(csv, { headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="pedidos.csv"' } })
+  }
   return NextResponse.json(pedidos)
 }

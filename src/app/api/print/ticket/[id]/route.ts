@@ -23,10 +23,14 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
   const fecha = new Intl.DateTimeFormat(locale, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(pedido.createdAt))
   const business = ajustes?.businessName || 'Mi Restaurante'
   const items = (pedido.items as unknown) as Array<{ cantidad:number; precioCents:number; totalCents:number; extras?: string[] | null; removidos?: string[] | null; notas?: string|null; producto:{ nombre:string } }>
+  const mesaNombre = (pedido as { mesa?: { nombre?: string } | null }).mesa?.nombre
+  const subCuenta: number | undefined = (pedido as unknown as { subCuenta?: number }).subCuenta
   const payload = escposTicket({
     business,
     numero: pedido.numero,
     fecha,
+    mesa: mesaNombre,
+    subCuenta,
   items: items.map(it => ({ nombre: it.producto.nombre + (Array.isArray(it.extras) && it.extras.length? `\n  + ${it.extras.join(', ')}`:'' ) + (Array.isArray(it.removidos) && it.removidos.length? `\n  - Sin: ${it.removidos.join(', ')}`:'' ) + (it.notas? `\n  * ${it.notas}`:''), cantidad: it.cantidad, unit: toCurrency(it.precioCents, locale, currency), total: toCurrency(it.totalCents, locale, currency) })),
   subtotal: toCurrency(pedido.subtotalCents, locale, currency),
   impuesto: toCurrency(pedido.impuestoCents, locale, currency),
