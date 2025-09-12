@@ -398,7 +398,7 @@ export default function POSPage() {
         </aside>
 	<section className="md:col-span-1 glass-panel rounded-xl p-4 flex flex-col">
           <h2 className="font-semibold mb-2">Orden actual</h2>
-          <div className="overflow-auto soft-divider">
+          <div className="flex-1 overflow-auto soft-divider">
             {Object.values(carrito).length === 0 && (
               <div className="text-sm muted">Agrega productos para comenzar</div>
             )}
