@@ -44,12 +44,11 @@ export async function POST(req: Request) {
           subCuenta = Math.round(data.subCuenta)
         } else {
           // Buscar el max(subCuenta) existente con Prisma y sumar 1
-          const max = await tx.pedido.findFirst({
+          const max = await tx.pedido.aggregate({
+            _max: { subCuenta: true },
             where: { mesaId: data.mesaId },
-            orderBy: { subCuenta: 'desc' },
-            select: { subCuenta: true }
           })
-          subCuenta = (max?.subCuenta || 0) + 1
+          subCuenta = (max._max.subCuenta || 0) + 1
         }
       }
   const pedidoCreated = await tx.pedido.create({
