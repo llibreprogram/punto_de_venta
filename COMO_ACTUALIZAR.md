@@ -184,3 +184,43 @@ sudo systemctl enable --now pos
 - Si `npm ci` falla por falta de `package-lock.json`, usa `npm install`.
 - Si cambiaste variables en `.env`, vuelve a construir (`npm run build`).
 - Para logs cuando inicias sin systemd: `tail -f /tmp/pos.log`.
+
+---
+
+## Backups y restauración
+
+Hemos agregado dos scripts:
+
+- `scripts/backup.sh`: crea un backup en `./backups/backup_YYYYmmdd_HHMMSS.tar.gz` con:
+  - Dump de PostgreSQL (`pg_dump -Fc`) o copia de SQLite (archivo `db.sqlite`), según `DATABASE_URL`.
+  - `meta.txt` con timestamp, host, commit, etc.
+  - Copias de `.env` y `prisma/schema.prisma` (si existen).
+  - Rotación: conserva los últimos 10 backups.
+
+- `scripts/restore.sh <backup.tar.gz>`: restaura desde un backup creado con `backup.sh`.
+  - SQLite: detiene servicio, reemplaza el archivo y reinicia.
+  - PostgreSQL: usa `pg_restore` (requiere cliente instalado y permisos).
+
+Ejemplos:
+
+```bash
+# Crear backup
+cd /opt/punto_de_venta
+sudo chmod +x scripts/backup.sh scripts/restore.sh
+./scripts/backup.sh
+
+# Listar backups
+ls -lh backups/
+
+# Restaurar el más reciente (¡CUIDADO! sobreescribe datos)
+LATEST=$(ls -1t backups/backup_*.tar.gz | head -1)
+./scripts/restore.sh "$LATEST"
+```
+
+Notas:
+
+- Para PostgreSQL, instala el cliente:
+  ```bash
+  sudo apt-get update && sudo apt-get install -y postgresql-client
+  ```
+- En SQLite, la ruta del archivo se resuelve desde `DATABASE_URL` (por ejemplo, `file:./dev.db`). El script también intenta detectar rutas comunes.
