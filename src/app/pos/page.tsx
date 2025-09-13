@@ -586,15 +586,15 @@ export default function POSPage() {
           <button onClick={async()=>{ await fetch('/api/auth/logout', { method:'POST' }); location.href='/login' }} className="btn">Salir</button>
         </div>
       </header>
-      <main className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4 p-2 md:p-4 overflow-y-hidden">
-        <aside className="md:col-span-2 flex flex-col overflow-y-hidden min-w-0">
-          <div className="flex gap-2 mb-3 flex-wrap py-2 flex-shrink-0">
+      <main className="flex-1 grid grid-cols-1 xl:grid-cols-3 gap-2 md:gap-4 p-2 md:p-4 overflow-y-hidden">
+        <aside className="xl:col-span-2 flex flex-col overflow-y-hidden min-w-0">
+          <div className="flex gap-2 mb-3 py-2 flex-shrink-0 sticky top-0 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <button className={`chip ${catFiltro===null?'chip-active':''}`} onClick={()=>setCatFiltro(null)}>Todo</button>
             {categorias.map(c => (
               <button key={c} className={`chip ${catFiltro===c?'chip-active':''}`} onClick={()=>setCatFiltro(c)}>{c}</button>
             ))}
           </div>
-          <div className="grid products-grid gap-3 flex-1 overflow-y-auto">
+          <div className="grid products-grid gap-3 flex-1 min-h-0 overflow-y-auto">
             {cargando ?
               Array.from({length:8}).map((_,i)=> (
                 <div key={i} className="card rounded-lg p-3">
@@ -622,14 +622,14 @@ export default function POSPage() {
             ))}
           </div>
         </aside>
-        <section className="hidden md:flex md:col-span-1 glass-panel rounded-xl p-4 flex-col overflow-y-hidden min-w-0">
+        <section className="hidden xl:flex xl:col-span-1 glass-panel rounded-xl p-4 flex-col overflow-y-hidden min-w-0">
           <OrderContent />
         </section>
       </main>
-      {/* Botón flotante y bottom sheet para móviles */}
+      {/* Botón flotante y bottom sheet para móviles/tablets (hasta <xl) */}
       <button
         type="button"
-        className="md:hidden fixed bottom-4 right-4 z-40 btn btn-primary rounded-full shadow-lg px-4 py-3"
+        className="xl:hidden fixed bottom-4 right-4 z-40 btn btn-primary rounded-full shadow-lg px-4 py-3"
         onClick={()=> setMobileCartOpen(true)}
         aria-label="Abrir orden"
         title="Abrir orden"
@@ -637,7 +637,7 @@ export default function POSPage() {
         🧾 Orden{itemsCount ? ` (${itemsCount})` : ''}
       </button>
       {mobileCartOpen && (
-        <div className="md:hidden fixed inset-0 z-50">
+        <div className="xl:hidden fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/50" onClick={()=> setMobileCartOpen(false)} />
           <div className="absolute inset-x-0 bottom-0 glass-panel rounded-t-2xl p-4 max-h-[85vh] h-[85vh] flex flex-col">
             <div className="flex items-center justify-between mb-2">
