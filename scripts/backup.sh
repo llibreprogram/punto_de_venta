@@ -10,13 +10,19 @@ PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 BACKUP_DIR="$PROJECT_DIR/backups"
 mkdir -p "$BACKUP_DIR"
 
-# Load env vars from .env if present
-if [[ -f "$PROJECT_DIR/.env" ]]; then
-  set -a
-  # shellcheck disable=SC1090
-  . "$PROJECT_DIR/.env"
-  set +a
-fi
+# Read only DATABASE_URL from .env to avoid issues with unquoted values
+read_env_var() {
+  local key="$1" file="$PROJECT_DIR/.env" line value
+  [[ -f "$file" ]] || return 0
+  # get last occurrence to allow overrides at bottom
+  line="$(grep -E "^[[:space:]]*${key}=" "$file" | tail -n1 || true)"
+  [[ -n "$line" ]] || return 0
+  value="${line#*=}"
+  # strip surrounding quotes if any
+  value="${value%\'}"; value="${value#\'}"
+  value="${value%\"}"; value="${value#\"}"
+  echo "$value"
+}
 
 DATE="$(date +%Y%m%d_%H%M%S)"
 TMP_DIR="$(mktemp -d)"
@@ -31,7 +37,7 @@ META_FILE="$TMP_DIR/meta.txt"
   echo "commit=$(git -C "$PROJECT_DIR" rev-parse --short HEAD 2>/dev/null || echo 'unknown')"
 } > "$META_FILE"
 
-DB_URL="${DATABASE_URL:-}"
+DB_URL="$(read_env_var DATABASE_URL)"
 if [[ -z "$DB_URL" ]]; then
   echo "[WARN] DATABASE_URL no está definido en .env. Solo se guardará metadata." >&2
 fi

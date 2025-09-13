@@ -42,8 +42,16 @@ sudo systemctl stop pos 2>/dev/null || sudo systemctl stop punto-de-venta 2>/dev
 
 if [[ "$DB_TYPE" == "sqlite" ]]; then
   # Try to locate current sqlite path from DATABASE_URL or common paths
-  set -a; [[ -f "$PROJECT_DIR/.env" ]] && . "$PROJECT_DIR/.env"; set +a
-  DB_URL="${DATABASE_URL:-}"
+  read_env_var() {
+    local key="$1" file="$PROJECT_DIR/.env" line value
+    [[ -f "$file" ]] || { echo ""; return; }
+    line="$(grep -E "^[[:space:]]*${key}=" "$file" | tail -n1 || true)"
+    [[ -n "$line" ]] || { echo ""; return; }
+    value="${line#*=}"
+    value="${value%\'}"; value="${value#\'}"; value="${value%\"}"; value="${value#\"}"
+    echo "$value"
+  }
+  DB_URL="$(read_env_var DATABASE_URL)"
   if [[ "$DB_URL" =~ ^file: ]]; then
     DB_PATH="${DB_URL#file:}"
   else
@@ -77,8 +85,16 @@ elif [[ "$DB_TYPE" == "postgres" ]]; then
     echo "[ERROR] pg_restore no está instalado (apt install postgresql-client)." >&2
     rm -rf "$TMP_DIR"; exit 1
   fi
-  set -a; [[ -f "$PROJECT_DIR/.env" ]] && . "$PROJECT_DIR/.env"; set +a
-  DB_URL="${DATABASE_URL:-}"
+  read_env_var() {
+    local key="$1" file="$PROJECT_DIR/.env" line value
+    [[ -f "$file" ]] || { echo ""; return; }
+    line="$(grep -E "^[[:space:]]*${key}=" "$file" | tail -n1 || true)"
+    [[ -n "$line" ]] || { echo ""; return; }
+    value="${line#*=}"
+    value="${value%\'}"; value="${value#\'}"; value="${value%\"}"; value="${value#\"}"
+    echo "$value"
+  }
+  DB_URL="$(read_env_var DATABASE_URL)"
   if [[ -z "$DB_URL" ]]; then
     echo "[ERROR] DATABASE_URL no definida para restaurar PostgreSQL" >&2
     rm -rf "$TMP_DIR"; exit 1
