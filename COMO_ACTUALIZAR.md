@@ -189,7 +189,7 @@ sudo systemctl enable --now pos
 
 ## Backups y restauración
 
-Hemos agregado dos scripts:
+Hemos agregado dos scripts (ver guía detallada en `BACKUP_RESTORE.md`):
 
 - `scripts/backup.sh`: crea un backup en `./backups/backup_YYYYmmdd_HHMMSS.tar.gz` con:
   - Dump de PostgreSQL (`pg_dump -Fc`) o copia de SQLite (archivo `db.sqlite`), según `DATABASE_URL`.
