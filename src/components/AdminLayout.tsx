@@ -25,7 +25,7 @@ export default function AdminLayout({ title, actions, children, minimal }: Props
               <Link className="chip" href="/admin/manual">Manual</Link>
             </nav>
           </div>
-          <div className="flex items-center gap-2">{actions}<ThemeToggle /></div>
+          <div className="flex items-center gap-2">{actions}<a className="chip" href="/manual" target="_blank" rel="noopener">Manual</a><ThemeToggle /></div>
         </header>
       )}
       <main className={minimal ? undefined : "p-4 mx-auto w-full max-w-6xl grid gap-4"}>{children}</main>
