@@ -21,6 +21,7 @@ export default function AdminLayout({ title, actions, children, minimal }: Props
               <Link className="chip" href="/reportes">Reportes</Link>
               <Link className="chip" href="/ventas">Ventas</Link>
               <Link className="chip" href="/configuracion">Config</Link>
+              <Link className="chip" href="/admin/salud">Salud</Link>
             </nav>
           </div>
           <div className="flex items-center gap-2">{actions}<ThemeToggle /></div>

@@ -1,6 +1,6 @@
 "use client"
 import { useEffect, useState } from 'react'
-import { useToast, useConfirm } from '@/components/ui/Providers'
+import { useConfirm } from '@/components/ui/Providers'
 import AdminLayout from '@/components/AdminLayout'
 
 type Categoria = { id:number; nombre:string; activa:boolean }
@@ -26,7 +26,6 @@ export default function AdminCategoriasPage() {
     setNombre('')
     load(true)
   }
-  const { push } = useToast()
   const { confirm } = useConfirm()
 
   return (

@@ -56,7 +56,7 @@ export default function ConfiguracionPage() {
         return
       }
       setA(j)
-    } catch (e) {
+    } catch {
       setError('Error al cargar ajustes')
     }
   }

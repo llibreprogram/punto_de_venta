@@ -116,6 +116,30 @@ scp restaurante@<IP_SERVIDOR>:/opt/punto_de_venta/backups/backup_*.tar.gz ./mis-
 rsync -avz restaurante@<IP_SERVIDOR>:/opt/punto_de_venta/backups/ /ruta/externa/segura/
 ```
 
+### Sin otra máquina: copia a USB
+
+Si no tienes otra máquina disponible, puedes usar un pendrive. Hay un script que:
+- Crea un backup local.
+- Detecta un USB montado (por ejemplo en `/media/<usuario>/<LABEL>` o `/mnt/usb`).
+- Copia el último backup (o todos, si `COPY_ALL=1`).
+- Mantiene los últimos 30 en el USB.
+
+Uso:
+
+```bash
+cd /opt/punto_de_venta
+chmod +x scripts/backup-to-usb.sh
+
+# Copiar solo el último backup al USB detectado
+./scripts/backup-to-usb.sh
+
+# Copiar todos los que falten al USB
+COPY_ALL=1 ./scripts/backup-to-usb.sh
+
+# Forzar ruta del USB si no se detecta automáticamente
+USB_PATH=/media/restaurante/MI_USB ./scripts/backup-to-usb.sh
+```
+
 ---
 
 ## Preguntas frecuentes (FAQ)

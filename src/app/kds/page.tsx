@@ -31,7 +31,7 @@ export default function KDSPage() {
       arr.push(it); byPedido.set(it.pedido.id, arr)
     }
     let entries = Array.from(byPedido.entries())
-    if (ocultarListos) entries = entries.filter(([_, arr])=> arr.some(it=> it.estado!=='LISTO'))
+  if (ocultarListos) entries = entries.filter(([, arr])=> arr.some(it=> it.estado!=='LISTO'))
     return entries
   }, [items, ocultarListos])
 

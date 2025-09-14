@@ -18,7 +18,7 @@ export async function POST() {
     groups.get(key)!.push(p)
   }
   const merged: Array<{ mesaId:number|null; subCuenta:number; kept:number; removed:number[] }> = []
-  for (const [key, list] of groups) {
+  for (const [, list] of groups) {
     if (list.length < 2) continue
     list.sort((a,b)=> a.createdAt.getTime() - b.createdAt.getTime())
     const keep = list[0]

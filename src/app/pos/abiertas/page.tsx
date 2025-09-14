@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import AdminLayout from '@/components/AdminLayout'
-import { useToast, useConfirm } from '@/components/ui/Providers'
+import { useToast } from '@/components/ui/Providers'
 import { toCurrency, LOCALE, CURRENCY } from '@/lib/money'
 
 type Row = { id:number; numero:number; subCuenta?:number; createdAt:string; subtotalCents:number; impuestoCents:number; descuentoCents:number; totalCents:number; mesa?:{nombre:string}|null }
@@ -32,7 +32,7 @@ export default function AbiertasPage() {
         else setRows([])
       }
       try { const aj = a ? await a.json() : null; if (aj) setAjustes({ locale: aj.locale, currency: aj.currency }) } catch {}
-    } catch (e) {
+    } catch {
       setError('Error de red al cargar')
       setRows([])
     } finally {
@@ -48,7 +48,6 @@ export default function AbiertasPage() {
   }, [auto])
   const fmt = (cents:number)=> toCurrency(cents, ajustes?.locale || LOCALE, ajustes?.currency || CURRENCY)
   const { push } = useToast()
-  const { confirm } = useConfirm()
   return (
     <AdminLayout title="Órdenes abiertas">
       <div className="p-4 max-w-3xl mx-auto grid gap-3">
