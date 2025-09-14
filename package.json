@@ -9,15 +9,16 @@
     "lint": "eslint",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
-  "db:seed": "tsx prisma/seed.ts",
-  "user:reset": "tsx scripts/reset-user-password.ts",
-  "user:list": "tsx scripts/list-users.ts",
-  "session:list": "tsx scripts/list-sessions.ts",
-  "session:cleanup": "tsx scripts/cleanup-sessions.ts",
-  "session:clear": "tsx scripts/clear-sessions.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "user:reset": "tsx scripts/reset-user-password.ts",
+    "user:list": "tsx scripts/list-users.ts",
+    "session:list": "tsx scripts/list-sessions.ts",
+    "session:cleanup": "tsx scripts/cleanup-sessions.ts",
+    "session:clear": "tsx scripts/clear-sessions.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.14.0",
+    "marked": "^12.0.2",
     "next": "15.5.0",
     "react": "19.1.0",
     "react-dom": "19.1.0"
