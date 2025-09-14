@@ -1,4 +1,5 @@
 import AdminLayout from '@/components/AdminLayout'
+import { ButtonsRow } from './widgets'
 
 async function fetchJson<T>(url: string): Promise<T | null> {
   try {
@@ -51,10 +52,8 @@ export default async function Page() {
           </ul>
         </section>
       </div>
-      <div className="mt-4 flex gap-2">
-        <a className="btn" href="/api/health" target="_blank">Ver /api/health</a>
-        <a className="btn" href="/api/ready" target="_blank">Ver /api/ready</a>
-      </div>
+      <ButtonsRow />
     </AdminLayout>
   )
 }
+
