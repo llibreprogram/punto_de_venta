@@ -42,7 +42,11 @@ if ! npm ci; then
 fi
 
 log "[3/5] Building (production)"
-NODE_ENV=production npm run build
+if ! NODE_ENV=production npm run build; then
+  log "ERROR: Build failed"
+  "$APP_DIR/scripts/notify.sh" "POS auto-update: build failed" "$LOG_FILE" || true
+  exit 1
+fi
 
 log "[4/5] Restarting Next server on :3001"
 pkill -f "next start -p 3001" 2>/dev/null || true

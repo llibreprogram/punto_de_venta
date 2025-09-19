@@ -2,6 +2,8 @@
   "name": "punto_de_venta",
   "version": "0.1.0",
   "private": true,
+  "author": "Rafael LLibre <haciendallibre@gmail.com>",
+  "license": "UNLICENSED",
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
