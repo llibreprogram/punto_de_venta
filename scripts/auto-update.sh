@@ -67,3 +67,6 @@ else
 fi
 
 log "==> Auto-update finished"
+
+# Success notification
+"$APP_DIR/scripts/notify.sh" "POS auto-update: success" "$LOG_FILE" || true
