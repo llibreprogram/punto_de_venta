@@ -66,7 +66,9 @@ else
   fi
 fi
 
+COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 log "==> Auto-update finished"
+"$APP_DIR/scripts/notify.sh" "POS auto-update: OK (commit $COMMIT)" "Actualización semanal exitosa en $(hostname) a commit $COMMIT. Revisa $LOG_FILE para detalles." || true
 
 # Success notification
 "$APP_DIR/scripts/notify.sh" "POS auto-update: success" "$LOG_FILE" || true
