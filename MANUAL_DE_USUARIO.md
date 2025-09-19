@@ -122,4 +122,28 @@ Ve a la sección **"Configuración"** en el menú principal.
     - Para restaurar o hacer copias fuera del servidor (USB), sigue `BACKUP_RESTORE.md`.
 
 ---
+
+### **11. Auto‑actualizaciones y avisos por correo**
+
+El sistema está configurado para buscar y aplicar actualizaciones automáticamente una vez por semana.
+
+- Cuándo: cada domingo a las 03:30 AM.
+- Qué hace: descarga la última versión, instala dependencias, reconstruye y reinicia el servicio.
+- Notificaciones por correo (a haciendallibre@gmail.com):
+    - Éxito: asunto “POS auto-update: OK (commit …)”.
+    - Falla de build: asunto “POS auto-update: build failed” (incluye registro del proceso).
+
+¿Qué hacer si no llega el correo o falla la actualización?
+- Verifica que el sistema siga funcionando en `http://192.168.1.35:3001`.
+- Revisa los registros en el servidor (se pueden consultar por SSH):
+    - Cron del auto-update: `/opt/punto_de_venta/logs/cron.log`
+    - Detalle del proceso: `/opt/punto_de_venta/logs/auto-update.log`
+    - Arranque de la app (sin systemd): `/tmp/pos.log`
+    - Correo (Postfix): `journalctl -u postfix -n 200` o `/var/log/mail.log`
+
+Sugerencias
+- Si el correo de “OK” no llega, pero el POS funciona, seguramente el problema es solo de salida de correo. Revisa la configuración de correo o la carpeta de spam.
+- Si el build falla (recibirás un correo de error), el sistema queda en la versión anterior y continúa funcionando. Puedes actualizar manualmente siguiendo `COMO_ACTUALIZAR.md`.
+
+---
 Fin del Manual.
