@@ -7,6 +7,8 @@ Este documento describe dos caminos para actualizar la app en producción ubicad
 
 Además, el nombre del servicio systemd puede variar. Hemos visto instalaciones con `pos` y otras con `punto-de-venta`. Más abajo indicamos cómo detectarlo.
 
+Nota: si necesitas acceso remoto desde fuera de la red local para poder actualizar o dar soporte, consulta `REMOTE_ACCESS.md` (Opción 1: Tailscale) para habilitar una VPN sin abrir puertos ni usar sudo.
+
 ---
 
 ## Prerrequisitos
