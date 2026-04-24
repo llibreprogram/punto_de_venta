@@ -5,6 +5,9 @@ export async function middleware(req: NextRequest) {
   const url = req.nextUrl
   const pathname = url.pathname
   const protectedRoots = ['/', '/pos', '/ventas', '/configuracion', '/admin']
+  // Public and API routes: skip auth checks
+  if (pathname.startsWith('/api/')) return NextResponse.next()
+  if (pathname.startsWith('/manual')) return NextResponse.next()
   let needsAuth = protectedRoots.some(p => pathname === p || pathname.startsWith(p + '/'))
   // Ticket: allow if has valid signature (?exp & ?sig); otherwise treat as protected.
   if (pathname.startsWith('/ticket/')) {

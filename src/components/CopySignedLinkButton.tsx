@@ -11,7 +11,7 @@ export function CopySignedLinkButton({ id }: { id: number }) {
       if (!j?.url) { push('Respuesta inválida', 'error'); return }
       await navigator.clipboard.writeText(j.url)
       push('Enlace copiado (válido temporalmente)', 'success')
-    } catch (e) {
+    } catch {
       push('Error copiando enlace', 'error')
     }
   }

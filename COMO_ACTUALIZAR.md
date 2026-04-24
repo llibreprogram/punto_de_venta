@@ -1,118 +1,228 @@
-# Cómo Actualizar el Servidor del Punto de Venta
+# Cómo actualizar el servidor del Punto de Venta
 
-Este documento explica cómo actualizar la aplicación en el servidor de producción con los últimos cambios subidos a GitHub.
+Este documento describe dos caminos para actualizar la app en producción ubicada en `/opt/punto_de_venta`:
+
+- Con internet en el servidor (vía Git) → rápido y reproducible.
+- Sin internet en el servidor (vía copia desde tu PC) → útil en redes cerradas.
+
+Además, el nombre del servicio systemd puede variar. Hemos visto instalaciones con `pos` y otras con `punto-de-venta`. Más abajo indicamos cómo detectarlo.
+
+Nota: si necesitas acceso remoto desde fuera de la red local para poder actualizar o dar soporte, consulta `REMOTE_ACCESS.md` (Opción 1: Tailscale) para habilitar una VPN sin abrir puertos ni usar sudo.
 
 ---
 
-### ⚡ Opción 0: Sin SSH — La persona en el local ejecuta el actualizador
+## Prerrequisitos
 
-Si no puedes conectarte por SSH, guía a alguien en el local para que haga lo siguiente:
+- Tu código debe estar listo y probado localmente. Si usas el flujo con Git, asegúrate de haber hecho `git push` previamente.
+- Ruta de la app en el servidor: `/opt/punto_de_venta`
+- Usuario de ejecución: `restaurante`
+- Puerto por defecto: `3001`
 
-**Paso 1 — Abrir una terminal** (Ctrl + Alt + T en Ubuntu)
+---
 
-**Paso 2 — Pegar este único comando y presionar Enter:**
+## Detectar el nombre del servicio (si usas systemd)
+
+En el servidor, ejecuta uno de estos comandos para ver si existe un servicio:
 
 ```bash
-sudo bash /opt/punto_de_venta/scripts/actualizar.sh
+systemctl status pos || systemctl status punto-de-venta || true
 ```
 
-Pedirá la contraseña del sistema, luego descarga la nueva versión, actualiza la base de datos, reconstruye y reinicia todo automáticamente. Al terminar dice `¡ACTUALIZACIÓN COMPLETADA!`.
-
-> 💡 **Alternativa si el script no existía aún** (primera vez o borrado accidentalmente):
-> ```bash
-> sudo bash -c "curl -fsSL https://raw.githubusercontent.com/llibreprogram/punto_de_venta/main/scripts/actualizar.sh | bash"
-> ```
+Si ves que uno de ellos existe, usa ese nombre en los comandos de stop/start. Si no existe ninguno, más abajo tienes un arranque alternativo sin systemd (nohup).
 
 ---
 
-### Prerrequisito
+## Opción A · Actualización con internet (Git)
 
-Antes de actualizar, asegúrate de que todos los cambios de código que quieres desplegar ya estén en tu repositorio de GitHub. (Debes haber ejecutado `git push` desde tu máquina de desarrollo).
+1) Conéctate por SSH y detén el servicio si existe:
+
+```bash
+sudo systemctl stop pos 2>/dev/null || sudo systemctl stop punto-de-venta 2>/dev/null || true
+```
+
+2) Entra al directorio de la app:
+
+```bash
+cd /opt/punto_de_venta
+```
+
+3) Actualiza el código desde GitHub:
+
+```bash
+sudo git config --global --add safe.directory /opt/punto_de_venta
+sudo git fetch origin
+sudo git reset --hard origin/main
+```
+
+4) Instala dependencias y reconstruye:
+
+```bash
+sudo -u restaurante npm ci || sudo -u restaurante npm install
+NODE_ENV=production sudo -u restaurante npm run build
+```
+
+5) Arranca la aplicación:
+
+```bash
+sudo systemctl start pos 2>/dev/null || sudo systemctl start punto-de-venta 2>/dev/null || \
+  (pkill -f "next start -p 3001" 2>/dev/null || true; nohup npm start -- -p 3001 >/tmp/pos.log 2>&1 &)
+```
+
+6) Verifica:
+
+```bash
+ss -tlnp | grep :3001 || curl -I http://localhost:3001 | head -3
+```
 
 ---
 
-### Opción 1: Usar el Script Automatizado (Recomendado)
+## Opción B · Actualización sin internet (copia desde tu PC)
 
-El proyecto incluye un script (`scripts/update.sh`) que automatiza todos los pasos necesarios, incluyendo la migración de base de datos. Esta es la forma más fácil y segura de actualizar.
+Cuando el servidor no puede resolver `github.com`, sube los cambios desde tu máquina y reconstruye allí.
 
-**Pasos:**
+1) Desde tu PC, sincroniza archivos al servidor (recomendado `rsync`):
 
-1.  **Conéctate a tu servidor Ubuntu por SSH.**
+```bash
+rsync -avz --delete \
+  --exclude .git --exclude node_modules --exclude .next \
+  ./ restaurante@<IP_DEL_SERVIDOR>:/opt/punto_de_venta/
+```
 
-2.  **Navega al directorio de la aplicación:**
-    ```bash
-    cd /opt/punto_de_venta
-    ```
+Alternativa rápida con `scp` (no borra archivos obsoletos):
 
-3.  **Ejecuta el script de actualización:**
-    ```bash
-    sudo bash ./scripts/update.sh
-    ```
+```bash
+scp -r src public prisma package.json package-lock.json next.config.ts tsconfig.json \
+  restaurante@<IP_DEL_SERVIDOR>:/opt/punto_de_venta/
+```
 
-El script se encargará de:
-1. Detener la aplicación
-2. Descargar el nuevo código desde GitHub
-3. Reinstalar dependencias
-4. **Aplicar cambios de base de datos** (`prisma db push`)
-5. Reconstruir el proyecto
-6. Volver a iniciar el servicio
+2) En el servidor, instala y construye:
 
-Al final te mostrará el estado del servicio para confirmar que todo salió bien.
+```bash
+cd /opt/punto_de_venta
+sudo -u restaurante npm ci || sudo -u restaurante npm install
+NODE_ENV=production sudo -u restaurante npm run build
+```
 
-**Nota:** La primera vez que uses el script en un servidor nuevo, puede que necesites darle permisos de ejecución con `chmod +x scripts/update.sh`.
+3) Reinicia con systemd si lo tienes, si no usa nohup:
+
+```bash
+sudo systemctl restart pos 2>/dev/null || sudo systemctl restart punto-de-venta 2>/dev/null || \
+  (pkill -f "next start -p 3001" 2>/dev/null || true; nohup npm start -- -p 3001 >/tmp/pos.log 2>&1 &)
+```
+
+4) Verifica el puerto/HTTP:
+
+```bash
+ss -tlnp | grep :3001 || curl -I http://localhost:3001 | head -3
+```
 
 ---
 
-### Opción 2: Pasos Manuales
+## Script automatizado (online)
 
-Si prefieres hacer el proceso manualmente o si el script falla por alguna razón, puedes seguir estos pasos:
+Existe `scripts/update.sh` que implementa la ruta con internet (Git) y asume un servicio llamado `pos`. Si tu servicio se llama distinto o el servidor no tiene internet, usa la Opción A/B de arriba.
 
-1.  **Conéctate a tu servidor Ubuntu por SSH.**
+Para ejecutarlo:
 
-2.  **Detén el servicio de la aplicación:**
-    ```bash
-    sudo systemctl stop pos
-    ```
+```bash
+cd /opt/punto_de_venta
+sudo chmod +x scripts/update.sh
+sudo bash scripts/update.sh
+```
 
-3.  **Navega al directorio de la aplicación:**
-    ```bash
-    cd /opt/punto_de_venta
-    ```
+---
 
-4.  **Descarga la última versión del código desde GitHub:**
-    ```bash
-    sudo git fetch origin
-    sudo git reset --hard origin/main
-    ```
+## Sugerencia: crear un servicio systemd (opcional)
 
-5.  **Reinstala dependencias (recomendado por si algo cambió):**
-    ```bash
-    sudo -u restaurante npm ci
-    ```
+Si no tienes todavía un servicio, puedes crear uno (ejemplo `pos.service`):
 
-6.  **Aplica los cambios de base de datos:**
-    ```bash
-    sudo -u restaurante npx prisma db push --skip-generate
-    ```
+```ini
+[Unit]
+Description=Punto de Venta
+After=network.target
 
-    > ⚠️ **Este paso es obligatorio** cuando hay cambios en el esquema de la base de datos (como nuevas columnas). Si lo omites, la app puede fallar al arrancar.
+[Service]
+Type=simple
+User=restaurante
+WorkingDirectory=/opt/punto_de_venta
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/npm start -- -p 3001
+Restart=always
+RestartSec=5
 
-7.  **Asegura los permisos correctos de los archivos:**
-    ```bash
-    sudo chown -R restaurante:restaurante .
-    ```
+[Install]
+WantedBy=multi-user.target
+```
 
-8.  **Reconstruye la aplicación con los nuevos cambios:**
-    ```bash
-    NODE_ENV=production sudo -u restaurante npm run build
-    ```
+Instalación rápida:
 
-9.  **Inicia el servicio nuevamente:**
-    ```bash
-    sudo systemctl start pos
-    ```
+```bash
+sudo tee /etc/systemd/system/pos.service >/dev/null <<'EOF'
+[Unit]
+Description=Punto de Venta
+After=network.target
 
-10. **(Opcional) Verifica que el servicio se haya iniciado correctamente:**
-    ```bash
-    sudo systemctl status pos
-    ```
+[Service]
+Type=simple
+User=restaurante
+WorkingDirectory=/opt/punto_de_venta
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/npm start -- -p 3001
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now pos
+```
+
+---
+
+## Notas
+
+- Si `npm ci` falla por falta de `package-lock.json`, usa `npm install`.
+- Si cambiaste variables en `.env`, vuelve a construir (`npm run build`).
+- Para logs cuando inicias sin systemd: `tail -f /tmp/pos.log`.
+
+---
+
+## Backups y restauración
+
+Hemos agregado dos scripts (ver guía detallada en `BACKUP_RESTORE.md`):
+
+- `scripts/backup.sh`: crea un backup en `./backups/backup_YYYYmmdd_HHMMSS.tar.gz` con:
+  - Dump de PostgreSQL (`pg_dump -Fc`) o copia de SQLite (archivo `db.sqlite`), según `DATABASE_URL`.
+  - `meta.txt` con timestamp, host, commit, etc.
+  - Copias de `.env` y `prisma/schema.prisma` (si existen).
+  - Rotación: conserva los últimos 10 backups.
+
+- `scripts/restore.sh <backup.tar.gz>`: restaura desde un backup creado con `backup.sh`.
+  - SQLite: detiene servicio, reemplaza el archivo y reinicia.
+  - PostgreSQL: usa `pg_restore` (requiere cliente instalado y permisos).
+
+Ejemplos:
+
+```bash
+# Crear backup
+cd /opt/punto_de_venta
+sudo chmod +x scripts/backup.sh scripts/restore.sh
+./scripts/backup.sh
+
+# Listar backups
+ls -lh backups/
+
+# Restaurar el más reciente (¡CUIDADO! sobreescribe datos)
+LATEST=$(ls -1t backups/backup_*.tar.gz | head -1)
+./scripts/restore.sh "$LATEST"
+```
+
+Notas:
+
+- Para PostgreSQL, instala el cliente:
+  ```bash
+  sudo apt-get update && sudo apt-get install -y postgresql-client
+  ```
+- En SQLite, la ruta del archivo se resuelve desde `DATABASE_URL` (por ejemplo, `file:./dev.db`). El script también intenta detectar rutas comunes.

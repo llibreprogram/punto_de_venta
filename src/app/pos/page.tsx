@@ -252,7 +252,238 @@ export default function POSPage() {
     return Math.max(0, Math.round(entr*100) - totalSel)
   }, [entregadoSel, totalSel])
 
-  // Guardar orden abierta (reutiliza pedido existente por mesa/subCuenta)
+  // UI móvil: panel de orden como bottom sheet
+  const [mobileCartOpen, setMobileCartOpen] = useState(false)
+  const itemsCount = useMemo(()=> Object.values(carrito).reduce((n,l)=> n + l.cantidad, 0), [carrito])
+
+  // Contenido reutilizable del panel de orden (desktop y móvil)
+  const OrderContent = () => (
+    <>
+      <h2 className="font-semibold mb-2 flex-shrink-0">Orden actual</h2>
+      <div className="flex-1 overflow-y-auto overflow-x-hidden soft-divider min-w-0">
+        {Object.values(carrito).length === 0 && (
+          <div className="text-sm muted">Agrega productos para comenzar</div>
+        )}
+        {Object.values(carrito).map(l => (
+          <div key={l.producto.id} className="py-2 flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <div className="font-medium truncate" title={l.producto.nombre}>{l.producto.nombre}</div>
+              <div className="text-xs muted">{fmtCurrency(l.producto.precioCents)}</div>
+              <button
+                className="text-[11px] underline text-blue-600 mt-1"
+                onClick={()=> setCustomOpen(prev=> ({ ...prev, [l.producto.id]: !prev[l.producto.id] }))}
+              >{customOpen[l.producto.id] ? 'Ocultar' : 'Personalizar'}</button>
+              {customOpen[l.producto.id] && !!(l.producto.ingredientes?.length) && (
+                <div className="mt-1">
+                  <div className="text-xs font-medium">Quitar ingredientes</div>
+                  <div className="text-xs grid gap-1 mt-1">
+                    {(l.producto.ingredientes||[]).map(ing => (
+                      <label key={ing} className="flex items-center gap-2">
+                        <input type="checkbox" defaultChecked onChange={(e)=>{
+                          const checked = e.target.checked
+                          setCarrito(prev=>{
+                            const next: Record<number, Linea> = { ...prev }
+                            const line = next[l.producto.id]
+                            if (!line) return prev
+                            const current = line.removidos
+                            const set = new Set(current||[])
+                            if (!checked) set.add(ing)
+                            else set.delete(ing)
+                            line.removidos = Array.from(set)
+                            return next
+                          })
+                        }} />
+                        <span className="select-none">{ing}</span>
+                      </label>
+                    ))}
+                    <div className="text-[10px] text-gray-500">Desmarca lo que NO llevará</div>
+                  </div>
+                </div>
+              )}
+              {!!(l.extras && l.extras.length) && (
+                <div className="text-[11px] text-green-700 mt-1">
+                  Extras: {l.extras.join(', ')}
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <button className="btn" onClick={()=>quitar(l.producto.id)} aria-label="Quitar uno">-</button>
+              <input
+                type="number"
+                className="w-14 input text-right"
+                min={1}
+                value={l.cantidad}
+                onChange={(e)=>{
+                  const val = Math.max(1, Number(e.target.value) || 1)
+                  setCarrito(prev => ({...prev, [l.producto.id]: { ...prev[l.producto.id], cantidad: val }}))
+                  setSel(prev=>{ const cur={...prev}; const s=cur[l.producto.id]; if (s && s>val) cur[l.producto.id]=val; return cur })
+                }}
+                aria-label="Cantidad"
+              />
+              <button className="btn" onClick={()=>agregar(l.producto)} aria-label="Agregar uno">+</button>
+              <button className="btn text-red-400" onClick={()=>{
+                setCarrito(prev=>{ const c={...prev}; delete c[l.producto.id]; return c })
+                setSel(prev=>{ const c={...prev}; delete c[l.producto.id]; return c })
+              }}>Eliminar</button>
+              <div className="w-20 text-right font-semibold">{fmtCurrency(precioLinea(l) * l.cantidad)}</div>
+            </div>
+            <div className="grid gap-1 text-xs items-center">
+              <label className="flex items-center gap-1">
+                <input
+                  type="checkbox"
+                  checked={!!sel[l.producto.id]}
+                  onChange={(e)=>{
+                    const checked = e.target.checked
+                    setSel(prev=>{
+                      const next={...prev}
+                      if (checked) next[l.producto.id] = l.cantidad
+                      else delete next[l.producto.id]
+                      return next
+                    })
+                  }}
+                />
+                <span>Seleccionar</span>
+              </label>
+              {sel[l.producto.id] !== undefined && (
+                <input
+                  type="number"
+                  className="w-16 input text-right"
+                  min={1}
+                  max={l.cantidad}
+                  value={Math.min(sel[l.producto.id]||1, l.cantidad)}
+                  onChange={(e)=>{
+                    const val = Math.max(1, Math.min(l.cantidad, Number(e.target.value)||1))
+                    setSel(prev=> ({...prev, [l.producto.id]: val}))
+                  }}
+                  aria-label="Cantidad a cobrar"
+                />
+              )}
+              {customOpen[l.producto.id] && !!(l.producto.extras?.length) && (
+                <div className="mt-1">
+                  <div className="text-xs font-medium">Extras</div>
+                  <div className="text-xs grid gap-1 mt-1">
+                    {(l.producto.extras||[]).map(ex => {
+                      const checked = (l.extras||[]).includes(ex.nombre)
+                      return (
+                        <label key={ex.nombre} className="flex items-center gap-2">
+                          <input type="checkbox" checked={checked} onChange={(e)=>{
+                            const on = e.target.checked
+                            setCarrito(prev=>{
+                              const next: Record<number, Linea> = { ...prev }
+                              const line = next[l.producto.id]
+                              if (!line) return prev
+                              const cur = new Set(line.extras||[])
+                              if (on) cur.add(ex.nombre); else cur.delete(ex.nombre)
+                              line.extras = Array.from(cur)
+                              return next
+                            })
+                          }} />
+                          <span className="select-none">{ex.nombre} (+{fmtCurrency(ex.precioCents)})</span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+              {customOpen[l.producto.id] && (
+                <div className="mt-1">
+                  <div className="text-xs font-medium">Nota</div>
+                  <input
+                    className="input w-full text-xs"
+                    placeholder="Ej: sin salsa aparte, bien cocido…"
+                    value={l.nota || ''}
+                    onChange={e=>{
+                      const v = e.target.value
+                      setCarrito(prev=> ({ ...prev, [l.producto.id]: { ...prev[l.producto.id], nota: v } }))
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="pt-2 border-t grid gap-2 bg-background/60 backdrop-blur-sm flex-shrink-0" aria-live="polite">
+        <div className="flex items-center justify-between text-sm">
+          <span>Subtotal</span>
+          <span>{fmtCurrency(subtotal)}</span>
+        </div>
+        <div className="grid gap-1">
+          <div className="flex items-center justify-between text-sm">
+            <span>Descuento</span>
+            <span>{descuentoCents ? `- ${fmtCurrency(descuentoCents)}` : fmtCurrency(0)}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <select className="input" value={descTipo} onChange={e=>setDescTipo(e.target.value as 'monto'|'pct')}>
+              <option value="monto">Monto</option>
+              <option value="pct">%</option>
+            </select>
+            <input className="input w-32 text-right" placeholder={descTipo==='pct'? '0 %':'0.00'} value={descValor} onChange={e=>setDescValor(e.target.value)} />
+            {descTipo==='pct' && (
+              <div className="flex gap-1">
+                {[5,10,15,20].map(p=> (
+                  <button key={p} className="btn text-xs" onClick={()=>setDescValor(String(p))}>{p}%</button>
+                ))}
+              </div>
+            )}
+            {descValor && <button className="text-xs underline ml-auto" onClick={()=>setDescValor('')}>Limpiar</button>}
+          </div>
+        </div>
+        <div className="flex items-center justify-between text-sm">
+          <span>Impuesto ({IVA_PCT}%)</span>
+          <span>{fmtCurrency(impuesto)}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="font-medium">Total</span>
+          <span className="text-lg font-bold">{fmtCurrency(total)}</span>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={async()=>{ if (total===0) return; const ok = await confirm({ message: '¿Vaciar la orden?' }); if (ok) setCarrito({}) }} disabled={total===0} className="btn w-1/3 disabled:opacity-50">Vaciar</button>
+          <button onClick={guardarAbierta} disabled={Object.values(carrito).length===0 || (tipo==='Mesa' && !mesaId)} title={tipo==='Mesa' && !mesaId ? 'Selecciona una mesa' : ''} className="btn w-1/3 disabled:opacity-50">Guardar</button>
+          <button disabled={total===0} onClick={()=>setCobrando(true)} className="btn btn-primary w-2/3 disabled:opacity-50">Cobrar</button>
+        </div>
+        {editingPedidoId && (
+          <div className="flex flex-wrap gap-2 mt-2">
+            <button
+              className="btn"
+              onClick={()=>{ setCarrito({}); setEditingPedidoId(null) }}
+              title="Iniciar una nueva orden abierta para esta mesa"
+            >Nueva orden</button>
+            <button
+              className="btn text-red-600 border-red-300"
+              onClick={async ()=>{
+                if (!editingPedidoId) return
+                const confirma = await confirm({ message: '¿Cancelar y eliminar esta orden?' })
+                if (!confirma) return
+                const res = await fetch(`/api/pedidos/${editingPedidoId}`, { method: 'DELETE' })
+                if (res.ok) {
+                  setCarrito({})
+                  setEditingPedidoId(null)
+                  push('Orden eliminada', 'success')
+                } else {
+                  const j = await res.json().catch(()=>null)
+                  push(j?.error || 'No se pudo eliminar la orden', 'error')
+                }
+              }}
+            >Eliminar orden</button>
+            <button
+              className="btn"
+              onClick={()=> setEditingPedidoId(null)}
+              title="Salir de edición (mantiene la orden abierta)"
+            >Salir de edición</button>
+          </div>
+        )}
+        <div className="flex gap-2 mt-2">
+          <button
+            disabled={seleccionadas.length===0 || subtotalSel===0}
+            onClick={()=> setCobrandoSel(true)}
+            className="btn w-full disabled:opacity-50"
+            title={seleccionadas.length===0? 'Selecciona líneas para dividir la cuenta': 'Cobrar solo los seleccionados'}
+          >Cobrar seleccionados</button>
+        </div>
+      </div>
+    </>
+  )
   const guardarAbierta = async () => {
     if (Object.values(carrito).length === 0) return
     const items = Object.values(carrito).map(l=> ({
@@ -297,9 +528,9 @@ export default function POSPage() {
   }
 
   return (
-    <div className={`h-screen flex flex-col ${ajustes?.touchMode ? 'touch-mode' : ''}`}>
-      <header className="p-2 flex gap-3 items-center justify-between z-10 gradient-header flex-shrink-0">
-        <div className="flex gap-3 items-center">
+    <div className={`min-h-dvh flex flex-col ${ajustes?.touchMode ? 'touch-mode' : ''}`}>
+      <header className="p-2 md:p-3 flex gap-2 md:gap-3 items-center justify-between z-10 gradient-header flex-shrink-0 flex-wrap md:flex-nowrap">
+        <div className="flex gap-2 md:gap-3 items-center min-w-0 flex-1">
           <h1 className="text-xl font-semibold">Punto de Venta</h1>
           <span className="text-sm muted">Fast Food</span>
           {tipo==='Mesa' && mesaId && (
@@ -309,7 +540,7 @@ export default function POSPage() {
             <span className="text-xs px-2 py-1 rounded bg-amber-100 text-amber-800 shadow-sm">Editando orden #{editingPedidoId}</span>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap md:flex-nowrap">
           <select value={tipo} onChange={(e)=>{
             const v = e.target.value
             const isTipo = (x: string): x is TipoOrden => x==='Mostrador' || x==='Mesa' || x==='Delivery'
@@ -347,7 +578,7 @@ export default function POSPage() {
             onChange={e => setBusqueda(e.target.value)}
             placeholder="Buscar productos..."
             id={searchId}
-            className="input w-64"
+            className="input w-32 sm:w-48 md:w-64"
             aria-label="Buscar productos"
           />
           <a href="/pos/abiertas" className="btn" title="Órdenes abiertas">🧾</a>
@@ -361,15 +592,15 @@ export default function POSPage() {
           <button onClick={async()=>{ await fetch('/api/auth/logout', { method:'POST' }); location.href='/login' }} className="btn">Salir</button>
         </div>
       </header>
-      <main className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 p-4 overflow-y-hidden">
-        <aside className="md:col-span-2 flex flex-col overflow-y-hidden">
-          <div className="flex gap-2 mb-3 flex-wrap py-2 flex-shrink-0">
+      <main className="flex-1 grid grid-cols-1 xl:grid-cols-3 gap-2 md:gap-4 p-2 md:p-4 overflow-y-hidden">
+        <aside className="xl:col-span-2 flex flex-col overflow-y-hidden min-w-0">
+          <div className="flex gap-2 mb-3 py-2 flex-shrink-0 sticky top-0 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <button className={`chip ${catFiltro===null?'chip-active':''}`} onClick={()=>setCatFiltro(null)}>Todo</button>
             {categorias.map(c => (
               <button key={c} className={`chip ${catFiltro===c?'chip-active':''}`} onClick={()=>setCatFiltro(c)}>{c}</button>
             ))}
           </div>
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-3 flex-1 overflow-y-auto">
+          <div className="grid products-grid gap-3 flex-1 min-h-0 overflow-y-auto">
             {cargando ?
               Array.from({length:8}).map((_,i)=> (
                 <div key={i} className="card rounded-lg p-3">
@@ -397,240 +628,34 @@ export default function POSPage() {
             ))}
           </div>
         </aside>
-	      <section className="md:col-span-1 glass-panel rounded-xl p-4 flex flex-col overflow-y-hidden">
-          <h2 className="font-semibold mb-2 flex-shrink-0">Orden actual</h2>
-          <div className="flex-1 overflow-y-auto soft-divider">
-            {Object.values(carrito).length === 0 && (
-              <div className="text-sm muted">Agrega productos para comenzar</div>
-            )}
-            {Object.values(carrito).map(l => (
-              <div key={l.producto.id} className="py-2 flex items-start justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <div className="font-medium truncate" title={l.producto.nombre}>{l.producto.nombre}</div>
-                  <div className="text-xs muted">{fmtCurrency(l.producto.precioCents)}</div>
-                  <button
-                    className="text-[11px] underline text-blue-600 mt-1"
-                    onClick={()=> setCustomOpen(prev=> ({ ...prev, [l.producto.id]: !prev[l.producto.id] }))}
-                  >{customOpen[l.producto.id] ? 'Ocultar' : 'Personalizar'}</button>
-                  {customOpen[l.producto.id] && !!(l.producto.ingredientes?.length) && (
-                    <div className="mt-1">
-                      <div className="text-xs font-medium">Quitar ingredientes</div>
-                      <div className="text-xs grid gap-1 mt-1">
-                        {(l.producto.ingredientes||[]).map(ing => (
-                          <label key={ing} className="flex items-center gap-2">
-                            <input type="checkbox" defaultChecked onChange={(e)=>{
-                              const checked = e.target.checked
-                              setCarrito(prev=>{
-                                const next: Record<number, Linea> = { ...prev }
-                                const line = next[l.producto.id]
-                                if (!line) return prev
-                                const current = line.removidos
-                                const set = new Set(current||[])
-                                if (!checked) set.add(ing)
-                                else set.delete(ing)
-                                line.removidos = Array.from(set)
-                                return next
-                              })
-                            }} />
-                            <span className="select-none">{ing}</span>
-                          </label>
-                        ))}
-                        <div className="text-[10px] text-gray-500">Desmarca lo que NO llevará</div>
-                      </div>
-                    </div>
-                  )}
-                  {!!(l.extras && l.extras.length) && (
-                    <div className="text-[11px] text-green-700 mt-1">
-                      Extras: {l.extras.join(', ')}
-                    </div>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <button className="btn" onClick={()=>quitar(l.producto.id)} aria-label="Quitar uno">-</button>
-                  <input
-                    type="number"
-                    className="w-14 input text-right"
-                    min={1}
-                    value={l.cantidad}
-                    onChange={(e)=>{
-                      const val = Math.max(1, Number(e.target.value) || 1)
-                      setCarrito(prev => ({...prev, [l.producto.id]: { ...prev[l.producto.id], cantidad: val }}))
-                      setSel(prev=>{ const cur={...prev}; const s=cur[l.producto.id]; if (s && s>val) cur[l.producto.id]=val; return cur })
-                    }}
-                    aria-label="Cantidad"
-                  />
-                  <button className="btn" onClick={()=>agregar(l.producto)} aria-label="Agregar uno">+</button>
-                  <button className="btn text-red-400" onClick={()=>{
-                    setCarrito(prev=>{ const c={...prev}; delete c[l.producto.id]; return c })
-                    setSel(prev=>{ const c={...prev}; delete c[l.producto.id]; return c })
-                  }}>Eliminar</button>
-                  <div className="w-20 text-right font-semibold">{fmtCurrency(precioLinea(l) * l.cantidad)}</div>
-                </div>
-                <div className="grid gap-1 text-xs items-center">
-                  <label className="flex items-center gap-1">
-                    <input
-                      type="checkbox"
-                      checked={!!sel[l.producto.id]}
-                      onChange={(e)=>{
-                        const checked = e.target.checked
-                        setSel(prev=>{
-                          const next={...prev}
-                          if (checked) next[l.producto.id] = l.cantidad
-                          else delete next[l.producto.id]
-                          return next
-                        })
-                      }}
-                    />
-                    <span>Seleccionar</span>
-                  </label>
-                  {sel[l.producto.id] !== undefined && (
-                    <input
-                      type="number"
-                      className="w-16 input text-right"
-                      min={1}
-                      max={l.cantidad}
-                      value={Math.min(sel[l.producto.id]||1, l.cantidad)}
-                      onChange={(e)=>{
-                        const val = Math.max(1, Math.min(l.cantidad, Number(e.target.value)||1))
-                        setSel(prev=> ({...prev, [l.producto.id]: val}))
-                      }}
-                      aria-label="Cantidad a cobrar"
-                    />
-                  )}
-                  {customOpen[l.producto.id] && !!(l.producto.extras?.length) && (
-                    <div className="mt-1">
-                      <div className="text-xs font-medium">Extras</div>
-                      <div className="text-xs grid gap-1 mt-1">
-                        {(l.producto.extras||[]).map(ex => {
-                          const checked = (l.extras||[]).includes(ex.nombre)
-                          return (
-                            <label key={ex.nombre} className="flex items-center gap-2">
-                              <input type="checkbox" checked={checked} onChange={(e)=>{
-                                const on = e.target.checked
-                                setCarrito(prev=>{
-                                  const next: Record<number, Linea> = { ...prev }
-                                  const line = next[l.producto.id]
-                                  if (!line) return prev
-                                  const cur = new Set(line.extras||[])
-                                  if (on) cur.add(ex.nombre); else cur.delete(ex.nombre)
-                                  line.extras = Array.from(cur)
-                                  return next
-                                })
-                              }} />
-                              <span className="select-none">{ex.nombre} (+{fmtCurrency(ex.precioCents)})</span>
-                            </label>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )}
-                  {customOpen[l.producto.id] && (
-                    <div className="mt-1">
-                      <div className="text-xs font-medium">Nota</div>
-                      <input
-                        className="input w-full text-xs"
-                        placeholder="Ej: sin salsa aparte, bien cocido…"
-                        value={l.nota || ''}
-                        onChange={e=>{
-                          const v = e.target.value
-                          setCarrito(prev=> ({ ...prev, [l.producto.id]: { ...prev[l.producto.id], nota: v } }))
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="pt-2 border-t grid gap-2 bg-background/60 backdrop-blur-sm flex-shrink-0" aria-live="polite">
-            <div className="flex items-center justify-between text-sm">
-              <span>Subtotal</span>
-              <span>{fmtCurrency(subtotal)}</span>
-            </div>
-            <div className="grid gap-1">
-              <div className="flex items-center justify-between text-sm">
-                <span>Descuento</span>
-                <span>{descuentoCents ? `- ${fmtCurrency(descuentoCents)}` : fmtCurrency(0)}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <select className="input" value={descTipo} onChange={e=>setDescTipo(e.target.value as 'monto'|'pct')}>
-                  <option value="monto">Monto</option>
-                  <option value="pct">%</option>
-                </select>
-                <input className="input w-32 text-right" placeholder={descTipo==='pct'? '0 %':'0.00'} value={descValor} onChange={e=>setDescValor(e.target.value)} />
-                {descTipo==='pct' && (
-                  <div className="flex gap-1">
-                    {[5,10,15,20].map(p=> (
-                      <button key={p} className="btn text-xs" onClick={()=>setDescValor(String(p))}>{p}%</button>
-                    ))}
-                  </div>
-                )}
-                {descValor && <button className="text-xs underline ml-auto" onClick={()=>setDescValor('')}>Limpiar</button>}
-              </div>
-            </div>
-            {IVA_PCT > 0 && (
-              <div className="flex items-center justify-between text-sm">
-                <span>ITEBIS ({IVA_PCT}%)</span>
-                <span>{fmtCurrency(itebisCents)}</span>
-              </div>
-            )}
-            {PROPINA_PCT > 0 && (
-              <div className="flex items-center justify-between text-sm">
-                <span>Propina ({PROPINA_PCT}%)</span>
-                <span>{fmtCurrency(propinaCents)}</span>
-              </div>
-            )}
-            <div className="flex items-center justify-between">
-              <span className="font-medium">Total</span>
-              <span className="text-lg font-bold">{fmtCurrency(total)}</span>
-            </div>
-            <div className="flex gap-2">
-              <button onClick={async()=>{ if (total===0) return; const ok = await confirm({ message: '¿Vaciar la orden?' }); if (ok) setCarrito({}) }} disabled={total===0} className="btn w-1/3 disabled:opacity-50">Vaciar</button>
-              <button onClick={guardarAbierta} disabled={Object.values(carrito).length===0 || (tipo==='Mesa' && !mesaId)} title={tipo==='Mesa' && !mesaId ? 'Selecciona una mesa' : ''} className="btn w-1/3 disabled:opacity-50">Guardar</button>
-              <button disabled={total===0} onClick={()=>setCobrando(true)} className="btn btn-primary w-2/3 disabled:opacity-50">Cobrar</button>
-            </div>
-            {editingPedidoId && (
-              <div className="flex flex-wrap gap-2 mt-2">
-                <button
-                  className="btn"
-                  onClick={()=>{ setCarrito({}); setEditingPedidoId(null) }}
-                  title="Iniciar una nueva orden abierta para esta mesa"
-                >Nueva orden</button>
-                <button
-                  className="btn text-red-600 border-red-300"
-                  onClick={async ()=>{
-                    if (!editingPedidoId) return
-                    const confirma = await confirm({ message: '¿Cancelar y eliminar esta orden?' })
-                    if (!confirma) return
-                    const res = await fetch(`/api/pedidos/${editingPedidoId}`, { method: 'DELETE' })
-                    if (res.ok) {
-                      setCarrito({})
-                      setEditingPedidoId(null)
-                      push('Orden eliminada', 'success')
-                    } else {
-                      const j = await res.json().catch(()=>null)
-                      push(j?.error || 'No se pudo eliminar la orden', 'error')
-                    }
-                  }}
-                >Eliminar orden</button>
-                <button
-                  className="btn"
-                  onClick={()=> setEditingPedidoId(null)}
-                  title="Salir de edición (mantiene la orden abierta)"
-                >Salir de edición</button>
-              </div>
-            )}
-            <div className="flex gap-2 mt-2">
-              <button
-                disabled={seleccionadas.length===0 || subtotalSel===0}
-                onClick={()=> setCobrandoSel(true)}
-                className="btn w-full disabled:opacity-50"
-                title={seleccionadas.length===0? 'Selecciona líneas para dividir la cuenta': 'Cobrar solo los seleccionados'}
-              >Cobrar seleccionados</button>
-            </div>
-          </div>
+        <section className="hidden xl:flex xl:col-span-1 glass-panel rounded-xl p-4 flex-col overflow-y-hidden min-w-0">
+          <OrderContent />
         </section>
       </main>
+      {/* Botón flotante y bottom sheet para móviles/tablets (hasta <xl) */}
+      <button
+        type="button"
+        className="xl:hidden fixed bottom-4 right-4 z-40 btn btn-primary rounded-full shadow-lg px-4 py-3"
+        onClick={()=> setMobileCartOpen(true)}
+        aria-label="Abrir orden"
+        title="Abrir orden"
+      >
+        🧾 Orden{itemsCount ? ` (${itemsCount})` : ''}
+      </button>
+      {mobileCartOpen && (
+        <div className="xl:hidden fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/50" onClick={()=> setMobileCartOpen(false)} />
+          <div className="absolute inset-x-0 bottom-0 glass-panel rounded-t-2xl p-4 max-h-[85vh] h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between mb-2">
+              <div className="font-semibold">Orden</div>
+              <button className="btn" onClick={()=> setMobileCartOpen(false)} aria-label="Cerrar">✕</button>
+            </div>
+            <div className="flex-1 min-h-0 flex flex-col">
+              <OrderContent />
+            </div>
+          </div>
+        </div>
+      )}
       {cobrando && (
         <div role="dialog" aria-modal="true" className="fixed inset-0 bg-black/40 grid place-items-center p-4">
           <div className="bg-white text-black rounded-lg w-full max-w-md p-4 grid gap-3">
