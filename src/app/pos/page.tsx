@@ -429,10 +429,18 @@ export default function POSPage() {
             {descValor && <button className="text-xs underline ml-auto" onClick={()=>setDescValor('')}>Limpiar</button>}
           </div>
         </div>
-        <div className="flex items-center justify-between text-sm">
-          <span>Impuesto ({IVA_PCT}%)</span>
-          <span>{fmtCurrency(impuesto)}</span>
-        </div>
+        {IVA_PCT > 0 && (
+          <div className="flex items-center justify-between text-sm">
+            <span>ITEBIS ({IVA_PCT}%)</span>
+            <span>{fmtCurrency(itebisCents)}</span>
+          </div>
+        )}
+        {PROPINA_PCT > 0 && (
+          <div className="flex items-center justify-between text-sm">
+            <span>Propina ({PROPINA_PCT}%)</span>
+            <span>{fmtCurrency(propinaCents)}</span>
+          </div>
+        )}
         <div className="flex items-center justify-between">
           <span className="font-medium">Total</span>
           <span className="text-lg font-bold">{fmtCurrency(total)}</span>

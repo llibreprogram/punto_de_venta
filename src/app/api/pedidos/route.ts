@@ -148,7 +148,7 @@ export async function GET(req: Request) {
     take: 200,
   })
   if (format === 'csv') {
-    const headers = ['numero','fecha','mesa','subCuenta','subtotalCents','impuestoCents','descuentoCents','totalCents','estado']
+    const headers = ['numero','fecha','mesa','subCuenta','subtotalCents','impuestoCents','itebisCents','propinaCents','descuentoCents','totalCents','estado']
     const escape = (v: unknown) => {
       const s = String(v ?? '')
       return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s
@@ -160,6 +160,8 @@ export async function GET(req: Request) {
       p.mesa ? p.subCuenta : '',
       p.subtotalCents,
       p.impuestoCents,
+      p.itebisCents,
+      p.propinaCents,
       p.descuentoCents,
       p.totalCents,
       p.estado
