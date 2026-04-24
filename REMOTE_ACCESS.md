@@ -1,3 +1,10 @@
+> **© 2026 Rafael Llibre. Todos los derechos reservados.**
+> Contacto: haciendallibre@gmail.com
+> Prohibida la reproducción total o parcial sin autorización del propietario.
+> Protegido por la Ley 65-00 (Rep. Dominicana) y tratados internacionales.
+
+---
+
 # Acceso remoto seguro (Opción 1: Tailscale)
 
 Esta guía habilita acceso remoto al servidor sin abrir puertos públicos ni usar sudo, ejecutando Tailscale en modo userspace (rootless) bajo el usuario `restaurante`.

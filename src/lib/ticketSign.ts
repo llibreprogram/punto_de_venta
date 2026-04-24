@@ -1,3 +1,9 @@
+/**
+ * © 2026 Rafael Llibre. Todos los derechos reservados.
+ * Contacto: haciendallibre@gmail.com
+ * Prohibida la reproducción sin autorización del propietario.
+ * Protegido por Ley 65-00 (Rep. Dominicana).
+ */
 // Utility to generate signed ticket URLs with expiration.
 // Server-side (Node) usage to create a link a kiosk / cliente puede abrir sin sesión.
 // Signature format: HMAC-SHA256 over `${id}.${exp}` (exp = unix seconds expiration).

@@ -1,3 +1,9 @@
+/**
+ * © 2026 Rafael Llibre. Todos los derechos reservados.
+ * Contacto: haciendallibre@gmail.com
+ * Prohibida la reproducción sin autorización del propietario.
+ * Protegido por Ley 65-00 (Rep. Dominicana).
+ */
 export const LOCALE = process.env.NEXT_PUBLIC_LOCALE || 'es-ES'
 export const CURRENCY = process.env.NEXT_PUBLIC_CURRENCY || 'EUR'
 

@@ -1,3 +1,9 @@
+/**
+ * © 2026 Rafael Llibre. Todos los derechos reservados.
+ * Contacto: haciendallibre@gmail.com
+ * Prohibida la reproducción sin autorización del propietario.
+ * Protegido por Ley 65-00 (Rep. Dominicana).
+ */
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth'
@@ -11,6 +17,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div className="min-h-screen flex flex-col">
       <nav className="border-b bg-white/80 backdrop-blur px-4 py-2 flex gap-4 text-sm">
+        <Link href="/admin" className="hover:underline font-medium">Dashboard</Link>
         <Link href="/admin/categorias" className="hover:underline">Categorías</Link>
         <Link href="/admin/productos" className="hover:underline">Productos</Link>
         <Link href="/admin/usuarios" className="hover:underline">Usuarios</Link>

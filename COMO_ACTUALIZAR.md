@@ -1,3 +1,10 @@
+> **© 2026 Rafael Llibre. Todos los derechos reservados.**
+> Contacto: haciendallibre@gmail.com
+> Prohibida la reproducción total o parcial sin autorización del propietario.
+> Protegido por la Ley 65-00 (Rep. Dominicana) y tratados internacionales.
+
+---
+
 # Cómo actualizar el servidor del Punto de Venta
 
 Este documento describe dos caminos para actualizar la app en producción ubicada en `/opt/punto_de_venta`:

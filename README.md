@@ -1,3 +1,10 @@
+> **© 2026 Rafael Llibre. Todos los derechos reservados.**
+> Contacto: haciendallibre@gmail.com
+> Prohibida la reproducción total o parcial sin autorización del propietario.
+> Protegido por la Ley 65-00 (Rep. Dominicana) y tratados internacionales.
+
+---
+
 # Punto de Venta (POS)
 
 > Documentación técnica: ver ARCHITECTURE.md

@@ -11,6 +11,7 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
   const { id: idStr } = await params
   const sp = await searchParams
   const id = Number(idStr)
+  if (!Number.isFinite(id)) notFound()
   const [pedido, ajustes] = await Promise.all([
     prisma.pedido.findUnique({
       where: { id },
