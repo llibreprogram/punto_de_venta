@@ -5,7 +5,7 @@ import AdminLayout from '@/components/AdminLayout'
 import SerialPrintButton from '@/components/SerialPrintButton'
 import NetworkPrintButton from '@/components/NetworkPrintButton'
 
-type Ajustes = { locale:string; currency:string; taxPct:number; businessName:string; ticketFooter:string; logoUrl:string; printerIp?:string|null; printerPort?:number|null; serialBaud?:number|null; autoKitchenOnCreate?:boolean; autoKitchenOnReady?:boolean; touchMode?:boolean }
+type Ajustes = { locale:string; currency:string; taxPct:number; propinaPct:number; businessName:string; ticketFooter:string; logoUrl:string; printerIp?:string|null; printerPort?:number|null; serialBaud?:number|null; autoKitchenOnCreate?:boolean; autoKitchenOnReady?:boolean; touchMode?:boolean }
 
 export default function ConfiguracionPage() {
   const [a, setA] = useState<Ajustes | null>(null)
@@ -139,8 +139,12 @@ export default function ConfiguracionPage() {
           Vista previa: <strong>{toCurrency(12345, a.locale || LOCALE, a.currency || CURRENCY)}</strong>
         </div>
         <label className="grid gap-1">
-          <span className="text-sm text-gray-600">Impuesto (%)</span>
+          <span className="text-sm text-gray-600">ITEBIS (%)</span>
           <input type="number" min={0} className="input" value={a.taxPct} onChange={e=>setA({...a, taxPct: Number(e.target.value)})} />
+        </label>
+        <label className="grid gap-1">
+          <span className="text-sm text-gray-600">Propina (%)</span>
+          <input type="number" min={0} className="input" value={a.propinaPct ?? 0} onChange={e=>setA({...a, propinaPct: Number(e.target.value)})} />
         </label>
         <label className="grid gap-1 sm:col-span-2">
           <span className="text-sm text-gray-600">Logo (URL)</span>

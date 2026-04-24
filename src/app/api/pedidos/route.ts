@@ -11,6 +11,8 @@ type Body = {
   subCuenta?: number
   items: Item[]
   impuestoCents: number
+  itebisCents?: number
+  propinaCents?: number
   descuentoCents?: number
   pago?: { metodo: 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA'; montoCents: number; referencia?: string }
 }
@@ -30,6 +32,8 @@ export async function POST(req: Request) {
 
   const subtotal = data.items.reduce((a, i) => a + i.precioCents * i.cantidad, 0)
     const impuesto = Math.max(0, Math.round(data.impuestoCents || 0))
+    const itebisCents = Math.max(0, Math.round(data.itebisCents ?? impuesto))
+    const propinaCents = Math.max(0, Math.round(data.propinaCents ?? 0))
     const descuento = Math.max(0, Math.round(data.descuentoCents || 0))
     const total = subtotal + impuesto - descuento
 
@@ -59,6 +63,8 @@ export async function POST(req: Request) {
           subCuenta,
           subtotalCents: subtotal,
           impuestoCents: impuesto,
+          itebisCents,
+          propinaCents,
           descuentoCents: descuento,
           totalCents: total,
         },

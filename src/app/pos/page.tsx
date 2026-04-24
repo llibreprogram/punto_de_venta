@@ -29,6 +29,7 @@ export default function POSPage() {
   const [subCuenta, setSubCuenta] = useState<number>(1)
   const [subCuentasDisponibles, setSubCuentasDisponibles] = useState<number[]>([1])
   const [IVA_PCT, setIVA] = useState<number>(0)
+  const [PROPINA_PCT, setPROPINA] = useState<number>(0)
   const [ajustes, setAjustes] = useState<{ locale?: string; currency?: string; touchMode?: boolean } | null>(null)
   const [lastAdded, setLastAdded] = useState<number | null>(null)
   const [customOpen, setCustomOpen] = useState<Record<number, boolean>>({})
@@ -47,6 +48,7 @@ export default function POSPage() {
       setProductos(prods)
       setMesas(mesas)
       if (ajustes?.taxPct != null) setIVA(ajustes.taxPct)
+      if (ajustes?.propinaPct != null) setPROPINA(ajustes.propinaPct)
       if (ajustes) setAjustes({ locale: ajustes.locale, currency: ajustes.currency, touchMode: ajustes.touchMode })
       // Si viene ?load=ID, cargar la orden abierta al carrito
       const url = new URL(window.location.href)
@@ -206,7 +208,9 @@ export default function POSPage() {
     return Math.max(0, Math.min(subtotal, Math.round(v*100)))
   }, [descValor, descTipo, subtotal])
   const base = useMemo(()=> Math.max(0, subtotal - descuentoCents), [subtotal, descuentoCents])
-  const impuesto = useMemo(() => Math.round(base * (IVA_PCT / 100)), [base, IVA_PCT])
+  const itebisCents = useMemo(() => Math.round(base * (IVA_PCT / 100)), [base, IVA_PCT])
+  const propinaCents = useMemo(() => Math.round(base * (PROPINA_PCT / 100)), [base, PROPINA_PCT])
+  const impuesto = useMemo(() => itebisCents + propinaCents, [itebisCents, propinaCents])
   const total = useMemo(() => base + impuesto, [base, impuesto])
   const [cobrando, setCobrando] = useState(false)
   const [metodo, setMetodo] = useState<MetodoPago>('EFECTIVO')
@@ -235,7 +239,9 @@ export default function POSPage() {
     return Math.max(0, Math.min(subtotalSel, Math.round(v*100)))
   }, [descSelValor, descSelTipo, subtotalSel])
   const baseSel = useMemo(()=> Math.max(0, subtotalSel - descuentoSelCents), [subtotalSel, descuentoSelCents])
-  const impuestoSel = useMemo(()=> Math.round(baseSel * (IVA_PCT / 100)), [baseSel, IVA_PCT])
+  const itebisCentsSel = useMemo(()=> Math.round(baseSel * (IVA_PCT / 100)), [baseSel, IVA_PCT])
+  const propinaCentsSel = useMemo(()=> Math.round(baseSel * (PROPINA_PCT / 100)), [baseSel, PROPINA_PCT])
+  const impuestoSel = useMemo(()=> itebisCentsSel + propinaCentsSel, [itebisCentsSel, propinaCentsSel])
   const totalSel = useMemo(()=> baseSel + impuestoSel, [baseSel, impuestoSel])
   const [cobrandoSel, setCobrandoSel] = useState(false)
   const [metodoSel, setMetodoSel] = useState<MetodoPago>('EFECTIVO')
@@ -274,7 +280,7 @@ export default function POSPage() {
     }
     const url = pedidoIdForUpdate ? `/api/pedidos/${pedidoIdForUpdate}` : '/api/pedidos'
     const method = pedidoIdForUpdate ? 'PUT' : 'POST'
-    const body = pedidoIdForUpdate ? { items, impuestoCents: impuesto, descuentoCents } : { tipo, mesaId, subCuenta, items, impuestoCents: impuesto, descuentoCents }
+    const body = pedidoIdForUpdate ? { items, impuestoCents: impuesto, itebisCents, propinaCents, descuentoCents } : { tipo, mesaId, subCuenta, items, impuestoCents: impuesto, itebisCents, propinaCents, descuentoCents }
     const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
     if (res.ok) {
       const data = await res.json().catch(()=>null)
@@ -562,10 +568,18 @@ export default function POSPage() {
                 {descValor && <button className="text-xs underline ml-auto" onClick={()=>setDescValor('')}>Limpiar</button>}
               </div>
             </div>
-            <div className="flex items-center justify-between text-sm">
-              <span>Impuesto ({IVA_PCT}%)</span>
-              <span>{fmtCurrency(impuesto)}</span>
-            </div>
+            {IVA_PCT > 0 && (
+              <div className="flex items-center justify-between text-sm">
+                <span>ITEBIS ({IVA_PCT}%)</span>
+                <span>{fmtCurrency(itebisCents)}</span>
+              </div>
+            )}
+            {PROPINA_PCT > 0 && (
+              <div className="flex items-center justify-between text-sm">
+                <span>Propina ({PROPINA_PCT}%)</span>
+                <span>{fmtCurrency(propinaCents)}</span>
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <span className="font-medium">Total</span>
               <span className="text-lg font-bold">{fmtCurrency(total)}</span>
@@ -667,6 +681,8 @@ export default function POSPage() {
                     ...(editingPedidoId ? {} : { tipo, mesaId, subCuenta }),
                     items,
                     impuestoCents: impuesto,
+                    itebisCents,
+                    propinaCents,
                     descuentoCents: descuentoCents,
                     pago: { metodo, montoCents: total },
                   })
@@ -730,10 +746,18 @@ export default function POSPage() {
                   {descSelValor && <button className="text-xs underline ml-auto" onClick={()=>setDescSelValor('')}>Limpiar</button>}
                 </div>
               </div>
-              <div className="flex items-center justify-between text-sm">
-                <span>Impuesto ({IVA_PCT}%)</span>
-                <span>{fmtCurrency(impuestoSel)}</span>
-              </div>
+              {IVA_PCT > 0 && (
+                <div className="flex items-center justify-between text-sm">
+                  <span>ITEBIS ({IVA_PCT}%)</span>
+                  <span>{fmtCurrency(itebisCentsSel)}</span>
+                </div>
+              )}
+              {PROPINA_PCT > 0 && (
+                <div className="flex items-center justify-between text-sm">
+                  <span>Propina ({PROPINA_PCT}%)</span>
+                  <span>{fmtCurrency(propinaCentsSel)}</span>
+                </div>
+              )}
               <label className="grid gap-1">
                 <span className="text-sm text-gray-600">Método de pago</span>
                 <select value={metodoSel} onChange={e=>{
@@ -776,6 +800,8 @@ export default function POSPage() {
                     subCuenta,
                     items,
                     impuestoCents: impuestoSel,
+                    itebisCents: itebisCentsSel,
+                    propinaCents: propinaCentsSel,
                     descuentoCents: descuentoSelCents,
                     pago: { metodo: metodoSel, montoCents: totalSel },
                   })

@@ -35,12 +35,14 @@ export function escposTicket(opts: {
   subCuenta?: number
   items: { nombre:string; cantidad:number; unit:string; total:string }[]
   subtotal: string
-  impuesto: string
+  itebis?: string
+  propina?: string
+  impuesto?: string
   descuento?: string
   total: string
   footer?: string
 }) {
-  const { business, numero, fecha, mesa, subCuenta, items, subtotal, impuesto, descuento, total, footer } = opts
+  const { business, numero, fecha, mesa, subCuenta, items, subtotal, itebis, propina, impuesto, descuento, total, footer } = opts
   let out = ''
   out += escposHeader(business)
   out += `Ticket #${numero}` + (mesa ? `  Mesa: ${mesa}${subCuenta?` C${subCuenta}`:''}`:'') + "\n" + fecha + "\n\n"
@@ -51,7 +53,9 @@ export function escposTicket(opts: {
   }
   out += escposSeparator()
   out += escposLine('Subtotal', subtotal)
-  out += escposLine('Impuesto', impuesto)
+  if (itebis) out += escposLine('ITEBIS', itebis)
+  if (propina) out += escposLine('Propina', propina)
+  if (!itebis && !propina && impuesto) out += escposLine('Impuesto', impuesto)
   if (descuento) out += escposLine('Descuento', '-'+descuento)
   out += escposLine('Total', total)
   out += "\n"

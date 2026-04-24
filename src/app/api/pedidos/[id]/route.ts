@@ -33,12 +33,16 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
   const body = await req.json() as {
     items: Item[]
     impuestoCents: number
+    itebisCents?: number
+    propinaCents?: number
     descuentoCents?: number
     pago?: { metodo: 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA'; montoCents: number; referencia?: string }
   }
   if (!Array.isArray(body.items) || body.items.length === 0) return NextResponse.json({ error: 'Sin items' }, { status: 400 })
   const subtotal = body.items.reduce((a, i) => a + i.precioCents * i.cantidad, 0)
   const impuesto = Math.max(0, Math.round(body.impuestoCents || 0))
+  const itebisCents = Math.max(0, Math.round(body.itebisCents ?? impuesto))
+  const propinaCents = Math.max(0, Math.round(body.propinaCents ?? 0))
   const descuento = Math.max(0, Math.round(body.descuentoCents || 0))
   const total = subtotal + impuesto - descuento
   try {
@@ -70,6 +74,8 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
       await tx.pedido.update({ where: { id }, data: {
         subtotalCents: subtotal,
         impuestoCents: impuesto,
+        itebisCents,
+        propinaCents,
         descuentoCents: descuento,
         totalCents: total,
         estado: body.pago ? 'PAGADO' : 'ABIERTO',

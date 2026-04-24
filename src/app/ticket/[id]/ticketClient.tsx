@@ -64,7 +64,15 @@ export default function TicketClient({ pedido, ajustes }: { pedido: TicketPedido
         <hr className="my-3" />
         <div className="text-sm grid gap-1">
           <div className="flex justify-between"><span>Subtotal</span><span>{toCurrency(pedido.subtotalCents, locale, currency)}</span></div>
-          <div className="flex justify-between"><span>Impuesto</span><span>{toCurrency(pedido.impuestoCents, locale, currency)}</span></div>
+          {pedido.itebisCents > 0 && (
+            <div className="flex justify-between"><span>ITEBIS</span><span>{toCurrency(pedido.itebisCents, locale, currency)}</span></div>
+          )}
+          {pedido.propinaCents > 0 && (
+            <div className="flex justify-between"><span>Propina</span><span>{toCurrency(pedido.propinaCents, locale, currency)}</span></div>
+          )}
+          {!pedido.itebisCents && !pedido.propinaCents && pedido.impuestoCents > 0 && (
+            <div className="flex justify-between"><span>Impuesto</span><span>{toCurrency(pedido.impuestoCents, locale, currency)}</span></div>
+          )}
           {pedido.descuentoCents ? (
             <div className="flex justify-between"><span>Descuento</span><span>-{toCurrency(pedido.descuentoCents, locale, currency)}</span></div>
           ) : null}

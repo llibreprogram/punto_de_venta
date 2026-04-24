@@ -18,11 +18,12 @@ export async function PUT(req: NextRequest) {
   const token = cookieStore.get('session')?.value
   const session = await getSession(token)
   if (!session || session.user.rol !== 'admin') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const body = await req.json() as Partial<{ locale:string; currency:string; taxPct:number; businessName:string; ticketFooter:string; logoUrl:string; printerIp:string|null; printerPort:number|null; serialBaud:number|null; autoKitchenOnCreate:boolean; autoKitchenOnReady:boolean; touchMode:boolean }>
-  const data: Partial<{ locale:string; currency:string; taxPct:number; businessName:string; ticketFooter:string; logoUrl:string; printerIp:string|null; printerPort:number|null; serialBaud:number|null; autoKitchenOnCreate:boolean; autoKitchenOnReady:boolean; touchMode:boolean }> = {}
+  const body = await req.json() as Partial<{ locale:string; currency:string; taxPct:number; propinaPct:number; businessName:string; ticketFooter:string; logoUrl:string; printerIp:string|null; printerPort:number|null; serialBaud:number|null; autoKitchenOnCreate:boolean; autoKitchenOnReady:boolean; touchMode:boolean }>
+  const data: Partial<{ locale:string; currency:string; taxPct:number; propinaPct:number; businessName:string; ticketFooter:string; logoUrl:string; printerIp:string|null; printerPort:number|null; serialBaud:number|null; autoKitchenOnCreate:boolean; autoKitchenOnReady:boolean; touchMode:boolean }> = {}
   if (typeof body.locale === 'string') data.locale = body.locale
   if (typeof body.currency === 'string') data.currency = body.currency
   if (typeof body.taxPct === 'number' && Number.isFinite(body.taxPct)) data.taxPct = Math.max(0, Math.round(body.taxPct))
+  if (typeof body.propinaPct === 'number' && Number.isFinite(body.propinaPct)) data.propinaPct = Math.max(0, Math.round(body.propinaPct))
   if (typeof body.businessName === 'string') data.businessName = body.businessName
   if (typeof body.ticketFooter === 'string') data.ticketFooter = body.ticketFooter
   if (typeof body.logoUrl === 'string') data.logoUrl = body.logoUrl

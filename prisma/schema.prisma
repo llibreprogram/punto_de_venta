@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -75,6 +75,8 @@ model Pedido {
   items       PedidoItem[]
   subtotalCents  Int
   impuestoCents  Int        @default(0)
+  itebisCents    Int        @default(0)
+  propinaCents   Int        @default(0)
   descuentoCents Int        @default(0)
   totalCents     Int
   pagos       Pago[]
@@ -129,6 +131,7 @@ model Ajustes {
   locale        String  @default("es-ES")
   currency      String  @default("EUR")
   taxPct        Int     @default(0)
+  propinaPct    Int     @default(0)
   businessName  String  @default("Mi Restaurante")
   ticketFooter  String  @default("¡Gracias por su compra!")
   logoUrl       String  @default("/logo.png")
