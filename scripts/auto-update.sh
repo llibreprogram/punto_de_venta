@@ -41,6 +41,13 @@ if ! npm ci; then
   npm install
 fi
 
+log "[2.5/5] Prisma DB push (migración de base de datos)"
+if ! npx prisma db push; then
+  log "ERROR: Prisma DB push falló"
+  "$APP_DIR/scripts/notify.sh" "POS auto-update: DB push failed" "$LOG_FILE" || true
+  exit 1
+fi
+
 log "[3/5] Building (production)"
 if ! NODE_ENV=production npm run build; then
   log "ERROR: Build failed"

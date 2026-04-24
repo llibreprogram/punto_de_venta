@@ -1,0 +1,59 @@
+ACTUALIZAR EL SISTEMA DE PUNTO DE VENTA SIN SSH
+===============================================
+
+Este instructivo explica cómo actualizar el sistema a la última versión, incluyendo la base de datos, SIN usar SSH. Ideal para cuando el técnico no puede conectarse remotamente y la actualización debe ser realizada por alguien en el local.
+
+REQUISITOS
+----------
+- El servidor debe tener acceso a internet.
+- El usuario debe tener permisos de administrador (saber la contraseña del sistema).
+- El sistema debe estar instalado en /opt/punto_de_venta.
+
+PASOS
+-----
+
+1. ABRIR UNA TERMINAL
+---------------------
+- En Ubuntu: presiona Ctrl + Alt + T
+- O busca "Terminal" en el menú de aplicaciones
+
+2. EJECUTAR EL SCRIPT DE ACTUALIZACIÓN
+--------------------------------------
+Copia y pega este comando en la terminal y presiona Enter:
+
+    sudo bash /opt/punto_de_venta/scripts/actualizar.sh
+
+- El sistema pedirá la contraseña de administrador.
+- El proceso es automático: descarga la nueva versión, actualiza la base de datos, instala dependencias y reinicia el sistema.
+- Al finalizar, mostrará un mensaje de éxito o error.
+
+3. ¿Y SI EL SCRIPT NO EXISTE?
+-----------------------------
+Si el archivo /opt/punto_de_venta/scripts/actualizar.sh no existe, puedes descargarlo y ejecutarlo así:
+
+    sudo bash -c "curl -fsSL https://raw.githubusercontent.com/llibreprogram/punto_de_venta/main/scripts/actualizar.sh | bash"
+
+4. VERIFICAR QUE EL SISTEMA FUNCIONA
+------------------------------------
+- Abre el sistema en el navegador (por ejemplo, http://localhost:3001)
+- Si hay problemas, revisa el estado del servicio con:
+
+    sudo systemctl status pos
+
+- Para ver los últimos mensajes de error:
+
+    sudo journalctl -u pos -n 50
+
+NOTAS IMPORTANTES
+-----------------
+- Antes de actualizar, asegúrate de que el programador haya hecho "git push" con la última versión.
+- El script también actualiza la base de datos automáticamente (prisma db push).
+- No es necesario reiniciar la computadora, solo el servicio POS.
+
+SOPORTE
+-------
+Si tienes dudas, contacta al soporte técnico o al programador responsable.
+
+---
+
+Este instructivo puede imprimirse o enviarse por WhatsApp/Telegram como PDF.
