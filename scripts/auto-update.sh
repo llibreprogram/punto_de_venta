@@ -73,6 +73,9 @@ else
   fi
 fi
 
+log "[6/6] Configurando auto-inicio del POS"
+"$APP_DIR/scripts/configurar_autoinicio.sh" || log "Advertencia: Falló al configurar el auto-inicio"
+
 COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 log "==> Auto-update finished"
 "$APP_DIR/scripts/notify.sh" "POS auto-update: OK (commit $COMMIT)" "Actualización semanal exitosa en $(hostname) a commit $COMMIT. Revisa $LOG_FILE para detalles." || true
