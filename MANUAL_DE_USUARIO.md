@@ -25,7 +25,7 @@ En esta versión 2.0 se han incorporado mejoras significativas:
 #### **2. Acceso al Sistema**
 Para acceder al sistema, abre un navegador web (como Chrome o Firefox) en cualquier dispositivo conectado a la misma red WiFi que el servidor (tabletas, computadoras, etc.) y ve a la siguiente dirección:
 
-**URL de Acceso:** `http://192.168.1.35:3001`
+**URL de Acceso:** `http://192.168.1.59:3000`
 
 **Usuarios Iniciales:**
 *   **Administrador:**

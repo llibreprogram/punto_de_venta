@@ -58,37 +58,34 @@ export default function AdminMesasPage() {
         </div>
       )}
     >
-      <div className="glass-panel rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="text-left p-2">ID</th>
-              <th className="text-left p-2">Nombre</th>
-              <th className="text-left p-2">Activa</th>
-              <th className="text-left p-2">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? <tr><td className="p-3" colSpan={4}>Cargando…</td></tr> : (
-              mesas.length===0 ? <tr><td className="p-3" colSpan={4}>Sin mesas</td></tr> : (
-                mesas.map(m => (
-                  <tr key={m.id} className="border-t">
-                    <td className="p-2">{m.id}</td>
-                    <td className="p-2">
-                      <input className="input w-full" defaultValue={m.nombre} onBlur={e=> rename(m, e.currentTarget.value)} />
-                    </td>
-                    <td className="p-2">
-                      <input type="checkbox" checked={m.activa} onChange={()=> toggleActiva(m)} />
-                    </td>
-                    <td className="p-2 flex gap-2">
-                      {m.activa && <button className="btn text-red-600 border-red-300" onClick={()=>softDelete(m)}>Desactivar</button>}
-                    </td>
-                  </tr>
-                ))
-              )
-            )}
-          </tbody>
-        </table>
+      <div className="glass-panel rounded-xl p-4 flex flex-col gap-3">
+        <div className="hidden md:grid grid-cols-[60px_1fr_100px_150px] gap-4 font-semibold text-sm text-slate-500 border-b pb-2">
+          <div>ID</div>
+          <div>Nombre</div>
+          <div>Activa</div>
+          <div>Acciones</div>
+        </div>
+        <div className="grid gap-4 md:gap-0">
+          {loading ? (
+            <div className="p-3 text-center text-slate-500">Cargando…</div>
+          ) : mesas.length === 0 ? (
+            <div className="p-3 text-center text-slate-500">Sin mesas</div>
+          ) : mesas.map(m => (
+            <div key={m.id} className="flex flex-col md:grid md:grid-cols-[60px_1fr_100px_150px] gap-2 md:gap-4 items-start md:items-center py-3 md:py-2 border-b last:border-0 border-slate-100">
+              <div className="text-slate-500 font-mono text-sm">#{m.id}</div>
+              <div className="w-full">
+                <input className="input w-full" defaultValue={m.nombre} onBlur={e=> rename(m, e.currentTarget.value)} />
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer w-full md:w-auto">
+                <input type="checkbox" checked={m.activa} onChange={()=> toggleActiva(m)} className="w-4 h-4 rounded text-orange-600 focus:ring-orange-500" />
+                <span className="md:hidden text-sm">Activa</span>
+              </label>
+              <div className="w-full md:w-auto flex gap-2">
+                {m.activa && <button className="btn text-red-600 border-red-300 w-full md:w-auto" onClick={()=>softDelete(m)}>Desactivar</button>}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </AdminLayout>
   )

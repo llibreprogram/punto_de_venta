@@ -137,29 +137,37 @@ export default function AdminProductosPage() {
       <div className="grid gap-3">
         <div className="text-sm muted">Categorías: {categorias.map(c=> `${c.id}:${c.nombre}`).join(' • ')}</div>
         {productos.map(p => (
-          <div key={p.id} className="glass-panel rounded-xl p-3 flex items-center gap-3">
+          <div key={p.id} className="glass-panel rounded-xl p-3 flex flex-col xl:flex-row items-start xl:items-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={p.imagenUrl || '/placeholder.png'} alt={p.nombre} className="w-20 h-20 object-cover rounded bg-gray-100" />
-            <div className="flex-1 grid gap-1">
-              <div className="flex items-center gap-2">
-                <input className="input" defaultValue={p.nombre} onBlur={async(e)=>{
+            <img src={p.imagenUrl || '/placeholder.png'} alt={p.nombre} className="w-20 h-20 lg:w-16 lg:h-16 object-cover rounded bg-gray-100 flex-shrink-0" />
+            <div className="flex-1 w-full grid gap-2">
+              <div className="flex flex-col lg:flex-row flex-wrap items-start lg:items-center gap-2">
+                <input className="input w-full lg:w-auto flex-1 min-w-[150px]" defaultValue={p.nombre} onBlur={async(e)=>{
                   const nombre = e.currentTarget.value.trim(); if (!nombre || nombre===p.nombre) return
                   await fetch(`/api/producto/${p.id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ nombre }) })
                   await load()
-                }} />
-                <input className="input w-28 text-right" defaultValue={(p.precioCents/100).toFixed(2)} onBlur={async(e)=>{
-                  const precioCents = toCents(e.currentTarget.value); if (precioCents===p.precioCents) return
-                  await fetch(`/api/producto/${p.id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ precioCents }) })
-                  await load()
-                }} />
-                <input title="Costo" className="input w-28 text-right" defaultValue={((p.costoCents||0)/100).toFixed(2)} onBlur={async(e)=>{
-                  const costoCents = toCents(e.currentTarget.value); if (costoCents===(p.costoCents||0)) return
-                  await fetch(`/api/producto/${p.id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ costoCents }) })
-                  await load()
-                }} />
-                <span className="text-sm text-gray-600">{toCurrency(p.precioCents, ajustes?.locale || LOCALE, ajustes?.currency || CURRENCY)}</span>
-                <span className="text-xs text-gray-500">Margen: {toCurrency(p.precioCents - (p.costoCents||0), ajustes?.locale || LOCALE, ajustes?.currency || CURRENCY)}</span>
-                <select className="input" value={p.categoriaId} onChange={async(e)=>{
+                }} placeholder="Nombre del producto" />
+                
+                <div className="flex items-center gap-2 w-full lg:w-auto">
+                  <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider w-14 lg:w-auto">Precio:</span>
+                  <input className="input w-full lg:w-24 text-right" defaultValue={(p.precioCents/100).toFixed(2)} onBlur={async(e)=>{
+                    const precioCents = toCents(e.currentTarget.value); if (precioCents===p.precioCents) return
+                    await fetch(`/api/producto/${p.id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ precioCents }) })
+                    await load()
+                  }} placeholder="0.00" />
+                </div>
+
+                <div className="flex items-center gap-2 w-full lg:w-auto">
+                  <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider w-14 lg:w-auto">Costo:</span>
+                  <input className="input w-full lg:w-24 text-right" defaultValue={((p.costoCents||0)/100).toFixed(2)} onBlur={async(e)=>{
+                    const costoCents = toCents(e.currentTarget.value); if (costoCents===(p.costoCents||0)) return
+                    await fetch(`/api/producto/${p.id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ costoCents }) })
+                    await load()
+                  }} placeholder="0.00" />
+                </div>
+                <span className="text-sm text-gray-600 hidden lg:inline">{toCurrency(p.precioCents, ajustes?.locale || LOCALE, ajustes?.currency || CURRENCY)}</span>
+                <span className="text-xs text-gray-500 hidden xl:inline">Margen: {toCurrency(p.precioCents - (p.costoCents||0), ajustes?.locale || LOCALE, ajustes?.currency || CURRENCY)}</span>
+                <select className="input w-full lg:w-auto" value={p.categoriaId} onChange={async(e)=>{
                   const categoriaId = Number(e.currentTarget.value)
                   if (!categoriaId || categoriaId===p.categoriaId) return
                   await fetch(`/api/producto/${p.id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ categoriaId }) })
@@ -169,7 +177,7 @@ export default function AdminProductosPage() {
                 </select>
         {!mostrarPapelera ? (
                   <button
-                  className="ml-auto btn text-red-600 border-red-300"
+                  className="w-full lg:w-auto lg:ml-auto btn text-red-600 border-red-300"
                   onClick={async ()=>{
           const ok = await confirm({ message: `¿Borrar ${p.nombre}?` })
           if (!ok) return
@@ -178,24 +186,24 @@ export default function AdminProductosPage() {
                   }}
                 >Borrar</button>
                 ) : (
-                  <div className="ml-auto flex gap-2">
-                    <button className="btn" onClick={async ()=>{
+                  <div className="w-full lg:w-auto lg:ml-auto flex gap-2">
+                    <button className="btn w-full lg:w-auto" onClick={async ()=>{
                       await fetch(`/api/producto/${p.id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ activo: true }) })
                       await load()
                     }}>Restaurar</button>
                   </div>
                 )}
               </div>
-              <div className="text-xs text-gray-600 break-words">{p.imagenUrl}</div>
+              <div className="text-xs text-gray-600 break-words line-clamp-1">{p.imagenUrl}</div>
               <div className="text-xs text-gray-600">
                 Ingredientes: {(p.ingredientes||[]).join(', ') || '—'}
               </div>
               <div className="text-xs text-gray-600">
                 Extras: {(p.extras||[]).map((e)=> `${e.nombre} (+${toCurrency(e.precioCents, ajustes?.locale || LOCALE, ajustes?.currency || CURRENCY)})`).join(', ') || '—'}
               </div>
-              <div className="flex gap-2 items-center text-xs">
+              <div className="flex flex-col lg:flex-row gap-2 lg:items-center text-xs">
                 <input
-                  className="input flex-1"
+                  className="input flex-1 w-full lg:w-auto"
                   placeholder="Editar ingredientes (coma)"
                   defaultValue={(p.ingredientes||[]).join(', ')}
                   onBlur={async(e)=>{
@@ -204,7 +212,7 @@ export default function AdminProductosPage() {
                     await load()
                   }}
                 />
-                <button className="btn" onClick={async()=>{
+                <button className="btn w-full lg:w-auto" onClick={async()=>{
                   const current = (p.ingredientes||[]).join(', ')
                   const raw = prompt('Ingredientes (separados por coma)\nEj: Lechuga, Tomate, Queso', current)
                   if (raw === null) return
@@ -212,20 +220,22 @@ export default function AdminProductosPage() {
                   await fetch(`/api/producto/${p.id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ingredientes }) })
                   await load()
                 }}>Editar ingredientes…</button>
-                <button className="btn" onClick={()=>{
+                <button className="btn w-full lg:w-auto" onClick={()=>{
                   const rows = (p.extras||[]).map(e=> ({ nombre: e.nombre, precio: (e.precioCents/100).toFixed(2) }))
                   setEditExtras({ id: p.id, nombre: p.nombre, rows })
                 }}>Editar extras…</button>
               </div>
             </div>
-            <label className="text-sm btn cursor-pointer">
-              Subir…
-              <input type="file" accept="image/*" className="hidden" onChange={(e)=>{ const f=e.target.files?.[0]; if(f) subir(p.id,f) }} />
-            </label>
-            <button className="btn" onClick={async ()=>{
-              const url = prompt('Pega la URL de la imagen')
-              if (url) await setUrl(p.id, url)
-            }}>Usar URL</button>
+            <div className="flex flex-row xl:flex-col gap-2 w-full xl:w-auto pt-2 xl:pt-0">
+              <label className="text-sm btn cursor-pointer flex-1 xl:flex-none text-center">
+                Subir…
+                <input type="file" accept="image/*" className="hidden" onChange={(e)=>{ const f=e.target.files?.[0]; if(f) subir(p.id,f) }} />
+              </label>
+              <button className="btn flex-1 xl:flex-none" onClick={async ()=>{
+                const url = prompt('Pega la URL de la imagen')
+                if (url) await setUrl(p.id, url)
+              }}>Usar URL</button>
+            </div>
           </div>
         ))}
       </div>

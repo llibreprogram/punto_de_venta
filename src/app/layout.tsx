@@ -5,8 +5,11 @@
  * Protegido por Ley 65-00 (Rep. Dominicana).
  */
 import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from '@/components/ui/Providers'
+
+const inter = Inter({ subsets: ["latin"], display: "swap" });
 
 export const metadata: Metadata = {
   title: "Punto de Venta",
@@ -21,7 +24,7 @@ export default function RootLayout({
   return (
   <html lang="es" suppressHydrationWarning>
       <body
-        className="antialiased"
+        className={`${inter.className} antialiased`}
         data-theme="light"
       >
         <Providers>

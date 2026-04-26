@@ -9,7 +9,7 @@ import { useState, useMemo } from 'react'
 import { toCurrency, LOCALE, CURRENCY } from '@/lib/money'
 import { MetodoPago } from '@/store/posStore'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, CreditCard, Banknote, Landmark } from 'lucide-react'
+import { X, CreditCard, Banknote, Landmark, CheckCircle2 } from 'lucide-react'
 
 interface PaymentModalProps {
   totalCents: number
@@ -17,6 +17,12 @@ interface PaymentModalProps {
   onClose: () => void
   onConfirm: (metodo: MetodoPago, entregadoCents: number) => void
 }
+
+const METHODS: { value: MetodoPago; label: string; icon: React.ReactNode }[] = [
+  { value: 'EFECTIVO',      label: 'Efectivo',  icon: <Banknote className="w-6 h-6" /> },
+  { value: 'TARJETA',       label: 'Tarjeta',   icon: <CreditCard className="w-6 h-6" /> },
+  { value: 'TRANSFERENCIA', label: 'Transf.',    icon: <Landmark className="w-6 h-6" /> },
+]
 
 export function PaymentModal({ totalCents, ajustes, onClose, onConfirm }: PaymentModalProps) {
   const [metodo, setMetodo] = useState<MetodoPago>('EFECTIVO')
@@ -33,7 +39,7 @@ export function PaymentModal({ totalCents, ajustes, onClose, onConfirm }: Paymen
   const cambioCents = Math.max(0, entregadoCents - totalCents)
 
   // Billetes rápidos basados en moneda local típica (ej. RD$ o $)
-  const quickBills = [10000, 20000, 50000, 100000, 200000] // en centavos: 100, 200, 500, 1000, 2000
+  const quickBills = [10000, 20000, 50000, 100000, 200000]
     .filter(b => b > totalCents)
     .slice(0, 4)
 
@@ -46,71 +52,80 @@ export function PaymentModal({ totalCents, ajustes, onClose, onConfirm }: Paymen
       <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 grid place-items-center p-4">
         <motion.div 
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-          className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+          className="absolute inset-0 bg-slate-900/50 backdrop-blur-md"
           onClick={onClose}
         />
         
         <motion.div 
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          initial={{ opacity: 0, scale: 0.92, y: 24 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+          exit={{ opacity: 0, scale: 0.92, y: 24 }}
+          transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+          className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col border border-slate-200/50"
         >
-          <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-            <h3 className="text-xl font-bold text-slate-800">Finalizar Cobro</h3>
-            <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full text-slate-500 transition-colors">
+          {/* Header */}
+          <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+            <h3 className="text-lg font-bold text-slate-800">Finalizar Cobro</h3>
+            <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-600 transition-all">
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          <div className="p-6 grid gap-6">
-            <div className="flex items-center justify-between bg-amber-50 rounded-xl p-4 border border-amber-100">
-              <span className="text-amber-800 font-medium">Total a Pagar</span>
-              <span className="text-3xl font-black text-amber-600">{fmt(totalCents)}</span>
+          <div className="p-5 grid gap-5">
+            {/* Total display */}
+            <div className="flex items-center justify-between rounded-xl p-4 border border-orange-100"
+              style={{ background: 'var(--gradient-brand-soft)' }}
+            >
+              <span className="text-orange-800 font-semibold">Total a Pagar</span>
+              <span className="text-3xl font-black text-orange-600 tracking-tight">{fmt(totalCents)}</span>
             </div>
 
+            {/* Payment Methods */}
             <div>
-              <label className="text-sm font-bold text-slate-600 mb-2 block">Método de Pago</label>
+              <label className="text-sm font-bold text-slate-600 mb-2.5 block">Método de Pago</label>
               <div className="grid grid-cols-3 gap-3">
-                <button 
-                  onClick={() => setMetodo('EFECTIVO')}
-                  className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${metodo === 'EFECTIVO' ? 'border-amber-500 bg-amber-50 text-amber-700' : 'border-slate-200 hover:border-slate-300 text-slate-500'}`}
-                >
-                  <Banknote className="w-6 h-6 mb-1" />
-                  <span className="text-sm font-semibold">Efectivo</span>
-                </button>
-                <button 
-                  onClick={() => setMetodo('TARJETA')}
-                  className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${metodo === 'TARJETA' ? 'border-amber-500 bg-amber-50 text-amber-700' : 'border-slate-200 hover:border-slate-300 text-slate-500'}`}
-                >
-                  <CreditCard className="w-6 h-6 mb-1" />
-                  <span className="text-sm font-semibold">Tarjeta</span>
-                </button>
-                <button 
-                  onClick={() => setMetodo('TRANSFERENCIA')}
-                  className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${metodo === 'TRANSFERENCIA' ? 'border-amber-500 bg-amber-50 text-amber-700' : 'border-slate-200 hover:border-slate-300 text-slate-500'}`}
-                >
-                  <Landmark className="w-6 h-6 mb-1" />
-                  <span className="text-sm font-semibold">Transf.</span>
-                </button>
+                {METHODS.map(m => (
+                  <button
+                    key={m.value}
+                    onClick={() => setMetodo(m.value)}
+                    className={`relative flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all active:scale-95 ${
+                      metodo === m.value 
+                        ? 'border-orange-500 bg-orange-50 text-orange-700 shadow-md shadow-orange-500/10' 
+                        : 'border-slate-200 hover:border-slate-300 text-slate-500 hover:bg-slate-50'
+                    }`}
+                  >
+                    {metodo === m.value && (
+                      <motion.div 
+                        layoutId="payment-check"
+                        className="absolute top-1.5 right-1.5"
+                      >
+                        <CheckCircle2 className="w-4 h-4 text-orange-500" />
+                      </motion.div>
+                    )}
+                    <div className="mb-1.5">{m.icon}</div>
+                    <span className="text-sm font-bold">{m.label}</span>
+                  </button>
+                ))}
               </div>
             </div>
 
+            {/* Cash details */}
             {metodo === 'EFECTIVO' && (
-              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} className="overflow-hidden">
-                <label className="text-sm font-bold text-slate-600 mb-2 block">Monto Entregado</label>
+              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} className="overflow-hidden grid gap-3">
+                <label className="text-sm font-bold text-slate-600 block">Monto Entregado</label>
                 <input 
                   autoFocus
                   value={entregado} 
                   onChange={e => setEntregado(e.target.value)} 
                   placeholder="0.00" 
-                  className="w-full text-2xl font-bold p-3 border border-slate-300 rounded-xl focus:ring-4 focus:ring-amber-500/20 focus:border-amber-500 outline-none text-right shadow-inner"
+                  className="w-full text-2xl font-extrabold p-3.5 border border-slate-200 rounded-xl focus:ring-3 focus:ring-orange-500/20 focus:border-orange-500 outline-none text-right shadow-inner tracking-tight"
+                  style={{ fontFamily: "'Inter', system-ui, monospace" }}
                 />
                 
-                <div className="flex gap-2 mt-3">
+                <div className="flex gap-2">
                   <button 
                     onClick={() => setEntregado((totalCents / 100).toString())}
-                    className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-bold transition-colors border border-slate-200"
+                    className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-bold transition-all border border-slate-200 active:scale-95"
                   >
                     Exacto
                   </button>
@@ -118,16 +133,18 @@ export function PaymentModal({ totalCents, ajustes, onClose, onConfirm }: Paymen
                     <button 
                       key={b}
                       onClick={() => setEntregado((b / 100).toString())}
-                      className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-bold transition-colors border border-slate-200"
+                      className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-bold transition-all border border-slate-200 active:scale-95"
                     >
-                      ${b/100}
+                      RD${b/100}
                     </button>
                   ))}
                 </div>
 
-                <div className="mt-4 flex items-center justify-between p-3 bg-slate-800 text-white rounded-xl">
+                <div className="flex items-center justify-between p-4 rounded-xl text-white"
+                  style={{ background: 'var(--gradient-dark)' }}
+                >
                   <span className="font-medium text-slate-300">Cambio a devolver</span>
-                  <span className={`text-xl font-bold ${cambioCents > 0 ? 'text-emerald-400' : 'text-slate-400'}`}>
+                  <span className={`text-xl font-extrabold tracking-tight ${cambioCents > 0 ? 'text-emerald-400' : 'text-slate-500'}`}>
                     {fmt(cambioCents)}
                   </span>
                 </div>
@@ -135,14 +152,19 @@ export function PaymentModal({ totalCents, ajustes, onClose, onConfirm }: Paymen
             )}
           </div>
 
+          {/* Footer */}
           <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
-            <button onClick={onClose} className="flex-1 py-3 text-slate-600 font-bold hover:bg-slate-200 rounded-xl transition-colors">
+            <button onClick={onClose} className="flex-1 py-3 text-slate-600 font-bold hover:bg-slate-200 rounded-xl transition-all active:scale-[.98]">
               Cancelar
             </button>
             <button 
               onClick={handleConfirm} 
               disabled={metodo === 'EFECTIVO' && entregadoCents < totalCents}
-              className="flex-[2] py-3 bg-amber-600 hover:bg-amber-700 disabled:bg-slate-300 disabled:text-slate-500 text-white font-bold rounded-xl shadow-lg shadow-amber-600/30 transition-all active:scale-[0.98]"
+              className="flex-[2] py-3 text-white font-bold rounded-xl shadow-lg transition-all active:scale-[.98] disabled:opacity-40 disabled:shadow-none"
+              style={{ 
+                background: metodo === 'EFECTIVO' && entregadoCents < totalCents ? '#cbd5e1' : 'var(--gradient-brand)',
+                boxShadow: metodo === 'EFECTIVO' && entregadoCents < totalCents ? 'none' : '0 4px 14px rgba(234,88,12,.3)'
+              }}
             >
               Confirmar Pago
             </button>

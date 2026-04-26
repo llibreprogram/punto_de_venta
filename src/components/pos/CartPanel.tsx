@@ -8,7 +8,7 @@
 import { useState, useMemo } from 'react'
 import { usePosStore, Linea } from '@/store/posStore'
 import { toCurrency, LOCALE, CURRENCY } from '@/lib/money'
-import { Trash2, Plus, Minus, Settings2, ReceiptText, ChevronDown, ChevronUp } from 'lucide-react'
+import { Trash2, Plus, Minus, Settings2, ReceiptText, ShoppingBag } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface CartPanelProps {
@@ -88,49 +88,56 @@ export function CartPanel({ ajustes, ivaPct, propinaPct, onCobrar, onCobrarSel, 
   }
 
   const itemsArray = Object.values(carrito)
+  const totalItems = itemsArray.reduce((acc, l) => acc + l.cantidad, 0)
 
   return (
-    <div className="flex flex-col h-full bg-white/40 border-l border-slate-200">
-      <div className="p-3 border-b border-slate-200 flex items-center justify-between bg-white/80 backdrop-blur">
+    <div className="flex flex-col h-full bg-white/60 backdrop-blur-sm border-l border-slate-200/50">
+      {/* Header */}
+      <div className="p-3.5 border-b border-slate-200/60 flex items-center justify-between bg-white/90 backdrop-blur-md">
         <h2 className="font-bold flex items-center gap-2 text-slate-800">
-          <ReceiptText className="w-5 h-5" /> Orden Actual
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white"
+            style={{ background: 'var(--gradient-brand)' }}
+          >
+            <ReceiptText className="w-4 h-4" />
+          </div>
+          Orden Actual
         </h2>
-        <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-1 rounded-md">
-          {itemsArray.reduce((acc, l) => acc + l.cantidad, 0)} ítems
+        <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">
+          {totalItems} {totalItems === 1 ? 'ítem' : 'ítems'}
         </span>
       </div>
 
+      {/* Items list */}
       <div className="flex-1 overflow-y-auto p-2 no-scrollbar">
         {itemsArray.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-2">
-            <ReceiptText className="w-12 h-12 opacity-20" />
-            <p className="text-sm">Agrega productos para comenzar</p>
+          <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-3">
+            <ShoppingBag className="w-16 h-16 opacity-30" strokeWidth={1} />
+            <p className="text-sm font-medium text-slate-400">Agrega productos para comenzar</p>
           </div>
         ) : (
           <div className="grid gap-2">
             <AnimatePresence>
               {itemsArray.map(l => (
                 <motion.div 
-                  layout
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20, scale: 0.9 }}
                   key={l.producto.id} 
-                  className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm"
+                  className="bg-white border border-slate-200/70 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow"
                 >
                   <div className="flex justify-between items-start gap-2">
                     <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-slate-800 leading-tight">{l.producto.nombre}</div>
-                      <div className="text-amber-600 font-bold text-sm">
+                      <div className="font-semibold text-slate-800 leading-tight text-[13px]">{l.producto.nombre}</div>
+                      <div className="text-orange-600 font-bold text-sm mt-0.5">
                         {fmtCurrency(l.producto.precioCents + (l.extras||[]).reduce((s, name)=> s + (((l.producto.extras||[]).find(e=>e.nombre===name)?.precioCents) ?? 0), 0))}
                       </div>
                       
                       {/* Opciones activas (visual) */}
                       {(l.removidos?.length || l.extras?.length || l.nota) && (
-                        <div className="mt-1 flex flex-wrap gap-1">
-                          {l.removidos?.map(r => <span key={r} className="text-[10px] bg-red-50 text-red-600 px-1.5 py-0.5 rounded border border-red-100 line-through">Sin {r}</span>)}
-                          {l.extras?.map(e => <span key={e} className="text-[10px] bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded border border-emerald-100">+{e}</span>)}
-                          {l.nota && <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100 italic">📝 {l.nota}</span>}
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                          {l.removidos?.map(r => <span key={r} className="text-[10px] bg-red-50 text-red-600 px-1.5 py-0.5 rounded-md border border-red-100 line-through font-medium">Sin {r}</span>)}
+                          {l.extras?.map(e => <span key={e} className="text-[10px] bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded-md border border-emerald-100 font-medium">+{e}</span>)}
+                          {l.nota && <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-md border border-blue-100 italic font-medium">📝 {l.nota}</span>}
                         </div>
                       )}
                       
@@ -143,15 +150,15 @@ export function CartPanel({ ajustes, ivaPct, propinaPct, onCobrar, onCobrarSel, 
                     </div>
 
                     <div className="flex flex-col items-end gap-2">
-                      <div className="font-bold text-slate-900 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
+                      <div className="font-bold text-slate-900 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100 text-sm">
                         {fmtCurrency((l.producto.precioCents + (l.extras||[]).reduce((s, name)=> s + (((l.producto.extras||[]).find(e=>e.nombre===name)?.precioCents) ?? 0), 0)) * l.cantidad)}
                       </div>
-                      <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-0.5 border border-slate-200">
-                        <button className="w-6 h-6 flex items-center justify-center bg-white rounded-md shadow-sm hover:bg-red-50 hover:text-red-600 text-slate-600 transition-colors" onClick={() => quitarProducto(l.producto.id)}>
+                      <div className="flex items-center gap-0.5 bg-slate-100 rounded-lg p-0.5 border border-slate-200">
+                        <button className="w-7 h-7 flex items-center justify-center bg-white rounded-md shadow-sm hover:bg-red-50 hover:text-red-600 text-slate-600 transition-all active:scale-90" onClick={() => quitarProducto(l.producto.id)}>
                           {l.cantidad === 1 ? <Trash2 className="w-3.5 h-3.5" /> : <Minus className="w-3.5 h-3.5" />}
                         </button>
-                        <span className="w-6 text-center font-semibold text-sm">{l.cantidad}</span>
-                        <button className="w-6 h-6 flex items-center justify-center bg-white rounded-md shadow-sm hover:bg-emerald-50 hover:text-emerald-600 text-slate-600 transition-colors" onClick={() => agregarProducto(l.producto)}>
+                        <span className="w-7 text-center font-bold text-sm">{l.cantidad}</span>
+                        <button className="w-7 h-7 flex items-center justify-center bg-white rounded-md shadow-sm hover:bg-emerald-50 hover:text-emerald-600 text-slate-600 transition-all active:scale-90" onClick={() => agregarProducto(l.producto)}>
                           <Plus className="w-3.5 h-3.5" />
                         </button>
                       </div>
@@ -170,12 +177,12 @@ export function CartPanel({ ajustes, ivaPct, propinaPct, onCobrar, onCobrarSel, 
                         <div className="pt-3 mt-3 border-t border-slate-100 space-y-3">
                           {!!l.producto.ingredientes?.length && (
                             <div>
-                              <div className="text-[11px] font-bold text-slate-500 uppercase mb-1">Ingredientes (Desmarca para quitar)</div>
+                              <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Ingredientes (Desmarca para quitar)</div>
                               <div className="flex flex-wrap gap-2">
                                 {l.producto.ingredientes.map(ing => {
                                   const quitado = (l.removidos || []).includes(ing)
                                   return (
-                                    <label key={ing} className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs border cursor-pointer transition-all ${quitado ? 'bg-slate-50 border-slate-200 text-slate-400' : 'bg-white border-amber-200 text-slate-800 shadow-sm'}`}>
+                                    <label key={ing} className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs border cursor-pointer transition-all ${quitado ? 'bg-slate-50 border-slate-200 text-slate-400' : 'bg-white border-orange-200 text-slate-800 shadow-sm'}`}>
                                       <input type="checkbox" className="hidden" checked={!quitado} onChange={(e) => {
                                         const on = e.target.checked
                                         const set = new Set(l.removidos || [])
@@ -192,12 +199,12 @@ export function CartPanel({ ajustes, ivaPct, propinaPct, onCobrar, onCobrarSel, 
 
                           {!!l.producto.extras?.length && (
                             <div>
-                              <div className="text-[11px] font-bold text-slate-500 uppercase mb-1">Extras Añadidos</div>
+                              <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Extras Añadidos</div>
                               <div className="flex flex-wrap gap-2">
                                 {l.producto.extras.map(ex => {
                                   const tiene = (l.extras || []).includes(ex.nombre)
                                   return (
-                                    <label key={ex.nombre} className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs border cursor-pointer transition-all ${tiene ? 'bg-amber-50 border-amber-300 text-amber-800 shadow-sm' : 'bg-white border-slate-200 text-slate-500'}`}>
+                                    <label key={ex.nombre} className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs border cursor-pointer transition-all ${tiene ? 'bg-orange-50 border-orange-300 text-orange-800 shadow-sm' : 'bg-white border-slate-200 text-slate-500'}`}>
                                       <input type="checkbox" className="hidden" checked={tiene} onChange={(e) => {
                                         const on = e.target.checked
                                         const set = new Set(l.extras || [])
@@ -213,10 +220,10 @@ export function CartPanel({ ajustes, ivaPct, propinaPct, onCobrar, onCobrarSel, 
                           )}
 
                           <div>
-                            <div className="text-[11px] font-bold text-slate-500 uppercase mb-1">Nota Especial</div>
+                            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Nota Especial</div>
                             <input 
                               type="text" 
-                              className="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                              className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all"
                               placeholder="Ej. Término medio, para llevar..."
                               value={l.nota || ''}
                               onChange={(e) => actualizarLinea(l.producto.id, { nota: e.target.value })}
@@ -232,7 +239,7 @@ export function CartPanel({ ajustes, ivaPct, propinaPct, onCobrar, onCobrarSel, 
                                   else delete next[l.producto.id]
                                   return next
                                 })
-                              }} className="rounded text-amber-600 focus:ring-amber-500" />
+                              }} className="rounded text-orange-600 focus:ring-orange-500" />
                               Seleccionar para dividir cuenta
                             </label>
                             {sel[l.producto.id] !== undefined && (
@@ -241,7 +248,7 @@ export function CartPanel({ ajustes, ivaPct, propinaPct, onCobrar, onCobrarSel, 
                                 min={1} max={l.cantidad}
                                 value={Math.min(sel[l.producto.id] || 1, l.cantidad)}
                                 onChange={e => setSel(prev => ({ ...prev, [l.producto.id]: Math.max(1, Math.min(l.cantidad, Number(e.target.value)||1)) }))}
-                                className="w-12 text-center text-xs p-1 border border-slate-300 rounded ml-auto"
+                                className="w-12 text-center text-xs p-1 border border-slate-300 rounded-lg ml-auto"
                               />
                             )}
                           </div>
@@ -256,29 +263,29 @@ export function CartPanel({ ajustes, ivaPct, propinaPct, onCobrar, onCobrarSel, 
         )}
       </div>
 
-      {/* Panel Inferior de Totales */}
-      <div className="bg-white border-t border-slate-200 p-3 shadow-[0_-4px_10px_rgba(0,0,0,0.03)] z-10 flex-shrink-0">
+      {/* Totals Panel */}
+      <div className="border-t border-slate-200/60 p-3.5 shadow-[0_-4px_12px_rgba(0,0,0,0.03)] z-10 flex-shrink-0" style={{ background: 'linear-gradient(to top, rgba(255,255,255,1), rgba(255,255,255,.95))' }}>
         <div className="space-y-1.5 text-sm mb-3">
           <div className="flex justify-between text-slate-500 font-medium">
             <span>Subtotal</span>
             <span>{fmtCurrency(storeTotales.subtotal)}</span>
           </div>
           
-          {/* Fila Descuento Interactivo */}
-          <div className="flex justify-between items-center text-slate-500 font-medium group">
+          {/* Descuento interactivo */}
+          <div className="flex justify-between items-center text-slate-500 font-medium">
             <span>Descuento</span>
             <div className="flex items-center gap-1">
-              <select className="text-xs border-none bg-transparent focus:ring-0 cursor-pointer p-0 pr-4" value={descTipo} onChange={e=>setDescTipo(e.target.value as 'monto'|'pct')}>
+              <select className="text-xs border-none bg-transparent focus:ring-0 cursor-pointer p-0 pr-4 font-semibold" value={descTipo} onChange={e=>setDescTipo(e.target.value as 'monto'|'pct')}>
                 <option value="monto">$</option>
                 <option value="pct">%</option>
               </select>
               <input 
-                className="w-16 text-right text-xs bg-slate-50 border border-slate-200 rounded px-1 py-0.5 focus:ring-1 focus:ring-amber-500 outline-none" 
+                className="w-16 text-right text-xs bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 focus:ring-1 focus:ring-orange-500 outline-none transition-all" 
                 placeholder="0" 
                 value={descValor} 
                 onChange={e=>setDescValor(e.target.value)} 
               />
-              <span className="w-16 text-right ml-2">{descuentoCents ? `-${fmtCurrency(descuentoCents)}`: '$0.00'}</span>
+              <span className="w-16 text-right ml-2 font-semibold">{descuentoCents ? `-${fmtCurrency(descuentoCents)}`: '$0.00'}</span>
             </div>
           </div>
 
@@ -294,9 +301,9 @@ export function CartPanel({ ajustes, ivaPct, propinaPct, onCobrar, onCobrarSel, 
               <span>{fmtCurrency(storeTotales.propina)}</span>
             </div>
           )}
-          <div className="flex justify-between font-bold text-lg text-slate-900 pt-1 border-t border-slate-100">
+          <div className="flex justify-between font-extrabold text-lg text-slate-900 pt-2 border-t border-slate-200/60">
             <span>Total</span>
-            <span className="text-amber-600">{fmtCurrency(storeTotales.total)}</span>
+            <span className="text-orange-600">{fmtCurrency(storeTotales.total)}</span>
           </div>
         </div>
 
@@ -304,7 +311,7 @@ export function CartPanel({ ajustes, ivaPct, propinaPct, onCobrar, onCobrarSel, 
           <button 
             onClick={handleVaciar} 
             disabled={itemsArray.length === 0 && !editingPedidoId} 
-            className="col-span-1 py-2.5 rounded-lg bg-red-50 text-red-600 font-semibold hover:bg-red-100 disabled:opacity-50 transition-colors"
+            className="col-span-1 py-2.5 rounded-xl bg-red-50 text-red-600 font-semibold hover:bg-red-100 disabled:opacity-40 transition-all text-sm border border-red-100"
           >
             {editingPedidoId ? 'Eliminar' : 'Vaciar'}
           </button>
@@ -312,26 +319,27 @@ export function CartPanel({ ajustes, ivaPct, propinaPct, onCobrar, onCobrarSel, 
             onClick={() => guardarAbierta(descuentoCents)} 
             disabled={itemsArray.length === 0 || (tipo === 'Mesa' && !mesaId)} 
             title={tipo === 'Mesa' && !mesaId ? 'Selecciona una mesa' : ''} 
-            className="col-span-1 py-2.5 rounded-lg bg-slate-100 text-slate-700 font-semibold hover:bg-slate-200 disabled:opacity-50 transition-colors"
+            className="col-span-1 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-semibold hover:bg-slate-200 disabled:opacity-40 transition-all text-sm border border-slate-200"
           >
             Guardar
           </button>
           <button 
             onClick={() => onCobrar(descuentoCents)} 
             disabled={itemsArray.length === 0} 
-            className="col-span-3 lg:col-span-1 py-2.5 rounded-lg bg-amber-600 text-white font-bold hover:bg-amber-700 disabled:opacity-50 shadow-md transition-transform active:scale-95"
+            className="col-span-3 lg:col-span-1 py-2.5 rounded-xl text-white font-bold disabled:opacity-40 shadow-lg transition-all active:scale-[.97] text-sm"
+            style={{ background: 'var(--gradient-brand)', boxShadow: '0 4px 12px rgba(234,88,12,.25)' }}
           >
             Cobrar
           </button>
         </div>
         
-        {/* Botón Flotante para Dividir Cuenta */}
+        {/* Dividir Cuenta */}
         <AnimatePresence>
           {seleccionadas.length > 0 && (
             <motion.button 
               initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
-              onClick={() => onCobrarSel(sel, 0)} // simplificado: pasar descuentoSel si se necesita
-              className="mt-2 w-full py-2 bg-slate-800 text-white font-semibold rounded-lg shadow-md hover:bg-slate-900 transition-colors"
+              onClick={() => onCobrarSel(sel, 0)}
+              className="mt-2 w-full py-2.5 bg-slate-900 text-white font-semibold rounded-xl shadow-lg hover:bg-slate-800 transition-all active:scale-[.98] text-sm"
             >
               Cobrar {seleccionadas.length} seleccionados ({fmtCurrency(subtotalSel)})
             </motion.button>

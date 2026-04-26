@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Comparativo POS LLibre vs Loyverse</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 900px; margin: 0 auto; padding: 40px; }
+  h1, h2, h3 { color: #111; border-bottom: 1px solid #eaecef; padding-bottom: 0.3em; margin-top: 1.5em; }
+  table { border-collapse: collapse; width: 100%; margin: 1em 0; font-size: 0.95em; }
+  th, td { border: 1px solid #dfe2e5; padding: 10px 14px; text-align: left; }
+  th { background-color: #f6f8fa; font-weight: 600; }
+  tr:nth-child(even) { background-color: #fbfbfc; }
+  blockquote { border-left: 4px solid #0366d6; background-color: #f1f8ff; padding: 1em; color: #24292e; margin-left: 0; border-radius: 4px; }
+  hr { height: 0.25em; padding: 0; margin: 24px 0; background-color: #e1e4e8; border: 0; }
+  @media print { 
+    body { padding: 0; max-width: 100%; } 
+    table { page-break-inside: auto; }
+    tr { page-break-inside: avoid; page-break-after: auto; }
+    h2, h3 { page-break-after: avoid; }
+  }
+</style>
+</head>
+<body>
+<h1>Comparativo: Punto de Venta LLibre vs Loyverse POS</h1>
+<h2>Resumen General</h2>
+<table>
+<thead>
+<tr>
+<th>Aspecto</th>
+<th><strong>POS LLibre</strong></th>
+<th><strong>Loyverse</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Tipo</strong></td>
+<td>Software propio, auto-hospedado</td>
+<td>SaaS en la nube (app móvil + web)</td>
+</tr>
+<tr>
+<td><strong>Plataforma</strong></td>
+<td>Web (navegador) — cualquier dispositivo</td>
+<td>Apps nativas (iOS/Android) + Back Office web</td>
+</tr>
+<tr>
+<td><strong>Costo base</strong></td>
+<td><strong>$0 — Sin pagos recurrentes</strong></td>
+<td>Gratis (básico), add-ons desde $5/mes</td>
+</tr>
+<tr>
+<td><strong>Datos</strong></td>
+<td>Los datos están <strong>en tu servidor</strong></td>
+<td>Los datos están en servidores de Loyverse</td>
+</tr>
+<tr>
+<td><strong>Internet requerido</strong></td>
+<td>❌ No (funciona 100% en red local)</td>
+<td>✅ Sí (con modo offline limitado)</td>
+</tr>
+<tr>
+<td><strong>Código fuente</strong></td>
+<td>Tuyo, puedes modificar todo</td>
+<td>Cerrado, sin acceso al código</td>
+</tr>
+<tr>
+<td><strong>Idiomas</strong></td>
+<td>Español (Rep. Dominicana)</td>
+<td>15+ idiomas</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>Comparativa de Funcionalidades</h2>
+<h3>📦 Punto de Venta (Operación Diaria)</h3>
+<table>
+<thead>
+<tr>
+<th>Funcionalidad</th>
+<th align="center"><strong>POS LLibre</strong></th>
+<th align="center"><strong>Loyverse</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Interfaz táctil optimizada</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+</tr>
+<tr>
+<td>Búsqueda rápida de productos (Ctrl+K)</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+</tr>
+<tr>
+<td>Categorías y cuadrícula visual</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+</tr>
+<tr>
+<td>Personalización de ítems (extras, sin ingredientes, notas)</td>
+<td align="center">✅</td>
+<td align="center">✅ (como &quot;modificadores&quot;)</td>
+</tr>
+<tr>
+<td>Descuentos (% y monto fijo)</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+</tr>
+<tr>
+<td>Múltiples métodos de pago (Efectivo/Tarjeta/Transferencia)</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+</tr>
+<tr>
+<td>Cálculo automático de cambio con botones de billetes RD$</td>
+<td align="center">✅</td>
+<td align="center">❌</td>
+</tr>
+<tr>
+<td>Tickets impresos (ESC/POS por red y serial)</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+</tr>
+<tr>
+<td>Tickets digitales con enlace firmado (QR/URL)</td>
+<td align="center">✅</td>
+<td align="center">✅ (electrónicos)</td>
+</tr>
+<tr>
+<td>Pantalla completa (kiosko)</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+</tr>
+<tr>
+<td>Reembolsos</td>
+<td align="center">❌</td>
+<td align="center">✅</td>
+</tr>
+<tr>
+<td>Escaneo de código de barras</td>
+<td align="center">❌</td>
+<td align="center">✅</td>
+</tr>
+<tr>
+<td>Modo offline completo</td>
+<td align="center">✅ (es local)</td>
+<td align="center">Parcial</td>
+</tr>
+</tbody></table>
+<hr>
+<h3>🍽️ Funciones de Restaurante</h3>
+<table>
+<thead>
+<tr>
+<th>Funcionalidad</th>
+<th align="center"><strong>POS LLibre</strong></th>
+<th align="center"><strong>Loyverse</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Gestión de mesas</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+</tr>
+<tr>
+<td>Cuentas separadas por mesa (sub-cuentas)</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+</tr>
+<tr>
+<td><strong>Gestor de Cuentas con Drag &amp; Drop</strong></td>
+<td align="center">✅ 🏆</td>
+<td align="center">❌</td>
+</tr>
+<tr>
+<td>Tipos de orden (Mostrador / Mesa / Delivery)</td>
+<td align="center">✅</td>
+<td align="center">✅ (opciones de comedor)</td>
+</tr>
+<tr>
+<td>Pantalla de Cocina (KDS)</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+</tr>
+<tr>
+<td>Estados de preparación (Pendiente → En Proceso → Listo)</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+</tr>
+<tr>
+<td>Protección de ítems en cocina (no eliminar si está en proceso)</td>
+<td align="center">✅</td>
+<td align="center">❌</td>
+</tr>
+<tr>
+<td>Impresión directa a cocina</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+</tr>
+<tr>
+<td>Órdenes abiertas con auto-refresco</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+</tr>
+<tr>
+<td>Fusión de órdenes duplicadas</td>
+<td align="center">✅</td>
+<td align="center">❌</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>[!TIP]
+El <strong>Gestor de Cuentas con Drag &amp; Drop</strong> es una funcionalidad exclusiva y diferenciadora de tu sistema. Permite mover platillos visualmente entre cuentas arrastrándolos — algo que Loyverse no ofrece.</p>
+</blockquote>
+<hr>
+<h3>📊 Dashboard y Reportes</h3>
+<table>
+<thead>
+<tr>
+<th>Funcionalidad</th>
+<th align="center"><strong>POS LLibre</strong></th>
+<th align="center"><strong>Loyverse</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Dashboard con KPIs en tiempo real</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+</tr>
+<tr>
+<td>Ventas del día, ticket promedio, producto estrella</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+</tr>
+<tr>
+<td>Gráfica de evolución de ventas</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+</tr>
+<tr>
+<td>Ranking de productos más vendidos</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+</tr>
+<tr>
+<td>Exportar a CSV</td>
+<td align="center">✅</td>
+<td align="center">✅ (add-on $5/mes)</td>
+</tr>
+<tr>
+<td>Historial de ventas ilimitado</td>
+<td align="center">✅ (gratis)</td>
+<td align="center">$5/mes por tienda</td>
+</tr>
+<tr>
+<td>Reporte de impuestos</td>
+<td align="center">✅ (ITBIS configurable)</td>
+<td align="center">✅</td>
+</tr>
+<tr>
+<td>Reportes por empleado</td>
+<td align="center">❌</td>
+<td align="center">✅ (add-on $5/mes)</td>
+</tr>
+<tr>
+<td>Reportes por turno/shift</td>
+<td align="center">❌</td>
+<td align="center">✅</td>
+</tr>
+</tbody></table>
+<hr>
+<h3>👥 Gestión de Empleados</h3>
+<table>
+<thead>
+<tr>
+<th>Funcionalidad</th>
+<th align="center"><strong>POS LLibre</strong></th>
+<th align="center"><strong>Loyverse</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Roles (Admin / Cajero / Mesero)</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+</tr>
+<tr>
+<td>Crear y gestionar usuarios</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+</tr>
+<tr>
+<td>Control de acceso por rol</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+</tr>
+<tr>
+<td>Ventas por empleado</td>
+<td align="center">❌</td>
+<td align="center">✅ ($5/mes por empleado)</td>
+</tr>
+<tr>
+<td>Reloj de entrada/salida (Time Clock)</td>
+<td align="center">❌</td>
+<td align="center">✅ ($5/mes por empleado)</td>
+</tr>
+</tbody></table>
+<hr>
+<h3>📦 Inventario</h3>
+<table>
+<thead>
+<tr>
+<th>Funcionalidad</th>
+<th align="center"><strong>POS LLibre</strong></th>
+<th align="center"><strong>Loyverse</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Catálogo de productos con imágenes</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+</tr>
+<tr>
+<td>Categorías</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+</tr>
+<tr>
+<td>Ingredientes y extras con precio</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+</tr>
+<tr>
+<td>Costo por producto (margen)</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+</tr>
+<tr>
+<td>Tracking de stock (cantidades)</td>
+<td align="center">❌</td>
+<td align="center">✅ ($25/mes)</td>
+</tr>
+<tr>
+<td>Alertas de stock bajo</td>
+<td align="center">❌</td>
+<td align="center">✅ ($25/mes)</td>
+</tr>
+<tr>
+<td>Órdenes de compra</td>
+<td align="center">❌</td>
+<td align="center">✅ ($25/mes)</td>
+</tr>
+<tr>
+<td>Transferencias entre tiendas</td>
+<td align="center">❌</td>
+<td align="center">✅ ($25/mes)</td>
+</tr>
+<tr>
+<td>Importación masiva (CSV)</td>
+<td align="center">❌</td>
+<td align="center">✅</td>
+</tr>
+</tbody></table>
+<hr>
+<h3>🏗️ Infraestructura y Operaciones</h3>
+<table>
+<thead>
+<tr>
+<th>Aspecto</th>
+<th align="center"><strong>POS LLibre</strong></th>
+<th align="center"><strong>Loyverse</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Auto-actualización semanal</td>
+<td align="center">✅</td>
+<td align="center">✅ (automático)</td>
+</tr>
+<tr>
+<td>Backups automáticos diarios</td>
+<td align="center">✅</td>
+<td align="center">✅ (en la nube)</td>
+</tr>
+<tr>
+<td>Backup a USB</td>
+<td align="center">✅</td>
+<td align="center">❌</td>
+</tr>
+<tr>
+<td>Notificaciones por email (fallas/éxito)</td>
+<td align="center">✅</td>
+<td align="center">❌</td>
+</tr>
+<tr>
+<td>Panel de Salud del sistema (DB, backups, versión)</td>
+<td align="center">✅</td>
+<td align="center">❌ (usan statuspage)</td>
+</tr>
+<tr>
+<td>Auto-inicio al encender servidor</td>
+<td align="center">✅ (recién implementado 🎉)</td>
+<td align="center">N/A (es nube)</td>
+</tr>
+<tr>
+<td>Acceso remoto (Tailscale VPN)</td>
+<td align="center">✅</td>
+<td align="center">✅ (por internet)</td>
+</tr>
+<tr>
+<td>Soporte Docker</td>
+<td align="center">✅</td>
+<td align="center">N/A</td>
+</tr>
+<tr>
+<td>API pública documentada</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+</tr>
+<tr>
+<td>Multi-tienda</td>
+<td align="center">❌</td>
+<td align="center">✅</td>
+</tr>
+</tbody></table>
+<hr>
+<h3>💳 Integraciones de Pago</h3>
+<table>
+<thead>
+<tr>
+<th>Procesador</th>
+<th align="center"><strong>POS LLibre</strong></th>
+<th align="center"><strong>Loyverse</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Efectivo</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+</tr>
+<tr>
+<td>Tarjeta (registro manual)</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+</tr>
+<tr>
+<td>Transferencia bancaria</td>
+<td align="center">✅</td>
+<td align="center">❌</td>
+</tr>
+<tr>
+<td>SumUp (integración directa)</td>
+<td align="center">❌</td>
+<td align="center">✅</td>
+</tr>
+<tr>
+<td>PayPal Zettle</td>
+<td align="center">❌</td>
+<td align="center">✅</td>
+</tr>
+<tr>
+<td>Shift4 / Tyro / Yoco</td>
+<td align="center">❌</td>
+<td align="center">✅</td>
+</tr>
+</tbody></table>
+<hr>
+<h3>🎯 Programas de Fidelidad (CRM)</h3>
+<table>
+<thead>
+<tr>
+<th>Funcionalidad</th>
+<th align="center"><strong>POS LLibre</strong></th>
+<th align="center"><strong>Loyverse</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Base de datos de clientes</td>
+<td align="center">❌</td>
+<td align="center">✅</td>
+</tr>
+<tr>
+<td>Programa de puntos</td>
+<td align="center">❌</td>
+<td align="center">✅</td>
+</tr>
+<tr>
+<td>Historial de compras por cliente</td>
+<td align="center">❌</td>
+<td align="center">✅</td>
+</tr>
+<tr>
+<td>Tarjetas de lealtad</td>
+<td align="center">❌</td>
+<td align="center">✅</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>💰 Comparación de Costos (1 año, 1 tienda, 3 empleados)</h2>
+<table>
+<thead>
+<tr>
+<th>Concepto</th>
+<th align="center"><strong>POS LLibre</strong></th>
+<th align="center"><strong>Loyverse</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>POS base</td>
+<td align="center"><strong>$0</strong></td>
+<td align="center">$0</td>
+</tr>
+<tr>
+<td>Historial ilimitado</td>
+<td align="center"><strong>$0</strong></td>
+<td align="center">$60/año</td>
+</tr>
+<tr>
+<td>Gestión empleados (3)</td>
+<td align="center"><strong>$0</strong></td>
+<td align="center">$180/año</td>
+</tr>
+<tr>
+<td>Inventario avanzado</td>
+<td align="center">N/A</td>
+<td align="center">$300/año</td>
+</tr>
+<tr>
+<td><strong>Total anual</strong></td>
+<td align="center"><strong>$0</strong></td>
+<td align="center"><strong>$540/año</strong></td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>[!IMPORTANT]
+Tu sistema no tiene costo recurrente. Loyverse cobra por add-ons esenciales como historial de ventas, gestión de empleados e inventario avanzado.</p>
+</blockquote>
+<hr>
+<h2>Análisis FODA de tu POS vs Loyverse</h2>
+<h3>🎨 Diseño Visual y Experiencia de Usuario (UI/UX)</h3>
+<ul>
+<li><strong>POS LLibre:</strong> Diseño 10/10 de grado premium. Utiliza <em>Glassmorphism</em> (paneles translúcidos con desenfoque), animaciones fluidas (Framer Motion), bordes redondeados y tipografía moderna. La interfaz es 100% responsiva, adaptándose perfectamente a celulares, tablets y escritorios con tarjetas apilables y sin desbordamientos. Transmite la sensación de ser un software de nueva generación (High-End).</li>
+<li><strong>Loyverse:</strong> Diseño utilitario y funcional, pero visualmente tradicional y corporativo. Cumple su propósito pero no destaca por una estética lujosa. Sus aplicaciones móviles son sólidas pero carecen de los detalles &quot;premium&quot; y las micro-animaciones modernas.</li>
+</ul>
+<h3>✅ Fortalezas de tu POS</h3>
+<ul>
+<li><strong>Estética Superior</strong> — Interfaz de usuario mucho más moderna y atractiva que la competencia.</li>
+<li><strong>Cero costo recurrente</strong> — no pagas mensualidades</li>
+<li><strong>Datos 100% tuyos</strong> — todo está en tu servidor, sin depender de terceros</li>
+<li><strong>Funciona sin internet</strong> — ideal para zonas con conexión inestable en RD</li>
+<li><strong>Gestor de Cuentas Drag &amp; Drop</strong> — funcionalidad premium que Loyverse no tiene</li>
+<li><strong>Personalización total</strong> — puedes modificar cualquier cosa (código fuente tuyo)</li>
+<li><strong>Botones de billetes RD$</strong> — localizado para República Dominicana</li>
+<li><strong>Infraestructura robusta</strong> — backups, auto-updates, alertas, panel de salud</li>
+</ul>
+<h3>⚠️ Áreas donde Loyverse te supera (oportunidades de mejora)</h3>
+<ul>
+<li><strong>Inventario avanzado</strong> — stock, alertas, órdenes de compra</li>
+<li><strong>CRM / Programa de fidelidad</strong> — base de clientes y puntos</li>
+<li><strong>Multi-tienda</strong> — gestión de varias ubicaciones</li>
+<li><strong>Reportes por empleado</strong> — ventas individuales y turnos</li>
+<li><strong>Integraciones de pago directas</strong> — SumUp, Zettle, etc.</li>
+<li><strong>App nativa móvil</strong> — Loyverse tiene app dedicada; tu POS es web responsive</li>
+<li><strong>Soporte 24/7</strong> — chat en vivo profesional</li>
+<li><strong>Reembolsos</strong> — flujo dedicado para devoluciones</li>
+</ul>
+<h3>🚀 Funcionalidades que podrías implementar en el futuro</h3>
+<ol>
+<li><strong>Control de inventario</strong> (stock por producto, alertas)</li>
+<li><strong>Base de clientes</strong> (nombre, teléfono, historial)</li>
+<li><strong>Reembolsos / devoluciones</strong></li>
+<li><strong>Ventas por empleado</strong> (asociar vendedor a cada pedido)</li>
+<li><strong>Escaneo de código de barras</strong> (para retail)</li>
+</ol>
+<hr>
+<h2>Conclusión</h2>
+<p>Tu sistema <strong>POS LLibre</strong> ya compite directamente con Loyverse en las funcionalidades core de restaurante, y en algunos aspectos <strong>lo supera</strong> (Drag &amp; Drop de cuentas, cero dependencia de internet, sin costos recurrentes, control total de datos). </p>
+<p>Loyverse tiene ventaja en ecosistema (apps móviles, integraciones de pago, CRM), pero esas ventajas vienen con un costo mensual y la dependencia de sus servidores.</p>
+<p>Para un restaurante en República Dominicana, tu POS es una solución <strong>más económica, más rápida, y más confiable</strong> que Loyverse, especialmente considerando la realidad de la conectividad a internet en el país.</p>
+
+</body>
+</html>

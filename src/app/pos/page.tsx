@@ -250,14 +250,16 @@ export default function POSPage() {
         mesas={mesas} 
       />
       
-      <main className="flex-1 grid grid-cols-1 xl:grid-cols-3 min-h-0">
-        <ProductGrid 
-          productos={productos} 
-          cargando={cargando} 
-          ajustes={ajustes} 
-        />
+      <main className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-y-auto lg:overflow-y-hidden">
+        <div className="h-[55vh] lg:flex-1 lg:min-h-0 lg:h-auto w-full lg:w-2/3 flex flex-col flex-shrink-0">
+          <ProductGrid 
+            productos={productos} 
+            cargando={cargando} 
+            ajustes={ajustes} 
+          />
+        </div>
         
-        <section className="hidden xl:flex xl:col-span-1 z-20 shadow-2xl">
+        <section className="min-h-[65vh] lg:h-auto lg:min-h-0 w-full lg:w-1/3 flex flex-col z-20 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] bg-white border-t lg:border-t-0 flex-shrink-0">
           <CartPanel 
             ajustes={ajustes}
             ivaPct={ajustes?.taxPct || 0}

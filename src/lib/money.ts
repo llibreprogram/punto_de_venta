@@ -8,7 +8,11 @@ export const LOCALE = process.env.NEXT_PUBLIC_LOCALE || 'es-ES'
 export const CURRENCY = process.env.NEXT_PUBLIC_CURRENCY || 'EUR'
 
 export function toCurrency(cents: number, locale = LOCALE, currency = CURRENCY) {
-  return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(cents / 100)
+  let formatted = new Intl.NumberFormat(locale, { style: 'currency', currency }).format(cents / 100)
+  if (currency === 'DOP') {
+    formatted = formatted.replace(/DOP[\s\u00A0]*/, 'RD$').replace(/RD\$[\s\u00A0]*/, 'RD$')
+  }
+  return formatted
 }
 
 export function sumCents(values: number[]) {
