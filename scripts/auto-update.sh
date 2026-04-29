@@ -44,10 +44,8 @@ if ! npm ci; then
 fi
 
 log "[2.5/5] Prisma DB push (migración de base de datos)"
-# Cargar DATABASE_URL de forma segura (soporta espacios en otros campos)
-if [ -f "$APP_DIR/.env" ]; then
-  export DATABASE_URL=$(grep '^DATABASE_URL=' "$APP_DIR/.env" | cut -d'=' -f2- | tr -d '"' | tr -d "'")
-fi
+# Ignorar el .env corrupto de la máquina remota y forzar la ruta correcta
+export DATABASE_URL="file:./dev.db"
 
 if ! npx prisma db push; then
   log "ERROR: Prisma DB push falló"
