@@ -166,7 +166,12 @@ export default function AdminProductosPage() {
                   }} placeholder="0.00" />
                 </div>
                 <span className="text-sm text-gray-600 hidden lg:inline">{toCurrency(p.precioCents, ajustes?.locale || LOCALE, ajustes?.currency || CURRENCY)}</span>
-                <span className="text-xs text-gray-500 hidden xl:inline">Margen: {toCurrency(p.precioCents - (p.costoCents||0), ajustes?.locale || LOCALE, ajustes?.currency || CURRENCY)}</span>
+                <div className="flex items-center gap-2 w-full lg:w-auto">
+                  <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider w-14 lg:w-auto">Margen:</span>
+                  <span className="text-sm text-amber-700 font-bold">
+                    {toCurrency(p.precioCents - (p.costoCents||0), ajustes?.locale || LOCALE, ajustes?.currency || CURRENCY)}
+                  </span>
+                </div>
                 <select className="input w-full lg:w-auto" value={p.categoriaId} onChange={async(e)=>{
                   const categoriaId = Number(e.currentTarget.value)
                   if (!categoriaId || categoriaId===p.categoriaId) return
