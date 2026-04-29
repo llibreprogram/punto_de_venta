@@ -44,11 +44,9 @@ if ! npm ci; then
 fi
 
 log "[2.5/5] Prisma DB push (migración de base de datos)"
-# Forzar carga de variables de entorno para Prisma
+# Cargar DATABASE_URL de forma segura (soporta espacios en otros campos)
 if [ -f "$APP_DIR/.env" ]; then
-  set -a
-  source "$APP_DIR/.env"
-  set +a
+  export DATABASE_URL=$(grep '^DATABASE_URL=' "$APP_DIR/.env" | cut -d'=' -f2- | tr -d '"' | tr -d "'")
 fi
 
 if ! npx prisma db push; then
