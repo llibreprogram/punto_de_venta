@@ -55,6 +55,9 @@ if ! npx prisma db push; then
   exit 1
 fi
 
+log "[2.6/5] Prisma DB seed (poblar base de datos inicial)"
+npm run db:seed || log "WARNING: Seed falló, pero continuamos"
+
 log "[3/5] Building (production)"
 if ! NODE_ENV=production npm run build; then
   log "ERROR: Build failed"
