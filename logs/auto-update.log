@@ -1,0 +1,17 @@
+[2026-04-29T11:05:46-04:00] ==> Starting auto-update in /home/llibre/punto_de_venta
+[2026-04-29T11:05:46-04:00] [1/5] Git fetch/reset to origin/main
+[2026-04-29T11:05:47-04:00] [2/5] npm ci (fallback npm install)
+[2026-04-29T11:06:12-04:00] [2.5/5] Prisma DB push (migración de base de datos)
+[2026-04-29T11:06:16-04:00] [3/5] Building (production)
+[2026-04-29T11:06:42-04:00] ERROR: Build failed
+[2026-04-29T11:07:32-04:00] ==> Starting auto-update in /home/llibre/punto_de_venta
+[2026-04-29T11:07:32-04:00] [1/5] Git fetch/reset to origin/main
+[2026-04-29T11:07:33-04:00] [2/5] npm ci (fallback npm install)
+[2026-04-29T11:07:59-04:00] [2.5/5] Prisma DB push (migración de base de datos)
+[2026-04-29T11:08:02-04:00] [3/5] Building (production)
+[2026-04-29T11:08:36-04:00] [4/5] Restarting Next server on :3001
+[2026-04-29T11:08:36-04:00] Started next-server pid=22541
+[2026-04-29T11:08:36-04:00] [5/5] Verifying port 3001
+[2026-04-29T11:08:38-04:00] Port 3001 is listening after short wait.
+[2026-04-29T11:08:38-04:00] [6/6] Configurando auto-inicio del POS
+[2026-04-29T11:08:38-04:00] ==> Auto-update finished
