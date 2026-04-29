@@ -3,20 +3,25 @@ import prisma from '@/lib/db'
 import { createSession, verifyPassword } from '@/lib/auth'
 
 export async function POST(req: Request) {
-  const { email, password } = await req.json()
-  if (!email || !password) return NextResponse.json({ error: 'Faltan credenciales' }, { status: 400 })
-  // Normalizar email para evitar fallos por mayúsculas o espacios
-  const normalizedEmail = String(email).trim().toLowerCase()
-  if (!normalizedEmail) return NextResponse.json({ error: 'Faltan credenciales' }, { status: 400 })
-  const user = await prisma.usuario.findUnique({ where: { email: normalizedEmail } })
-  if (!user || !user.activo || !user.passwordHash || !verifyPassword(password, user.passwordHash)) {
-    return NextResponse.json({ error: 'Credenciales inválidas' }, { status: 401 })
+  try {
+    const { email, password } = await req.json()
+    if (!email || !password) return NextResponse.json({ error: 'Faltan credenciales' }, { status: 400 })
+    // Normalizar email para evitar fallos por mayúsculas o espacios
+    const normalizedEmail = String(email).trim().toLowerCase()
+    if (!normalizedEmail) return NextResponse.json({ error: 'Faltan credenciales' }, { status: 400 })
+    const user = await prisma.usuario.findUnique({ where: { email: normalizedEmail } })
+    if (!user || !user.activo || !user.passwordHash || !verifyPassword(password, user.passwordHash)) {
+      return NextResponse.json({ error: 'Credenciales inválidas' }, { status: 401 })
+    }
+    const { token, expiresAt } = await createSession(user.id)
+    const res = NextResponse.json({ id: user.id, nombre: user.nombre, email: user.email, rol: user.rol })
+    // Evitar problema de login loop en entornos LAN sin HTTPS: permitir desactivar secure.
+    const secureEnv = process.env.COOKIE_SECURE
+    const useSecure = secureEnv ? secureEnv === 'true' : (process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_BASE_URL?.startsWith('https://'))
+    res.cookies.set('session', token, { httpOnly: true, sameSite: 'lax', secure: useSecure, expires: expiresAt, path: '/' })
+    return res
+  } catch (error: any) {
+    console.error("Login Error:", error)
+    return NextResponse.json({ error: `Server Error: ${error.message}` }, { status: 500 })
   }
-  const { token, expiresAt } = await createSession(user.id)
-  const res = NextResponse.json({ id: user.id, nombre: user.nombre, email: user.email, rol: user.rol })
-  // Evitar problema de login loop en entornos LAN sin HTTPS: permitir desactivar secure.
-  const secureEnv = process.env.COOKIE_SECURE
-  const useSecure = secureEnv ? secureEnv === 'true' : (process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_BASE_URL?.startsWith('https://'))
-  res.cookies.set('session', token, { httpOnly: true, sameSite: 'lax', secure: useSecure, expires: expiresAt, path: '/' })
-  return res
 }
