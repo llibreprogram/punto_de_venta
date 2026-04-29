@@ -8,7 +8,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Plus, Receipt, Loader2, ArrowRight, GripVertical, Trash2, Pencil } from 'lucide-react'
-import { DndContext, DragOverlay, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors, DragStartEvent, DragEndEvent, useDroppable } from '@dnd-kit/core'
+import { DndContext, DragOverlay, rectIntersection, PointerSensor, TouchSensor, useSensor, useSensors, DragStartEvent, DragEndEvent, useDroppable } from '@dnd-kit/core'
 import { useDraggable } from '@dnd-kit/core'
 import { toCurrency, LOCALE, CURRENCY } from '@/lib/money'
 
@@ -421,7 +421,7 @@ export function TableManagerModal({ mesaId, mesaNombre, ajustes, onClose, onPay 
             ) : (
               <DndContext
                 sensors={sensors}
-                collisionDetection={closestCenter}
+                collisionDetection={rectIntersection}
                 onDragStart={handleDragStart}
                 onDragOver={handleDragOver}
                 onDragEnd={handleDragEnd}
