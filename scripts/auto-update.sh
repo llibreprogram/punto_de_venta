@@ -64,13 +64,17 @@ if ! NODE_ENV=production npm run build; then
 fi
 
 log "[4/5] Restarting Next server on :3001"
-pkill -f "next start -p 3001" 2>/dev/null || true
-# Limpiar la variable de retornos de carro por si acaso (Windows)
-if [ -n "$DATABASE_URL" ]; then
-  export DATABASE_URL=$(echo "$DATABASE_URL" | tr -d '\r')
-fi
+fuser -k 3001/tcp 2>/dev/null || true
+pkill -f "next start" 2>/dev/null || true
+sleep 2
+
+# Forzar sobrescritura del .env para asegurar que DATABASE_URL esté perfecta
+sed -i '/^DATABASE_URL=/d' "$APP_DIR/.env" 2>/dev/null || true
+echo 'DATABASE_URL="file:./dev.db"' >> "$APP_DIR/.env"
+
 # Pasamos DATABASE_URL de forma explícita al proceso de Next.js
-DATABASE_URL="$DATABASE_URL" nohup npm start -- -p 3001 >>/tmp/pos.log 2>&1 &
+export DATABASE_URL="file:./dev.db"
+nohup npm start -- -p 3001 >>/tmp/pos.log 2>&1 &
 NEW_PID=$!
 log "Started next-server pid=$NEW_PID"
 
