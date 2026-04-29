@@ -6,7 +6,9 @@ set -euo pipefail
 # - Logs to /opt/punto_de_venta/logs/auto-update.log
 # - Uses a flock-based lock to avoid overlapping runs
 
-APP_DIR="/opt/punto_de_venta"
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+APP_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 LOG_DIR="$APP_DIR/logs"
 LOCK_FILE="$LOG_DIR/auto-update.lock"
 LOG_FILE="$LOG_DIR/auto-update.log"

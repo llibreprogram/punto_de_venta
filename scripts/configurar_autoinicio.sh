@@ -6,7 +6,9 @@ set -euo pipefail
 
 AUTOSTART_DIR="$HOME/.config/autostart"
 DESKTOP_FILE="$AUTOSTART_DIR/pos-autostart.desktop"
-APP_DIR="/opt/punto_de_venta"
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+APP_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 echo "==> Configurando Auto-inicio del Punto de Venta"
 

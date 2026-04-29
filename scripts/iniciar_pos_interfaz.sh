@@ -4,7 +4,9 @@ set -euo pipefail
 # Script para iniciar el servidor POS y mostrar la información de conexión
 # Diseñado para ejecutarse automáticamente al inicio del entorno de escritorio.
 
-APP_DIR="/opt/punto_de_venta"
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+APP_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 PORT="3001"
 
 # Asegurar que el PATH incluya node/npm (importante cuando corre desde autostart)
