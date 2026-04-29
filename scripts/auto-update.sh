@@ -44,6 +44,13 @@ if ! npm ci; then
 fi
 
 log "[2.5/5] Prisma DB push (migración de base de datos)"
+# Forzar carga de variables de entorno para Prisma
+if [ -f "$APP_DIR/.env" ]; then
+  set -a
+  source "$APP_DIR/.env"
+  set +a
+fi
+
 if ! npx prisma db push; then
   log "ERROR: Prisma DB push falló"
   "$APP_DIR/scripts/notify.sh" "POS auto-update: DB push failed" "$LOG_FILE" || true
