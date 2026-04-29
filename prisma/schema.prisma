@@ -72,6 +72,7 @@ model Pedido {
   mesa        Mesa?        @relation(fields: [mesaId], references: [id])
   mesaId      Int?
   subCuenta   Int          @default(1) // número de sub-cuenta dentro de la mesa
+  nombreCuenta String?     // nombre personalizado para la sub-cuenta
   items       PedidoItem[]
   subtotalCents  Int
   impuestoCents  Int        @default(0)

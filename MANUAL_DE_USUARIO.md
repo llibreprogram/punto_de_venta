@@ -30,7 +30,7 @@ Para acceder al sistema, abre un navegador web (como Chrome o Firefox) en cualqu
 **Usuarios Iniciales:**
 *   **Administrador:**
     *   **Email:** `admin@local`
-    *   **Contraseña:** `admin123`
+    *   **Contraseña:** `admin1234`
 *   **Cajero:**
     *   **Email:** `cajero@local`
     *   **Contraseña:** `cajero123`
