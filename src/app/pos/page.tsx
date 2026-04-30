@@ -13,13 +13,14 @@ import { ProductGrid } from '@/components/pos/ProductGrid'
 import { CartPanel } from '@/components/pos/CartPanel'
 import { PaymentModal } from '@/components/pos/PaymentModal'
 import { TableManagerModal } from '@/components/pos/TableManagerModal'
+import { OpenOrdersSidebar } from '@/components/pos/OpenOrdersSidebar'
 
 export default function POSPage() {
   const [productos, setProductos] = useState<Producto[]>([])
   const [mesas, setMesas] = useState<{id:number; nombre:string}[]>([])
   const [ajustes, setAjustes] = useState<any>(null)
   const [cargando, setCargando] = useState(true)
-  const [subCuentasDisponibles, setSubCuentasDisponibles] = useState<number[]>([1])
+  const [subCuentasDisponibles, setSubCuentasDisponibles] = useState<{subCuenta: number; nombreCuenta?: string | null}[]>([{ subCuenta: 1 }])
   
   // Estado local para los modales de pago
   const [cobrando, setCobrando] = useState(false)
@@ -27,14 +28,60 @@ export default function POSPage() {
   const [descuentoPendiente, setDescuentoPendiente] = useState(0)
   const [selPendiente, setSelPendiente] = useState<Record<number, number>>({})
   const [tableManagerOpen, setTableManagerOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const { push } = useToast()
   const { confirm } = useConfirm()
   
   const { 
     tipo, mesaId, subCuenta, setSubCuenta, setTipo, setMesaId, 
-    carrito, editingPedidoId, setEditingPedidoId, setCarrito, vaciarCarrito, getTotales
+    carrito, editingPedidoId, setEditingPedidoId, setCarrito, vaciarCarrito, limpiarTodo, getTotales
   } = usePosStore()
+
+  const loadOrder = async (pedidoId: number, prods: Producto[]) => {
+    const res = await fetch(`/api/pedidos/${pedidoId}`, { cache: 'no-store' })
+    if (res.ok) {
+      const pedido = await res.json()
+      if (pedido?.estado === 'ABIERTO' && Array.isArray(pedido.items)) {
+        const nuevo: Record<number, Linea> = {}
+        for (const it of pedido.items) {
+          const prod = prods.find((p: Producto) => p.id === it.productoId)
+          if (!prod) continue
+          nuevo[prod.id] = {
+            producto: prod,
+            cantidad: it.cantidad,
+            removidos: it.removidos || undefined,
+            extras: it.extras || undefined,
+            nota: it.notas || undefined,
+          }
+        }
+        setCarrito(nuevo)
+        setEditingPedidoId(pedidoId)
+        if (pedido.mesaId) {
+          setTipo('Mesa')
+          setMesaId(pedido.mesaId)
+        }
+        if (pedido.subCuenta) setSubCuenta(pedido.subCuenta)
+      }
+    }
+  }
+
+  const cargarMesaCuenta = async (mId: number, sCuenta: number) => {
+    limpiarTodo()
+    setTipo('Mesa')
+    setMesaId(mId)
+    setSubCuenta(sCuenta)
+    try {
+      const r = await fetch(`/api/pedidos?mesaId=${mId}&estado=ABIERTO&subCuenta=${sCuenta}`, { cache:'no-store' })
+      if (r.ok) {
+        const lista = await r.json()
+        if (Array.isArray(lista) && lista.length) {
+          const ord = lista.sort((a:any,b:any)=> b.id - a.id)[0]
+          await loadOrder(ord.id, productos)
+        }
+      }
+    } catch {}
+  }
 
   useEffect(() => {
     setCargando(true)
@@ -50,31 +97,7 @@ export default function POSPage() {
       const url = new URL(window.location.href)
       const loadId = url.searchParams.get('load')
       if (loadId) {
-        const res = await fetch(`/api/pedidos/${loadId}`, { cache: 'no-store' })
-        if (res.ok) {
-          const pedido = await res.json()
-          if (pedido?.estado === 'ABIERTO' && Array.isArray(pedido.items)) {
-            const nuevo: Record<number, Linea> = {}
-            for (const it of pedido.items) {
-              const prod = prods.find((p: Producto) => p.id === it.productoId)
-              if (!prod) continue
-              nuevo[prod.id] = {
-                producto: prod,
-                cantidad: it.cantidad,
-                removidos: it.removidos || undefined,
-                extras: it.extras || undefined,
-                nota: it.notas || undefined,
-              }
-            }
-            setCarrito(nuevo)
-            setEditingPedidoId(Number(loadId))
-            if (pedido.mesaId) {
-              setTipo('Mesa')
-              setMesaId(pedido.mesaId)
-            }
-            if (pedido.subCuenta) setSubCuenta(pedido.subCuenta)
-          }
-        }
+        await loadOrder(Number(loadId), prods)
         url.searchParams.delete('load')
         window.history.replaceState({}, '', url.toString())
       }
@@ -84,26 +107,38 @@ export default function POSPage() {
 
   useEffect(() => {
     const handleOpen = () => setTableManagerOpen(true)
+    const handleSidebar = () => setSidebarOpen(true)
     window.addEventListener('open-table-manager', handleOpen)
-    return () => window.removeEventListener('open-table-manager', handleOpen)
+    window.addEventListener('open-orders-sidebar', handleSidebar)
+    return () => {
+      window.removeEventListener('open-table-manager', handleOpen)
+      window.removeEventListener('open-orders-sidebar', handleSidebar)
+    }
   }, [])
 
   // Cargar subcuentas disponibles de la mesa
   useEffect(() => {
     if (tipo !== 'Mesa' || !mesaId) { 
-      setSubCuentasDisponibles([1])
+      setSubCuentasDisponibles([{ subCuenta: 1 }])
       if (subCuenta !== 1) setSubCuenta(1)
       return 
     }
     fetch(`/api/pedidos?mesaId=${mesaId}&estado=ABIERTO`, { cache:'no-store' })
       .then(r => r.json())
-      .then((ps: Array<{ subCuenta?: number }>) => {
-        const nums = Array.from(new Set(ps.map(p => p.subCuenta || 1))).sort((a,b)=>a-b)
+      .then((ps: Array<{ subCuenta?: number; nombreCuenta?: string | null }>) => {
+        const cuentasMap = new Map<number, string | null>()
+        ps.forEach(p => {
+           if (!cuentasMap.has(p.subCuenta || 1) || p.nombreCuenta) {
+              cuentasMap.set(p.subCuenta || 1, p.nombreCuenta || null)
+           }
+        })
+        const nums = Array.from(cuentasMap.keys()).sort((a,b)=>a-b)
+        const arr = nums.map(n => ({ subCuenta: n, nombreCuenta: cuentasMap.get(n) }))
         if (!nums.includes(subCuenta)) {
-          setSubCuentasDisponibles([...nums, subCuenta].sort((a,b)=>a-b))
-        } else {
-          setSubCuentasDisponibles(nums.length ? nums : [1])
+           arr.push({ subCuenta })
+           arr.sort((a,b) => a.subCuenta - b.subCuenta)
         }
+        setSubCuentasDisponibles(arr.length ? arr : [{ subCuenta: 1 }])
       }).catch(()=>{})
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tipo, mesaId])
@@ -225,9 +260,16 @@ export default function POSPage() {
           try {
             const scRes = await fetch(`/api/pedidos?mesaId=${mesaId}&estado=ABIERTO`, { cache: 'no-store' })
             if (scRes.ok) {
-              const scData = await scRes.json()
-              const nums = Array.from(new Set((scData as Array<{subCuenta?: number}>).map(p => p.subCuenta || 1))).sort((a: number, b: number) => a - b) as number[]
-              setSubCuentasDisponibles(nums.length ? nums : [1])
+              const ps = await scRes.json()
+              const cuentasMap = new Map<number, string | null>()
+              ps.forEach((p: any) => {
+                 if (!cuentasMap.has(p.subCuenta || 1) || p.nombreCuenta) {
+                    cuentasMap.set(p.subCuenta || 1, p.nombreCuenta || null)
+                 }
+              })
+              const nums = Array.from(cuentasMap.keys()).sort((a,b)=>a-b)
+              const arr = nums.map(n => ({ subCuenta: n, nombreCuenta: cuentasMap.get(n) }))
+              setSubCuentasDisponibles(arr.length ? arr : [{ subCuenta: 1 }])
               if (nums.length > 0 && !nums.includes(subCuenta)) {
                 setSubCuenta(nums[0])
               }
@@ -235,9 +277,9 @@ export default function POSPage() {
           } catch {}
         }
       } else {
-        if (data?.pedidoId) setEditingPedidoId(data.pedidoId)
+        limpiarTodo()
         if (data?.autoKitchen) fetch(`/api/print/kitchen/${data.pedidoId}`).catch(()=>{})
-        push('Orden abierta guardada', 'success')
+        push('Orden guardada y pantalla lista', 'success')
       }
     } else {
       push('No se pudo procesar la orden', 'error')
@@ -249,6 +291,47 @@ export default function POSPage() {
       <PosHeader 
         mesas={mesas} 
       />
+
+      {tipo === 'Mesa' && mesaId && (
+        <div className="bg-white border-b border-slate-200 px-3 md:px-4 py-2 flex items-center gap-2 overflow-x-auto no-scrollbar flex-shrink-0">
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mr-1 flex-shrink-0">Cuentas:</span>
+          {subCuentasDisponibles.map(sc => (
+            <button
+              key={sc.subCuenta}
+              onClick={() => {
+                if (Object.keys(carrito).length > 0 && subCuenta !== sc.subCuenta) {
+                  if (!confirm('Tienes productos sin guardar en esta cuenta. ¿Seguro que quieres cambiar de cuenta y perderlos?')) return
+                }
+                cargarMesaCuenta(mesaId, sc.subCuenta)
+              }}
+              className={`px-4 py-1.5 rounded-full text-sm font-bold whitespace-nowrap transition-all flex-shrink-0 ${
+                subCuenta === sc.subCuenta 
+                ? 'bg-amber-100 text-amber-800 border-2 border-amber-400' 
+                : 'bg-slate-100 text-slate-600 border-2 border-transparent hover:bg-slate-200'
+              }`}
+            >
+              {sc.nombreCuenta ? sc.nombreCuenta : `C${sc.subCuenta}`}
+            </button>
+          ))}
+          <button
+            onClick={() => {
+              if (Object.keys(carrito).length > 0) {
+                if (!confirm('Tienes productos sin guardar. ¿Seguro que quieres abrir una nueva cuenta y perderlos?')) return
+              }
+              const maxSc = Math.max(...subCuentasDisponibles.map(s => s.subCuenta), 0)
+              const nueva = maxSc + 1
+              limpiarTodo()
+              setTipo('Mesa')
+              setMesaId(mesaId)
+              setSubCuenta(nueva)
+              setSubCuentasDisponibles([...subCuentasDisponibles, { subCuenta: nueva }])
+            }}
+            className="px-3 py-1.5 rounded-full text-sm font-bold whitespace-nowrap transition-all bg-slate-50 text-amber-600 border-2 border-dashed border-amber-300 hover:bg-amber-50 hover:border-amber-400 flex items-center gap-1 flex-shrink-0"
+          >
+            + Nueva
+          </button>
+        </div>
+      )}
       
       <main className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-y-auto lg:overflow-y-hidden">
         <div className="h-[55vh] lg:flex-1 lg:min-h-0 lg:h-auto w-full lg:w-2/3 flex flex-col flex-shrink-0">
@@ -345,6 +428,17 @@ export default function POSPage() {
           }}
         />
       )}
+      {/* Sidebar de Órdenes Abiertas */}
+      <OpenOrdersSidebar 
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        ajustes={ajustes}
+        onSelectOrder={async (id) => {
+          setCargando(true)
+          await loadOrder(id, productos)
+          setCargando(false)
+        }}
+      />
     </div>
   )
 }

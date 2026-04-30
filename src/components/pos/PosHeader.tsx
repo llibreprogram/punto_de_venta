@@ -108,19 +108,43 @@ export function PosHeader({ mesas }: PosHeaderProps) {
 
         {/* Quick Actions */}
         <div className="flex items-center gap-0.5 border-l border-slate-200/60 pl-2 ml-1">
+          <button 
+            type="button"
+            onClick={() => {
+              if (Object.keys(usePosStore.getState().carrito).length > 0) {
+                if (!confirm('¿Descartar los productos actuales y empezar una orden limpia?')) return
+              }
+              usePosStore.getState().limpiarTodo()
+            }}
+            className="px-3 py-1.5 mr-1 bg-slate-900 text-white hover:bg-slate-800 rounded-lg text-xs font-bold transition-all shadow-sm active:scale-95 hidden sm:block"
+          >
+            Nueva Orden
+          </button>
           {[
-            { href: '/pos/abiertas', icon: <Receipt className="w-[18px] h-[18px]" />, title: 'Órdenes abiertas' },
+            { action: () => window.dispatchEvent(new CustomEvent('open-orders-sidebar')), icon: <Receipt className="w-[18px] h-[18px]" />, title: 'Órdenes abiertas' },
             { href: '/kds', icon: <ChefHat className="w-[18px] h-[18px]" />, title: 'Cocina (KDS)' },
             { href: '/admin', icon: <Settings className="w-[18px] h-[18px]" />, title: 'Administración' },
-          ].map(action => (
-            <a 
-              key={action.href}
-              href={action.href} 
-              className="p-2 text-slate-500 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all" 
-              title={action.title}
-            >
-              {action.icon}
-            </a>
+          ].map((item, i) => (
+            item.href ? (
+              <a 
+                key={i}
+                href={item.href} 
+                className="p-2 text-slate-500 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all" 
+                title={item.title}
+              >
+                {item.icon}
+              </a>
+            ) : (
+              <button
+                key={i}
+                type="button"
+                onClick={item.action}
+                className="p-2 text-slate-500 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all" 
+                title={item.title}
+              >
+                {item.icon}
+              </button>
+            )
           ))}
           <button type="button" className="p-2 text-slate-500 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all" title="Pantalla completa" onClick={() => {
             if (document.fullscreenElement) { document.exitFullscreen(); return }

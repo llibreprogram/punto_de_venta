@@ -51,6 +51,7 @@ interface POSState {
   eliminarProducto: (id: number) => void
   actualizarLinea: (id: number, actualizacion: Partial<Linea>) => void
   vaciarCarrito: () => void
+  limpiarTodo: () => void
   
   // Helpers calculados
   getTotales: (ivaPct: number, propinaPct: number, descuentoCents: number) => {
@@ -123,6 +124,8 @@ export const usePosStore = create<POSState>((set, get) => ({
   }),
 
   vaciarCarrito: () => set({ carrito: {}, editingPedidoId: null }),
+
+  limpiarTodo: () => set({ carrito: {}, editingPedidoId: null, mesaId: undefined, subCuenta: 1, tipo: 'Mostrador' }),
 
   getTotales: (ivaPct, propinaPct, descuentoCents) => {
     const { carrito } = get()
