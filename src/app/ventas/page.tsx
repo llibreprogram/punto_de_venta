@@ -77,7 +77,7 @@ export default function VentasPage() {
               <th className="text-left p-2">#</th>
               <th className="text-left p-2">Fecha</th>
               <th className="text-left p-2">Mesa</th>
-              <th className="text-left p-2">Sub</th>
+              <th className="text-left p-2">Cuenta</th>
               <th className="text-left p-2">Total</th>
               <th className="text-left p-2">Estado</th>
               <th className="text-left p-2">Acciones</th>
@@ -104,7 +104,7 @@ export default function VentasPage() {
                   </td>
                   <td className="p-2">{fmt.format(new Date(p.createdAt))}</td>
                   <td className="p-2">{p.mesa?.nombre || ''}</td>
-                  <td className="p-2">{p.mesa?.nombre ? p.subCuenta : ''}</td>
+                  <td className="p-2 font-medium text-amber-700">{p.nombreCuenta || (p.mesa?.nombre ? `C${p.subCuenta}` : '')}</td>
                   <td className="p-2">{toCurrency(p.totalCents, ajustes?.locale || LOCALE, ajustes?.currency || CURRENCY)}</td>
                   <td className="p-2">{p.estado}</td>
                   <td className="p-2"><Link className="underline" href={`/ticket/${p.id}`}>Ticket</Link></td>

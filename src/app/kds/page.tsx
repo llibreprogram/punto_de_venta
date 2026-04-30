@@ -8,7 +8,7 @@ type KItem = {
   removidos?: string[]|null
   extras?: string[]|null
   estado: 'PENDIENTE'|'EN_PROCESO'|'LISTO'
-  pedido: { id:number; numero:number; mesa?:{nombre:string}|null }
+  pedido: { id:number; numero:number; subCuenta:number; nombreCuenta?:string|null; mesa?:{nombre:string}|null }
   producto: { nombre:string }
 }
 
@@ -52,11 +52,14 @@ export default function KDSPage() {
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           {grupos.map(([pedidoId, its])=> (
-            <section key={pedidoId} className="card rounded p-3 grid gap-2">
+            <section key={pedidoId} className="card rounded p-3 grid gap-2 border-2 border-slate-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="font-semibold">Pedido #{its[0]?.pedido?.numero}</div>
-                  {its[0]?.pedido?.mesa?.nombre && <div className="text-xs text-gray-600">Mesa: {its[0].pedido.mesa.nombre}</div>}
+                  <div className="font-semibold text-lg">Pedido #{its[0]?.pedido?.numero}</div>
+                  <div className="text-sm font-bold text-amber-700 bg-amber-100 inline-block px-2 py-0.5 rounded mt-1">
+                    {its[0]?.pedido?.mesa ? `Mesa: ${its[0].pedido.mesa.nombre}` : 'Para Llevar'}
+                    {its[0]?.pedido?.nombreCuenta ? ` • ${its[0].pedido.nombreCuenta}` : (its[0]?.pedido?.subCuenta > 1 ? ` • C${its[0].pedido.subCuenta}` : '')}
+                  </div>
                 </div>
                 <button className="btn" onClick={async()=>{
                   // Marcar todo el pedido como LISTO

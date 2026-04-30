@@ -33,6 +33,7 @@ export function escposTicket(opts: {
   fecha: string
   mesa?: string | null
   subCuenta?: number
+  nombreCuenta?: string | null
   items: { nombre:string; cantidad:number; unit:string; total:string }[]
   subtotal: string
   itebis?: string
@@ -42,10 +43,10 @@ export function escposTicket(opts: {
   total: string
   footer?: string
 }) {
-  const { business, numero, fecha, mesa, subCuenta, items, subtotal, itebis, propina, impuesto, descuento, total, footer } = opts
+  const { business, numero, fecha, mesa, subCuenta, nombreCuenta, items, subtotal, itebis, propina, impuesto, descuento, total, footer } = opts
   let out = ''
   out += escposHeader(business)
-  out += `Ticket #${numero}` + (mesa ? `  Mesa: ${mesa}${subCuenta?` C${subCuenta}`:''}`:'') + "\n" + fecha + "\n\n"
+  out += `Ticket #${numero}` + (mesa ? `  Mesa: ${mesa}${nombreCuenta ? ` - ${nombreCuenta}` : (subCuenta ? ` C${subCuenta}` : '')}` : '') + "\n" + fecha + "\n\n"
   out += escposSeparator()
   for (const it of items) {
     out += it.nombre + "\n"

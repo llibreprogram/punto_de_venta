@@ -25,6 +25,7 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
   const items = (pedido.items as unknown) as Array<{ cantidad:number; precioCents:number; totalCents:number; extras?: string[] | null; removidos?: string[] | null; notas?: string|null; producto:{ nombre:string } }>
   const mesaNombre = (pedido as { mesa?: { nombre?: string } | null }).mesa?.nombre
   const subCuenta: number | undefined = (pedido as unknown as { subCuenta?: number }).subCuenta
+  const nombreCuenta: string | undefined | null = (pedido as unknown as { nombreCuenta?: string | null }).nombreCuenta
   const itebisCents: number = (pedido as unknown as { itebisCents?: number }).itebisCents ?? 0
   const propinaCents: number = (pedido as unknown as { propinaCents?: number }).propinaCents ?? 0
   const payload = escposTicket({
@@ -33,6 +34,7 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
     fecha,
     mesa: mesaNombre,
     subCuenta,
+    nombreCuenta,
   items: items.map(it => ({ nombre: it.producto.nombre + (Array.isArray(it.extras) && it.extras.length? `\n  + ${it.extras.join(', ')}`:'' ) + (Array.isArray(it.removidos) && it.removidos.length? `\n  - Sin: ${it.removidos.join(', ')}`:'' ) + (it.notas? `\n  * ${it.notas}`:''), cantidad: it.cantidad, unit: toCurrency(it.precioCents, locale, currency), total: toCurrency(it.totalCents, locale, currency) })),
   subtotal: toCurrency(pedido.subtotalCents, locale, currency),
   itebis: itebisCents > 0 ? toCurrency(itebisCents, locale, currency) : undefined,

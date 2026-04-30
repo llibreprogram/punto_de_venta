@@ -77,7 +77,7 @@ export default function AbiertasPage() {
             <tr>
               <th className="text-left p-2">#</th>
               <th className="text-left p-2">Mesa</th>
-              <th className="text-left p-2">SubCuenta</th>
+              <th className="text-left p-2">Cuenta</th>
               <th className="text-left p-2">Fecha</th>
               <th className="text-left p-2">Total</th>
               <th className="text-left p-2">Acciones</th>
@@ -92,7 +92,7 @@ export default function AbiertasPage() {
               <tr key={r.id} className="border-t">
                 <td className="p-2">{r.numero}</td>
                 <td className="p-2">{r.mesa?.nombre || '—'}</td>
-                <td className="p-2">{r.subCuenta || 1}</td>
+                <td className="p-2 font-medium text-amber-700">{r.nombreCuenta || `C${r.subCuenta || 1}`}</td>
                 <td className="p-2">{new Date(r.createdAt).toLocaleString()}</td>
                 <td className="p-2">{fmt(r.totalCents)}</td>
                 <td className="p-2">
