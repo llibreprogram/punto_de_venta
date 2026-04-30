@@ -42,6 +42,7 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
     itebisCents?: number
     propinaCents?: number
     descuentoCents?: number
+    nombreCuenta?: string | null
     pago?: { metodo: 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA'; montoCents: number; referencia?: string }
   }
   if (!Array.isArray(body.items) || body.items.length === 0) return NextResponse.json({ error: 'Sin items' }, { status: 400 })
@@ -85,6 +86,7 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
         descuentoCents: descuento,
         totalCents: total,
         estado: body.pago ? 'PAGADO' : 'ABIERTO',
+        ...(body.nombreCuenta !== undefined && { nombreCuenta: body.nombreCuenta }),
       }})
       let pagoId: number | undefined
       if (body.pago) {

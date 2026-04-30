@@ -32,6 +32,7 @@ interface POSState {
   tipo: TipoOrden
   mesaId: number | undefined
   subCuenta: number
+  nombreCuenta: string | null
   editingPedidoId: number | null
   
   busqueda: string
@@ -41,6 +42,7 @@ interface POSState {
   setTipo: (tipo: TipoOrden) => void
   setMesaId: (id: number | undefined) => void
   setSubCuenta: (cuenta: number) => void
+  setNombreCuenta: (nombre: string | null) => void
   setEditingPedidoId: (id: number | null) => void
   setCarrito: (carrito: Record<number, Linea>) => void
   setBusqueda: (q: string) => void
@@ -67,6 +69,7 @@ export const usePosStore = create<POSState>((set, get) => ({
   tipo: 'Mostrador',
   mesaId: undefined,
   subCuenta: 1,
+  nombreCuenta: null,
   editingPedidoId: null,
   busqueda: '',
   catFiltro: null,
@@ -74,6 +77,7 @@ export const usePosStore = create<POSState>((set, get) => ({
   setTipo: (tipo) => set({ tipo }),
   setMesaId: (mesaId) => set({ mesaId }),
   setSubCuenta: (subCuenta) => set({ subCuenta }),
+  setNombreCuenta: (nombreCuenta) => set({ nombreCuenta }),
   setEditingPedidoId: (editingPedidoId) => set({ editingPedidoId }),
   setCarrito: (carrito) => set({ carrito }),
   setBusqueda: (busqueda) => set({ busqueda }),
@@ -125,7 +129,7 @@ export const usePosStore = create<POSState>((set, get) => ({
 
   vaciarCarrito: () => set({ carrito: {}, editingPedidoId: null }),
 
-  limpiarTodo: () => set({ carrito: {}, editingPedidoId: null, mesaId: undefined, subCuenta: 1, tipo: 'Mostrador' }),
+  limpiarTodo: () => set({ carrito: {}, editingPedidoId: null, mesaId: undefined, subCuenta: 1, nombreCuenta: null, tipo: 'Mostrador' }),
 
   getTotales: (ivaPct, propinaPct, descuentoCents) => {
     const { carrito } = get()

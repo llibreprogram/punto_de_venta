@@ -34,7 +34,7 @@ export default function POSPage() {
   const { confirm } = useConfirm()
   
   const { 
-    tipo, mesaId, subCuenta, setSubCuenta, setTipo, setMesaId, 
+    tipo, mesaId, subCuenta, nombreCuenta, setSubCuenta, setNombreCuenta, setTipo, setMesaId, 
     carrito, editingPedidoId, setEditingPedidoId, setCarrito, vaciarCarrito, limpiarTodo, getTotales
   } = usePosStore()
 
@@ -62,6 +62,7 @@ export default function POSPage() {
           setMesaId(pedido.mesaId)
         }
         if (pedido.subCuenta) setSubCuenta(pedido.subCuenta)
+        setNombreCuenta(pedido.nombreCuenta || null)
       }
     }
   }
@@ -204,7 +205,8 @@ export default function POSPage() {
       impuestoCents: finalImpuestoCents,
       itebisCents: finalItebis,
       propinaCents: finalPropina,
-      descuentoCents: descActual
+      descuentoCents: descActual,
+      ...(nombreCuenta !== null && { nombreCuenta })
     }
 
     if (!pedidoIdForUpdate || overrideCarrito) {
@@ -299,6 +301,13 @@ export default function POSPage() {
             <button
               key={sc.subCuenta}
               onClick={() => {
+                if (subCuenta === sc.subCuenta) {
+                  const newName = prompt('Personalizar nombre de cuenta (opcional):', nombreCuenta || sc.nombreCuenta || '')
+                  if (newName !== null) {
+                    setNombreCuenta(newName.trim() || null)
+                  }
+                  return
+                }
                 if (Object.keys(carrito).length > 0 && subCuenta !== sc.subCuenta) {
                   if (!confirm('Tienes productos sin guardar en esta cuenta. ¿Seguro que quieres cambiar de cuenta y perderlos?')) return
                 }
@@ -309,8 +318,9 @@ export default function POSPage() {
                 ? 'bg-amber-100 text-amber-800 border-2 border-amber-400' 
                 : 'bg-slate-100 text-slate-600 border-2 border-transparent hover:bg-slate-200'
               }`}
+              title={subCuenta === sc.subCuenta ? "Haz clic de nuevo para cambiar el nombre" : ""}
             >
-              {sc.nombreCuenta ? sc.nombreCuenta : `C${sc.subCuenta}`}
+              {(subCuenta === sc.subCuenta && nombreCuenta) ? nombreCuenta : (sc.nombreCuenta ? sc.nombreCuenta : `C${sc.subCuenta}`)}
             </button>
           ))}
           <button
@@ -318,13 +328,16 @@ export default function POSPage() {
               if (Object.keys(carrito).length > 0) {
                 if (!confirm('Tienes productos sin guardar. ¿Seguro que quieres abrir una nueva cuenta y perderlos?')) return
               }
+              const newName = prompt('Nombre para la nueva cuenta (opcional):')
+              if (newName === null) return
               const maxSc = Math.max(...subCuentasDisponibles.map(s => s.subCuenta), 0)
               const nueva = maxSc + 1
               limpiarTodo()
               setTipo('Mesa')
               setMesaId(mesaId)
               setSubCuenta(nueva)
-              setSubCuentasDisponibles([...subCuentasDisponibles, { subCuenta: nueva }])
+              setNombreCuenta(newName.trim() || null)
+              setSubCuentasDisponibles([...subCuentasDisponibles, { subCuenta: nueva, nombreCuenta: newName.trim() || undefined }])
             }}
             className="px-3 py-1.5 rounded-full text-sm font-bold whitespace-nowrap transition-all bg-slate-50 text-amber-600 border-2 border-dashed border-amber-300 hover:bg-amber-50 hover:border-amber-400 flex items-center gap-1 flex-shrink-0"
           >

@@ -74,7 +74,7 @@ export function OpenOrdersSidebar({ isOpen, onClose, onSelectOrder, ajustes }: {
                   </div>
                   <div className="text-xs text-slate-500 flex flex-col gap-0.5">
                     {r.mesa?.nombre ? (
-                      <span>Mesa {r.mesa.nombre} <span className="font-semibold text-amber-600">{r.nombreCuenta ? ` • ${r.nombreCuenta}` : ` • C${r.subCuenta || 1}`}</span></span>
+                      <span>{r.mesa.nombre} <span className="font-semibold text-amber-600">{r.nombreCuenta ? ` • ${r.nombreCuenta}` : ` • C${r.subCuenta || 1}`}</span></span>
                     ) : (
                       <span>Para Llevar / Mostrador</span>
                     )}
