@@ -8,8 +8,41 @@ type KItem = {
   removidos?: string[]|null
   extras?: string[]|null
   estado: 'PENDIENTE'|'EN_PROCESO'|'LISTO'
-  pedido: { id:number; numero:number; subCuenta:number; nombreCuenta?:string|null; mesa?:{nombre:string}|null }
+  pedido: { id:number; numero:number; subCuenta:number; nombreCuenta?:string|null; createdAt:string; mesa?:{nombre:string}|null }
   producto: { nombre:string }
+}
+
+function TicketTimer({ createdAt }: { createdAt: string }) {
+  const [elapsed, setElapsed] = useState('')
+
+  useEffect(() => {
+    const start = new Date(createdAt).getTime()
+    const update = () => {
+      const now = Date.now()
+      const diff = Math.max(0, Math.floor((now - start) / 1000))
+      const h = Math.floor(diff / 3600)
+      const m = Math.floor((diff % 3600) / 60)
+      const s = diff % 60
+      if (h > 0) {
+        setElapsed(`${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`)
+      } else {
+        setElapsed(`${m}:${s.toString().padStart(2, '0')}`)
+      }
+    }
+    update()
+    const t = setInterval(update, 1000)
+    return () => clearInterval(t)
+  }, [createdAt])
+
+  const mins = Math.floor((Date.now() - new Date(createdAt).getTime()) / 60000)
+  const isWarning = mins >= 15
+  const isDanger = mins >= 30
+
+  return (
+    <div className={`text-sm font-mono font-bold flex items-center gap-1 ${isDanger ? 'text-red-600' : isWarning ? 'text-amber-600' : 'text-slate-500'}`}>
+      ⏱ {elapsed}
+    </div>
+  )
 }
 
 export default function KDSPage() {
@@ -55,7 +88,10 @@ export default function KDSPage() {
             <section key={pedidoId} className="card rounded p-3 grid gap-2 border-2 border-slate-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="font-semibold text-lg">Pedido #{its[0]?.pedido?.numero}</div>
+                  <div className="font-semibold text-lg flex items-center gap-3">
+                    <span>Pedido #{its[0]?.pedido?.numero}</span>
+                    <TicketTimer createdAt={its[0]?.pedido?.createdAt} />
+                  </div>
                   <div className="text-sm font-bold text-amber-700 bg-amber-100 inline-block px-2 py-0.5 rounded mt-1">
                     {its[0]?.pedido?.mesa ? `Mesa: ${its[0].pedido.mesa.nombre}` : 'Para Llevar'}
                     {its[0]?.pedido?.nombreCuenta ? ` • ${its[0].pedido.nombreCuenta}` : (its[0]?.pedido?.subCuenta > 1 ? ` • C${its[0].pedido.subCuenta}` : '')}
