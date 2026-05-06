@@ -2,6 +2,9 @@
 setlocal EnableDelayedExpansion
 title Instalador Automatico de Punto de Venta
 
+:: Cambiar al directorio donde esta el script (vital si se ejecuta como Administrador)
+cd /d "%~dp0"
+
 echo =======================================================
 echo     Instalador del Sistema de Punto de Venta (POS)
 echo =======================================================
