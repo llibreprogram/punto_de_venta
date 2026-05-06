@@ -12,7 +12,14 @@ echo.
 cd /d "%INSTALL_DIR%"
 
 echo Obteniendo ultimos cambios desde GitHub...
-:: Guardamos cambios locales temporales para evitar conflictos, aunque no deberia haberlos
+:: Respaldar la base de datos antes de actualizar para evitar que Git la elimine o sobreescriba
+if exist "prisma\*.db" (
+    echo Respaldando base de datos...
+    mkdir "backup_db" 2>nul
+    copy "prisma\*.db" "backup_db\" >nul
+)
+
+:: Guardamos cambios locales temporales
 git stash >nul 2>&1
 git pull origin main
 if %errorLevel% neq 0 (
@@ -20,6 +27,12 @@ if %errorLevel% neq 0 (
     echo Verifica tu conexion a internet o permisos de Git.
     pause
     exit /b 1
+)
+
+:: Restaurar la base de datos
+if exist "backup_db\*.db" (
+    echo Restaurando base de datos...
+    copy "backup_db\*.db" "prisma\" >nul
 )
 
 echo.

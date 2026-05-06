@@ -102,6 +102,7 @@ echo.
 echo Configurando la base de datos...
 call npm run prisma:generate
 call npm run prisma:push
+set "NODE_ENV=production"
 call npm run db:seed
 
 :: 9. Compilar el sistema
