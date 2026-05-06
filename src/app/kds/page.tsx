@@ -183,10 +183,28 @@ export default function KDSPage() {
   const [isFullscreen, setIsFullscreen] = useState(false)
 
   const load = async () => {
-    const res = await fetch('/api/kds', { cache: 'no-store' })
-    const json = await res.json()
-    setItems(json)
-    setLoading(false)
+    try {
+      const res = await fetch('/api/kds', { cache: 'no-store' })
+      if (res.status === 401) {
+        window.location.href = '/login?next=/kds'
+        return
+      }
+      if (!res.ok) {
+        console.error('Error fetching KDS:', await res.text())
+        setLoading(false)
+        return
+      }
+      const json = await res.json()
+      if (Array.isArray(json)) {
+        setItems(json)
+      } else {
+        setItems([])
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
