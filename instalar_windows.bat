@@ -2,12 +2,13 @@
 setlocal EnableDelayedExpansion
 title Instalador Automatico de Punto de Venta
 
-:: Cambiar al directorio donde esta el script (vital si se ejecuta como Administrador)
-cd /d "%~dp0"
+set "INSTALL_DIR=C:\Punto_de_Venta"
 
 echo =======================================================
 echo     Instalador del Sistema de Punto de Venta (POS)
 echo =======================================================
+echo.
+echo El sistema se instalara de forma segura en: %INSTALL_DIR%
 echo.
 
 :: 1. Verificar permisos de administrador
@@ -56,34 +57,37 @@ if %errorLevel% neq 0 (
     echo [OK] Node.js ya esta instalado.
 )
 
-:: 4. Verificar el repositorio
+:: 4. Crear carpeta principal e ingresar
 echo.
-echo Verificando archivos del sistema...
+echo Preparando el directorio de instalacion en %INSTALL_DIR%...
+if not exist "%INSTALL_DIR%" (
+    mkdir "%INSTALL_DIR%"
+)
+cd /d "%INSTALL_DIR%"
+
+:: 5. Verificar el repositorio
+echo.
+echo Descargando/Verificando archivos del sistema...
 if not exist "package.json" (
-    echo [!] Archivos del sistema no encontrados en la carpeta actual.
     echo Clonando el repositorio desde GitHub...
-    git clone https://github.com/llibreprogram/punto_de_venta.git temp_pos
+    git clone https://github.com/llibreprogram/punto_de_venta.git .
     if !errorLevel! neq 0 (
         echo [ERROR] No se pudo clonar el repositorio. Verifica tu conexion a internet o permisos de Git.
         pause
         exit /b 1
     )
-    echo Moviendo archivos...
-    xcopy temp_pos\* . /s /e /y >nul
-    xcopy temp_pos\.* . /s /e /y >nul
-    rmdir /s /q temp_pos
 ) else (
     echo [OK] Archivos del sistema encontrados.
 )
 
-:: 5. Configurar .env
+:: 6. Configurar .env
 if not exist ".env" (
     echo Creando archivo de configuracion .env...
     copy .env.example .env >nul
     echo [OK] Archivo .env creado.
 )
 
-:: 6. Instalar dependencias
+:: 7. Instalar dependencias
 echo.
 echo Instalando dependencias de Node.js (esto puede tardar unos minutos)...
 call npm install
@@ -93,14 +97,14 @@ if %errorLevel% neq 0 (
     exit /b 1
 )
 
-:: 7. Configurar Base de Datos
+:: 8. Configurar Base de Datos
 echo.
 echo Configurando la base de datos...
 call npm run prisma:generate
 call npm run prisma:push
 call npm run db:seed
 
-:: 8. Compilar el sistema
+:: 9. Compilar el sistema
 echo.
 echo Compilando el sistema para produccion (esto tomara unos minutos)...
 call npm run build
@@ -110,10 +114,9 @@ if %errorLevel% neq 0 (
     exit /b 1
 )
 
-:: 9. Crear accesos directos
+:: 10. Crear accesos directos
 echo.
 echo Creando accesos directos en el Escritorio...
-set SCRIPT_DIR=%~dp0
 set SHORTCUT_START="%USERPROFILE%\Desktop\Iniciar POS.lnk"
 set SHORTCUT_UPDATE="%USERPROFILE%\Desktop\Actualizar POS.lnk"
 
@@ -121,15 +124,15 @@ set VBS_SCRIPT="%TEMP%\CrearAccesos.vbs"
 echo Set oWS = WScript.CreateObject("WScript.Shell") > %VBS_SCRIPT%
 echo sLinkFile = %SHORTCUT_START% >> %VBS_SCRIPT%
 echo Set oLink = oWS.CreateShortcut(sLinkFile) >> %VBS_SCRIPT%
-echo oLink.TargetPath = "%SCRIPT_DIR%scripts\windows\iniciar_windows.bat" >> %VBS_SCRIPT%
-echo oLink.WorkingDirectory = "%SCRIPT_DIR%" >> %VBS_SCRIPT%
+echo oLink.TargetPath = "%INSTALL_DIR%\scripts\windows\iniciar_windows.bat" >> %VBS_SCRIPT%
+echo oLink.WorkingDirectory = "%INSTALL_DIR%" >> %VBS_SCRIPT%
 echo oLink.Description = "Iniciar el Sistema de Punto de Venta" >> %VBS_SCRIPT%
 echo oLink.Save >> %VBS_SCRIPT%
 
 echo sLinkFile = %SHORTCUT_UPDATE% >> %VBS_SCRIPT%
 echo Set oLink = oWS.CreateShortcut(sLinkFile) >> %VBS_SCRIPT%
-echo oLink.TargetPath = "%SCRIPT_DIR%scripts\windows\actualizar_windows.bat" >> %VBS_SCRIPT%
-echo oLink.WorkingDirectory = "%SCRIPT_DIR%" >> %VBS_SCRIPT%
+echo oLink.TargetPath = "%INSTALL_DIR%\scripts\windows\actualizar_windows.bat" >> %VBS_SCRIPT%
+echo oLink.WorkingDirectory = "%INSTALL_DIR%" >> %VBS_SCRIPT%
 echo oLink.Description = "Actualizar el Sistema de Punto de Venta" >> %VBS_SCRIPT%
 echo oLink.Save >> %VBS_SCRIPT%
 
