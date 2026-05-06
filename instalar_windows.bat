@@ -84,7 +84,8 @@ if not exist "package.json" (
 if not exist ".env" (
     echo Creando archivo de configuracion .env...
     copy .env.example .env >nul
-    echo [OK] Archivo .env creado.
+    echo TICKET_SIGN_SECRET=%RANDOM%%RANDOM%%RANDOM%%RANDOM%%RANDOM% >> .env
+    echo [OK] Archivo .env creado y clave de seguridad generada.
 )
 
 :: 7. Instalar dependencias
