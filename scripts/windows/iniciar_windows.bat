@@ -1,9 +1,11 @@
 @echo off
 title Servidor POS
 
+set "INSTALL_DIR=C:\Punto_de_Venta"
+
 echo Iniciando el servidor del Punto de Venta...
-:: Cambiar al directorio raiz (un nivel arriba de scripts\windows)
-cd /d "%~dp0..\.."
+:: Cambiar al directorio raiz de forma explicita
+cd /d "%INSTALL_DIR%"
 
 :: Abrir el navegador en localhost
 start http://localhost:3000

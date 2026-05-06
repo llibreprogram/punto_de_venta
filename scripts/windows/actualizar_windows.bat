@@ -1,13 +1,15 @@
 @echo off
 title Actualizar Sistema POS
 
+set "INSTALL_DIR=C:\Punto_de_Venta"
+
 echo =======================================================
 echo     Actualizando Sistema de Punto de Venta
 echo =======================================================
 echo.
 
-:: Cambiar al directorio raiz (un nivel arriba de scripts\windows)
-cd /d "%~dp0..\.."
+:: Cambiar al directorio raiz del proyecto de forma explicita
+cd /d "%INSTALL_DIR%"
 
 echo Obteniendo ultimos cambios desde GitHub...
 :: Guardamos cambios locales temporales para evitar conflictos, aunque no deberia haberlos
