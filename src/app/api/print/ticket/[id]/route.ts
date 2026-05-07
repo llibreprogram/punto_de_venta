@@ -30,6 +30,9 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
   const propinaCents: number = (pedido as unknown as { propinaCents?: number }).propinaCents ?? 0
   const payload = escposTicket({
     business,
+    address: ajustes?.businessAddress,
+    rnc: ajustes?.businessRnc,
+    phone: ajustes?.businessPhone,
     numero: pedido.numero,
     fecha,
     mesa: mesaNombre,

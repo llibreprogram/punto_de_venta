@@ -34,7 +34,10 @@ export default function TicketClient({ pedido, ajustes }: { pedido: TicketPedido
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={logoUrl} alt="logo" className="mx-auto h-12 object-contain" onError={(e)=>{(e.currentTarget as HTMLImageElement).style.display='none'}} />
           <h1 className="font-bold">{business}</h1>
-          <div className="text-xs text-gray-600">Ticket #{pedido.numero}{pedido.mesa?` • Mesa ${pedido.mesa.nombre}${pedido.nombreCuenta ? ` • ${pedido.nombreCuenta}` : (pedido.subCuenta?` C${pedido.subCuenta}`:'')}`:''}</div>
+          {ajustes?.businessRnc && <div className="text-xs text-gray-700">RNC: {ajustes.businessRnc}</div>}
+          {ajustes?.businessAddress && <div className="text-xs text-gray-700">{ajustes.businessAddress}</div>}
+          {ajustes?.businessPhone && <div className="text-xs text-gray-700">Tel: {ajustes.businessPhone}</div>}
+          <div className="text-xs text-gray-600 mt-1">Ticket #{pedido.numero}{pedido.mesa?` • Mesa ${pedido.mesa.nombre}${pedido.nombreCuenta ? ` • ${pedido.nombreCuenta}` : (pedido.subCuenta?` C${pedido.subCuenta}`:'')}`:''}</div>
           <div className="text-sm text-gray-600">{fecha}</div>
         </div>
         {pedido.mesa && (

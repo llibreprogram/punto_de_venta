@@ -10,6 +10,17 @@ cd /d "%INSTALL_DIR%"
 :: Abrir el navegador en localhost
 start http://localhost:3000
 
+echo.
+echo ========================================================
+echo El servidor esta listo. Si deseas conectar una tableta
+echo o celular en esta misma red WiFi, abre el navegador en
+echo el dispositivo y usa alguna de las siguientes IPs:
+ipconfig | findstr /i "IPv4"
+echo.
+echo Ejemplo: http://192.168.1.50:3000
+echo ========================================================
+echo.
+
 :: Iniciar el servidor
 call npm run start
 if %errorLevel% neq 0 (

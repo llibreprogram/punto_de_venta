@@ -134,6 +134,9 @@ model Ajustes {
   taxPct        Int     @default(0)
   propinaPct    Int     @default(0)
   businessName  String  @default("Mi Restaurante")
+  businessAddress String?
+  businessRnc   String?
+  businessPhone String?
   ticketFooter  String  @default("¡Gracias por su compra!")
   logoUrl       String  @default("/logo.png")
   // Impresoras

@@ -5,7 +5,7 @@ import AdminLayout from '@/components/AdminLayout'
 import SerialPrintButton from '@/components/SerialPrintButton'
 import NetworkPrintButton from '@/components/NetworkPrintButton'
 
-type Ajustes = { locale:string; currency:string; taxPct:number; propinaPct:number; businessName:string; ticketFooter:string; logoUrl:string; printerIp?:string|null; printerPort?:number|null; serialBaud?:number|null; autoKitchenOnCreate?:boolean; autoKitchenOnReady?:boolean; touchMode?:boolean }
+type Ajustes = { locale:string; currency:string; taxPct:number; propinaPct:number; businessName:string; businessAddress?:string|null; businessRnc?:string|null; businessPhone?:string|null; ticketFooter:string; logoUrl:string; printerIp?:string|null; printerPort?:number|null; serialBaud?:number|null; autoKitchenOnCreate?:boolean; autoKitchenOnReady?:boolean; touchMode?:boolean }
 
 export default function ConfiguracionPage() {
   const [a, setA] = useState<Ajustes | null>(null)
@@ -85,9 +85,21 @@ export default function ConfiguracionPage() {
     <AdminLayout title="Configuración">
     <div className="grid gap-4 max-w-4xl mx-auto p-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 glass-panel p-4 rounded-lg">
-        <label className="grid gap-1">
+        <label className="grid gap-1 sm:col-span-2">
           <span className="text-sm text-gray-600">Nombre del negocio</span>
           <input className="input" value={a.businessName} onChange={e=>setA({...a, businessName: e.target.value})} />
+        </label>
+        <label className="grid gap-1 sm:col-span-2">
+          <span className="text-sm text-gray-600">Dirección</span>
+          <input className="input" placeholder="Ej. Calle Principal #123" value={a.businessAddress || ''} onChange={e=>setA({...a, businessAddress: e.target.value})} />
+        </label>
+        <label className="grid gap-1">
+          <span className="text-sm text-gray-600">RNC</span>
+          <input className="input" placeholder="Ej. 130123456" value={a.businessRnc || ''} onChange={e=>setA({...a, businessRnc: e.target.value})} />
+        </label>
+        <label className="grid gap-1">
+          <span className="text-sm text-gray-600">Teléfono</span>
+          <input className="input" placeholder="Ej. 809-555-1234" value={a.businessPhone || ''} onChange={e=>setA({...a, businessPhone: e.target.value})} />
         </label>
         <label className="grid gap-1">
           <span className="text-sm text-gray-600">Moneda</span>
