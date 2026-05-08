@@ -22,7 +22,7 @@ echo ========================================================
 echo.
 
 :: Iniciar el servidor
-call npm run start
+call npm run start -- -H 0.0.0.0 -p 3000
 if %errorLevel% neq 0 (
     echo [ERROR] El servidor se detuvo o fallo al iniciar.
     pause
