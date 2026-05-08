@@ -21,18 +21,24 @@ else
 fi
 
 # Iniciar servidor si no está corriendo en el puerto 3001
+SERVER_READY=false
 if ! ss -tlnp 2>/dev/null | grep -q ":$PORT"; then
   echo "Iniciando servidor POS en producción en el puerto $PORT..."
   # Usar nohup para que sobreviva al script
+  export DATABASE_URL="file:./dev.db"
   NODE_ENV=production nohup npm start -- -p $PORT >> /tmp/pos.log 2>&1 &
   
   # Esperar a que el servidor esté listo
-  for i in {1..15}; do
+  echo "Esperando a que el servidor responda..."
+  for i in {1..20}; do
     if ss -tlnp 2>/dev/null | grep -q ":$PORT"; then
+      SERVER_READY=true
       break
     fi
     sleep 1
   done
+else
+  SERVER_READY=true
 fi
 
 # Detectar IP Local (ignorando localhost y docker)
@@ -41,17 +47,24 @@ if [ -z "$IP_LOCAL" ]; then
   IP_LOCAL="127.0.0.1"
 fi
 
-MENSAJE="✅ <b>Servidor POS Iniciado</b>\n\nEl sistema está funcionando correctamente en modo producción.\n\nPara conectarte desde esta u otras computadoras, abre el navegador y visita:\n\n<span size='large'><b>http://$IP_LOCAL:$PORT</b></span>"
+if [ "$SERVER_READY" = true ]; then
+  MENSAJE="✅ <b>Servidor POS Iniciado</b>\n\nEl sistema está funcionando correctamente en modo producción.\n\nPara conectarte desde esta u otras computadoras, abre el navegador y visita:\n\n<span size='large'><b>http://$IP_LOCAL:$PORT</b></span>"
+  TITULO="Punto de Venta"
+  ICONO="info"
+else
+  MENSAJE="❌ <b>Error al Iniciar Servidor</b>\n\nEl servidor no respondió en el puerto $PORT tras 20 segundos.\n\nRevisa los logs en:\n/tmp/pos.log"
+  TITULO="Error POS"
+  ICONO="error"
+fi
 
-# Mostrar ventana gráfica si zenity está disponible (común en Ubuntu/Gnome)
+# Mostrar ventana gráfica si zenity está disponible
 if command -v zenity >/dev/null 2>&1; then
-  zenity --info --title="Punto de Venta" --text="$MENSAJE" --width=400 --height=200
+  zenity --$ICONO --title="$TITULO" --text="$MENSAJE" --width=400
 else
   # Fallback si no hay zenity
   if command -v gnome-terminal >/dev/null 2>&1; then
     gnome-terminal -- bash -c "echo -e '\n$MENSAJE\n\nPresiona ENTER para cerrar esta ventana.'; read"
   else
-    # Si todo falla, simplemente intentar notificar
-    notify-send "Servidor POS" "Conectar en http://$IP_LOCAL:$PORT" || true
+    notify-send "$TITULO" "$MENSAJE" || true
   fi
 fi

@@ -145,7 +145,7 @@ export default function POSPage() {
   }, [tipo, mesaId])
 
   // Lógica para enviar orden (Guardar o Cobrar)
-  const procesarOrden = async (esCobro: boolean, metodoPago?: MetodoPago, montoEntregado?: number, overrideCarrito?: Record<number, Linea>, descuentoForce?: number) => {
+  const procesarOrden = async (esCobro: boolean, metodoPago?: MetodoPago, montoEntregado?: number, overrideCarrito?: Record<number, Linea>, descuentoForce?: number, printPrecuenta?: boolean) => {
     const carritoActual = overrideCarrito || carrito
     const descActual = descuentoForce ?? descuentoPendiente
     if (Object.values(carritoActual).length === 0) return
@@ -279,9 +279,21 @@ export default function POSPage() {
           } catch {}
         }
       } else {
+        if (printPrecuenta && data?.pedidoId) {
+          // Imprimir Pre-cuenta
+          try {
+            const linkRes = await fetch(`/api/tickets/signed-link/${data.pedidoId}`)
+            if (linkRes.ok) {
+              const j = await linkRes.json()
+              window.open(j.url + (j.url.includes('?')?'&':'?') + 'print=1', '_blank')
+            } else {
+              window.open(`/ticket/${data.pedidoId}?print=1`, '_blank')
+            }
+          } catch { window.open(`/ticket/${data.pedidoId}?print=1`, '_blank') }
+        }
         limpiarTodo()
         if (data?.autoKitchen) fetch(`/api/print/kitchen/${data.pedidoId}`).catch(()=>{})
-        push('Orden guardada y pantalla lista', 'success')
+        push(printPrecuenta ? 'Pre-cuenta impresa y guardada' : 'Orden guardada y pantalla lista', 'success')
       }
     } else {
       push('No se pudo procesar la orden', 'error')
@@ -360,7 +372,7 @@ export default function POSPage() {
             ajustes={ajustes}
             ivaPct={ajustes?.taxPct || 0}
             propinaPct={ajustes?.propinaPct || 0}
-            guardarAbierta={(desc) => procesarOrden(false, undefined, undefined, undefined, desc)}
+            guardarAbierta={(desc, print) => procesarOrden(false, undefined, undefined, undefined, desc, print)}
             onCobrar={(desc) => {
               setDescuentoPendiente(desc)
               setCobrando(true)

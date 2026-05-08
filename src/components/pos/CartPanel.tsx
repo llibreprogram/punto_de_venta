@@ -8,7 +8,7 @@
 import { useState, useMemo } from 'react'
 import { usePosStore, Linea } from '@/store/posStore'
 import { toCurrency, LOCALE, CURRENCY } from '@/lib/money'
-import { Trash2, Plus, Minus, Settings2, ReceiptText, ShoppingBag } from 'lucide-react'
+import { Trash2, Plus, Minus, Settings2, ReceiptText, ShoppingBag, Printer } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface CartPanelProps {
@@ -17,7 +17,7 @@ interface CartPanelProps {
   propinaPct: number
   onCobrar: (descuento: number) => void
   onCobrarSel: (sel: Record<number, number>, descuentoSel: number) => void
-  guardarAbierta: (descuento: number) => void
+  guardarAbierta: (descuento: number, printPrecuenta?: boolean) => void
 }
 
 export function CartPanel({ ajustes, ivaPct, propinaPct, onCobrar, onCobrarSel, guardarAbierta }: CartPanelProps) {
@@ -307,29 +307,38 @@ export function CartPanel({ ajustes, ivaPct, propinaPct, onCobrar, onCobrarSel, 
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-4 gap-2">
           <button 
             onClick={handleVaciar} 
             disabled={itemsArray.length === 0 && !editingPedidoId} 
-            className="col-span-1 py-2.5 rounded-xl bg-red-50 text-red-600 font-semibold hover:bg-red-100 disabled:opacity-40 transition-all text-sm border border-red-100"
+            className="col-span-1 flex items-center justify-center py-2.5 rounded-xl bg-red-50 text-red-600 font-semibold hover:bg-red-100 disabled:opacity-40 transition-all text-sm border border-red-100"
+            title={editingPedidoId ? 'Eliminar orden' : 'Vaciar carrito'}
           >
-            {editingPedidoId ? 'Eliminar' : 'Vaciar'}
+            {editingPedidoId ? <Trash2 className="w-4 h-4"/> : <Trash2 className="w-4 h-4"/>}
           </button>
           <button 
-            onClick={() => guardarAbierta(descuentoCents)} 
+            onClick={() => guardarAbierta(descuentoCents, false)} 
             disabled={itemsArray.length === 0 || (tipo === 'Mesa' && !mesaId)} 
-            title={tipo === 'Mesa' && !mesaId ? 'Selecciona una mesa' : ''} 
+            title={tipo === 'Mesa' && !mesaId ? 'Selecciona una mesa' : 'Guardar en la mesa sin imprimir'} 
             className="col-span-1 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-semibold hover:bg-slate-200 disabled:opacity-40 transition-all text-sm border border-slate-200"
           >
             Guardar
           </button>
           <button 
+            onClick={() => guardarAbierta(descuentoCents, true)} 
+            disabled={itemsArray.length === 0 || (tipo === 'Mesa' && !mesaId)} 
+            title={tipo === 'Mesa' && !mesaId ? 'Selecciona una mesa' : 'Imprimir recibo para el cliente'} 
+            className="col-span-2 py-2.5 flex items-center justify-center gap-1.5 rounded-xl bg-amber-50 text-amber-700 font-semibold hover:bg-amber-100 disabled:opacity-40 transition-all text-sm border border-amber-200"
+          >
+            <Printer className="w-4 h-4" /> Pre-cuenta
+          </button>
+          <button 
             onClick={() => onCobrar(descuentoCents)} 
             disabled={itemsArray.length === 0} 
-            className="col-span-3 lg:col-span-1 py-2.5 rounded-xl text-white font-bold disabled:opacity-40 shadow-lg transition-all active:scale-[.97] text-sm"
+            className="col-span-4 py-2.5 rounded-xl text-white font-bold disabled:opacity-40 shadow-lg transition-all active:scale-[.97] text-sm mt-1"
             style={{ background: 'var(--gradient-brand)', boxShadow: '0 4px 12px rgba(234,88,12,.25)' }}
           >
-            Cobrar
+            Cobrar (Elegir Pago)
           </button>
         </div>
         
