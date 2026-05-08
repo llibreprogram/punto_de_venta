@@ -13,10 +13,14 @@ cd /d "%INSTALL_DIR%"
 
 echo Obteniendo ultimos cambios desde GitHub...
 :: Respaldar la base de datos antes de actualizar para evitar que Git la elimine o sobreescriba
+mkdir "backup_db" 2>nul
 if exist "prisma\*.db" (
-    echo Respaldando base de datos...
-    mkdir "backup_db" 2>nul
+    echo Respaldando base de datos (prisma/)...
     copy "prisma\*.db" "backup_db\" >nul
+)
+if exist "*.db" (
+    echo Respaldando base de datos (raiz)...
+    copy "*.db" "backup_db\" >nul
 )
 
 :: Guardamos cambios locales temporales
@@ -32,7 +36,8 @@ if %errorLevel% neq 0 (
 :: Restaurar la base de datos
 if exist "backup_db\*.db" (
     echo Restaurando base de datos...
-    copy "backup_db\*.db" "prisma\" >nul
+    copy "backup_db\*.db" "prisma\" >nul 2>nul
+    copy "backup_db\*.db" ".\" >nul 2>nul
 )
 
 echo.
@@ -48,6 +53,10 @@ echo.
 echo Actualizando base de datos...
 call npm run prisma:generate
 call npm run prisma:push
+
+echo.
+echo Verificando usuarios por defecto...
+call npm run db:seed
 
 echo.
 echo Recompilando el sistema para produccion...
