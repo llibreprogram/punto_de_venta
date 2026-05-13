@@ -7,11 +7,13 @@ type Props = { title: string; actions?: ReactNode; children: ReactNode; minimal?
 
 const NAV_ITEMS = [
   { href: '/pos',               label: 'POS',         icon: '🖥️' },
+  { href: '/delivery',          label: 'Delivery',    icon: '🛵' },
   { href: '/admin',             label: 'Dashboard',   icon: '📈' },
   { href: '/admin/productos',   label: 'Productos',   icon: '📦' },
   { href: '/admin/categorias',  label: 'Categorías',  icon: '🏷️' },
   { href: '/admin/mesas',       label: 'Mesas',       icon: '🍽️' },
   { href: '/admin/usuarios',    label: 'Usuarios',    icon: '👥' },
+  { href: '/admin/integraciones', label: 'Integraciones', icon: '🔗' },
   { href: '/reportes',          label: 'Reportes',    icon: '📋' },
   { href: '/ventas',            label: 'Ventas',      icon: '📊' },
   { href: '/configuracion',     label: 'Config',      icon: '⚙️' },

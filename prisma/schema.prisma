@@ -54,6 +54,7 @@ model Producto {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   items       PedidoItem[]
+  integrationMappings IntegrationMapping[]
 }
 
 model Mesa {
@@ -82,6 +83,11 @@ model Pedido {
   totalCents     Int
   pagos       Pago[]
   notas       String?
+  platform        String?       // "local", "ubereats", "pedidosya"
+  platformOrderId String?       // ID externo de la orden, ej. "U-8821"
+  externalStatus  String?       // Estado externo, ej. "PENDING", "PREPARING"
+  driverName      String?       // Nombre del motorista si la plataforma lo envía
+  driverEta       Int?          // ETA del motorista en minutos
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   ticketAccesses TicketAccess[]
@@ -167,4 +173,18 @@ model TicketAccess {
   at        DateTime @default(now())
   ip        String?
   signed    Boolean  @default(false)
+}
+
+// Mapeo de menú para integraciones (UberEats, PedidosYa)
+model IntegrationMapping {
+  id              Int      @id @default(autoincrement())
+  platform        String   // "ubereats", "pedidosya"
+  producto        Producto @relation(fields: [productoId], references: [id], onDelete: Cascade)
+  productoId      Int
+  externalItemId  String   // El ID del artículo en el sistema de Uber/PedidosYa
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([platform, productoId])
+  @@unique([platform, externalItemId])
 }
