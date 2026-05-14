@@ -15,7 +15,10 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
   const ttlParam = req.nextUrl.searchParams.get('ttl')
   const ttlSeconds = Math.min(3600, Math.max(60, Number(ttlParam) || 600)) // 1–60 min limit
   try {
-    const url = generateSignedTicketUrl(pid, { hostOrigin: req.nextUrl.origin, ttlSeconds })
+    const protocol = req.headers.get('x-forwarded-proto') || req.nextUrl.protocol.replace(':', '') || 'http'
+    const host = req.headers.get('host') || req.nextUrl.host
+    const hostOrigin = `${protocol}://${host}`
+    const url = generateSignedTicketUrl(pid, { hostOrigin, ttlSeconds })
     return NextResponse.json({ ok: true, url, exp: Math.floor(Date.now()/1000)+ttlSeconds })
   } catch (e) {
     console.error('[signed-link] error', e)
