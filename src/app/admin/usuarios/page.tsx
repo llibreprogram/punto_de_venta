@@ -37,6 +37,7 @@ export default function UsuariosAdminPage() {
           <select className="input" value={form.rol} onChange={e=>setForm({...form, rol:e.target.value})}>
             <option value="cajero">cajero</option>
             <option value="mesero">mesero</option>
+            <option value="cocinero">cocinero</option>
             <option value="admin">admin</option>
           </select>
           <input placeholder="Clave" type="password" className="input" value={form.password} onChange={e=>setForm({...form, password:e.target.value})} />
@@ -83,6 +84,7 @@ export default function UsuariosAdminPage() {
                 }}>
                   <option value="cajero">cajero</option>
                   <option value="mesero">mesero</option>
+                  <option value="cocinero">cocinero</option>
                   <option value="admin">admin</option>
                 </select>
               </div>

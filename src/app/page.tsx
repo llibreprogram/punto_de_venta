@@ -23,6 +23,9 @@ export default async function Home() {
   const me = { nombre: session.user.nombre, rol: session.user.rol }
   const isAdmin = me.rol === 'admin'
   const canVentas = me.rol === 'admin' || me.rol === 'cajero'
+  const isCocinero = me.rol === 'cocinero'
+
+  if (isCocinero) redirect('/kds')
 
   const now = new Date()
   const greeting = now.getHours() < 12 ? 'Buenos días' : now.getHours() < 18 ? 'Buenas tardes' : 'Buenas noches'
@@ -54,6 +57,7 @@ export default async function Home() {
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
           {PAGES.map(p => {
             if (p.href==='/ventas' && !canVentas) return null
+            if (p.href==='/pos' && isCocinero) return null
             if (p.sensitive && !isAdmin) return null
             return (
               <a 
