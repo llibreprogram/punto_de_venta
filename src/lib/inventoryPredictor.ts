@@ -60,10 +60,11 @@ export async function generarSugerenciasCompra(): Promise<SugerenciaCompra[]> {
 
       // 4. Restricción estricta de caducidad (Vida Útil)
       // Nunca comprar más de lo que se consume en el 80% de su vida útil.
+      // PERO: Nunca bajar de stockMinimo, porque si estamos por debajo hay que reabastecer sí o sí.
       const limiteCaducidad = consumoDiarioPromedio * (insumo.diasVidaUtil * 0.8)
 
       if (metaInventario > limiteCaducidad) {
-        metaInventario = limiteCaducidad
+        metaInventario = Math.max(limiteCaducidad, insumo.stockMinimo)
         razonSugerencia = `Limitado por caducidad (${insumo.diasVidaUtil} días). Evita merma.`
       } else {
         razonSugerencia = `Basado en ritmo de consumo: ${consumoDiarioPromedio.toFixed(2)} ${insumo.unidadMedida}/día.`
