@@ -1,6 +1,6 @@
 "use client"
 import { useState, useEffect } from 'react'
-import { Plus, Brain, CheckCircle, Clock, XCircle, ChevronRight, PackageCheck, Truck, Receipt, Calendar, AlertTriangle, Building2 } from 'lucide-react'
+import { Plus, Brain, CheckCircle, Clock, XCircle, ChevronRight, PackageCheck, Truck, Receipt, Calendar, AlertTriangle, Building2, Printer } from 'lucide-react'
 import { useToast } from '@/components/ui/Providers'
 import { toCurrency } from '@/lib/money'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -112,6 +112,66 @@ export default function ComprasClient() {
     } else push('Error al recibir mercancía', 'error')
   }
 
+  const imprimirOrden = (o: OrdenCompra) => {
+    const w = window.open('', '_blank', 'width=800,height=900')
+    if (!w) return
+    const fecha = new Date(o.createdAt).toLocaleDateString('es-DO', { year: 'numeric', month: 'long', day: 'numeric' })
+    const fechaEsp = o.fechaEsperada ? new Date(o.fechaEsperada).toLocaleDateString('es-DO', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'
+    const rows = o.items.map((it: any) => `
+      <tr>
+        <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0">${it.insumo?.nombre || 'Insumo #' + it.insumoId}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;text-align:center">${it.cantidadPedida}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;text-align:center">${it.insumo?.unidadMedida || '-'}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;text-align:right">$${(it.costoUnitarioCents / 100).toFixed(2)}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:700">$${(it.totalCents / 100).toFixed(2)}</td>
+      </tr>
+    `).join('')
+    w.document.write(`
+      <!DOCTYPE html><html><head><title>Orden de Compra OC-${o.id.toString().padStart(4,'0')}</title>
+      <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;padding:40px;color:#1e293b;background:#fff}
+        .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;padding-bottom:20px;border-bottom:3px solid #4f46e5}
+        .header h1{font-size:28px;color:#4f46e5;font-weight:900}
+        .header .badge{background:#4f46e5;color:#fff;padding:6px 16px;border-radius:8px;font-weight:800;font-size:13px;text-transform:uppercase}
+        .meta{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px}
+        .meta-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px}
+        .meta-box label{font-size:11px;text-transform:uppercase;font-weight:800;color:#94a3b8;letter-spacing:1px}
+        .meta-box p{font-size:16px;font-weight:700;margin-top:4px}
+        table{width:100%;border-collapse:collapse;margin-bottom:24px}
+        thead th{background:#f1f5f9;padding:12px;text-align:left;font-size:11px;text-transform:uppercase;font-weight:800;color:#64748b;letter-spacing:0.5px}
+        .total-row{background:#f8fafc;border-top:2px solid #1e293b}
+        .total-row td{padding:14px 12px;font-weight:900;font-size:18px}
+        .footer{text-align:center;margin-top:40px;padding-top:20px;border-top:1px solid #e2e8f0;color:#94a3b8;font-size:12px}
+        @media print{body{padding:20px}.no-print{display:none!important}}
+      </style></head><body>
+      <div class="header">
+        <div><h1>ORDEN DE COMPRA</h1><p style="font-size:14px;color:#64748b;margin-top:4px">OC-${o.id.toString().padStart(4,'0')}</p></div>
+        <span class="badge">${o.estado}</span>
+      </div>
+      <div class="meta">
+        <div class="meta-box"><label>Proveedor</label><p>${o.proveedor.nombre}</p></div>
+        <div class="meta-box"><label>Fecha de Emisión</label><p>${fecha}</p></div>
+        <div class="meta-box"><label>Entrega Estimada</label><p>${fechaEsp}</p></div>
+        <div class="meta-box"><label>Total de la Orden</label><p style="color:#4f46e5">$${(o.totalCents / 100).toFixed(2)}</p></div>
+      </div>
+      <table>
+        <thead><tr>
+          <th>Producto</th><th style="text-align:center">Cantidad</th><th style="text-align:center">Unidad</th><th style="text-align:right">Precio Unit.</th><th style="text-align:right">Subtotal</th>
+        </tr></thead>
+        <tbody>${rows}
+          <tr class="total-row"><td colspan="4" style="text-align:right">TOTAL</td><td style="text-align:right;color:#4f46e5">$${(o.totalCents / 100).toFixed(2)}</td></tr>
+        </tbody>
+      </table>
+      <div class="no-print" style="text-align:center;margin:24px 0">
+        <button onclick="window.print()" style="background:#4f46e5;color:#fff;border:none;padding:12px 32px;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer">🖨️ Imprimir / Guardar PDF</button>
+      </div>
+      <div class="footer">Documento generado automáticamente por el Sistema POS &bull; ${new Date().toLocaleString('es-DO')}</div>
+      </body></html>
+    `)
+    w.document.close()
+  }
+
   const proveedoresConSugerencias = Array.from(new Set(sugerencias.map(s => s.proveedorId)))
 
   return (
@@ -181,6 +241,11 @@ export default function ComprasClient() {
                               {o.estado === 'BORRADOR' && (
                                 <button onClick={()=>cambiarEstado(o.id, 'ENVIADA')} className="text-sm bg-indigo-50 text-indigo-700 px-4 py-2 rounded-xl hover:bg-indigo-600 hover:text-white font-bold transition-all shadow-sm">
                                   Marcar Enviada
+                                </button>
+                              )}
+                              {(o.estado === 'ENVIADA' || o.estado === 'RECIBIDA') && (
+                                <button onClick={()=>imprimirOrden(o)} className="flex items-center gap-2 text-sm bg-white text-slate-600 px-4 py-2 rounded-xl hover:bg-indigo-50 hover:text-indigo-700 font-bold transition-all shadow-sm border border-slate-200">
+                                  <Printer className="w-4 h-4" /> Imprimir
                                 </button>
                               )}
                               {o.estado === 'ENVIADA' && (

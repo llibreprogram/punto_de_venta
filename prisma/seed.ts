@@ -4,20 +4,13 @@ import { hashPassword } from '../src/lib/auth'
 const prisma = new PrismaClient()
 
 async function main() {
-  if (process.env.NODE_ENV !== 'production') {
-    // Categorías (upsert para evitar duplicados)
+  // Solo crear datos demo si es la PRIMERA instalación (0 categorías)
+  // Esto evita re-crear categorías y productos que el admin borró intencionalmente
+  const totalCategorias = await prisma.categoria.count()
+  if (totalCategorias === 0) {
     const categoriasNombres = ['Hamburguesas', 'Combos', 'Bebidas', 'Acompañantes', 'Postres']
     for (const nombre of categoriasNombres) {
-      await prisma.categoria.upsert({
-        where: { id: 0 }, // no hay unique por nombre, usamos findFirst abajo
-        update: {},
-        create: { nombre },
-      }).catch(async () => {
-        const exists = await prisma.categoria.findFirst({ where: { nombre } })
-        if (!exists) {
-          await prisma.categoria.create({ data: { nombre } })
-        }
-      })
+      await prisma.categoria.create({ data: { nombre } }).catch(() => {})
     }
 
     const categoriasDb = await prisma.categoria.findMany()
@@ -34,8 +27,7 @@ async function main() {
       { nombre: 'Helado Vainilla', precioCents: 149, costoCents: 8000, categoriaId: map['Postres'] },
     ]
     for (const p of productos) {
-      const exists = await prisma.producto.findFirst({ where: { nombre: p.nombre, categoriaId: p.categoriaId } })
-      if (!exists) await prisma.producto.create({ data: p })
+      if (p.categoriaId) await prisma.producto.create({ data: p }).catch(() => {})
     }
 
     // Mesas ejemplo
@@ -44,6 +36,7 @@ async function main() {
       const exists = await prisma.mesa.findUnique({ where: { nombre } })
       if (!exists) await prisma.mesa.create({ data: { nombre } })
     }
+    console.log('Datos demo creados (primera instalación)')
   }
 
   // Usuarios iniciales

@@ -13,7 +13,9 @@ export async function GET() {
     orderBy: { createdAt: 'desc' },
     include: {
       proveedor: true,
-      items: true
+      items: {
+        include: { insumo: { select: { nombre: true, unidadMedida: true } } }
+      }
     }
   })
   return NextResponse.json(ordenes)
