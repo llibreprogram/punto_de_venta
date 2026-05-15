@@ -1,8 +1,9 @@
 "use client"
 import { useState, useEffect } from 'react'
-import { Plus, Edit2, Trash2, ArrowDownCircle, ArrowUpCircle, AlertTriangle } from 'lucide-react'
+import { Plus, Edit2, Trash2, ArrowUpCircle, AlertTriangle, Search, PackageSearch } from 'lucide-react'
 import { toCurrency } from '@/lib/money'
 import { useToast } from '@/components/ui/Providers'
+import { motion, AnimatePresence } from 'framer-motion'
 
 type Insumo = {
   id: number
@@ -24,6 +25,7 @@ export default function InventarioClient() {
   const [modalOpen, setModalOpen] = useState(false)
   const [modalMovOpen, setModalMovOpen] = useState(false)
   const [editando, setEditando] = useState<Insumo | null>(null)
+  const [busqueda, setBusqueda] = useState('')
   
   // Forms
   const [form, setForm] = useState({ nombre: '', unidadMedida: 'Gramos', costo: '', stockActual: '', stockMinimo: '', proveedorId: '', diasVidaUtil: '365' })
@@ -126,63 +128,101 @@ export default function InventarioClient() {
     setModalMovOpen(true)
   }
 
+  const insumosFiltrados = insumos.filter(i => i.nombre.toLowerCase().includes(busqueda.toLowerCase()))
+
   return (
-    <div>
-      <button onClick={openNew} className="mb-4 bg-indigo-600 text-white px-4 py-2 rounded-xl shadow hover:bg-indigo-700 font-bold flex items-center gap-2">
-        <Plus className="w-5 h-5" /> Nuevo Insumo
-      </button>
+    <div className="relative min-h-[75vh]">
+      {/* Decorative background element */}
+      <div className="fixed top-0 left-0 w-[600px] h-[600px] bg-indigo-500/5 rounded-full blur-3xl pointer-events-none -z-10 -translate-y-1/2 -translate-x-1/2" />
+
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+        <div className="relative w-full sm:w-96 group">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5 group-focus-within:text-indigo-500 transition-colors" />
+          <input 
+            type="text" 
+            placeholder="Buscar insumo..." 
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            className="w-full pl-12 pr-4 py-3.5 bg-white/70 backdrop-blur-md border border-slate-200/60 rounded-2xl outline-none focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm font-medium placeholder:text-slate-400"
+          />
+        </div>
+        <button onClick={openNew} className="w-full sm:w-auto bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-6 py-3.5 rounded-2xl shadow-lg shadow-indigo-600/20 hover:shadow-indigo-600/40 font-bold flex items-center justify-center gap-2 hover:-translate-y-0.5 transition-all active:scale-95">
+          <Plus className="w-5 h-5" /> Registrar Insumo
+        </button>
+      </div>
 
       {cargando ? (
-        <div className="flex justify-center p-12"><div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"/></div>
+        <div className="flex justify-center p-20"><div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"/></div>
       ) : (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl shadow-slate-200/30 border border-slate-200/60 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-sm text-slate-500 uppercase tracking-wider">
-                  <th className="p-4 font-bold">Insumo</th>
-                  <th className="p-4 font-bold">Stock Actual</th>
-                  <th className="p-4 font-bold">Costo Und.</th>
-                  <th className="p-4 font-bold text-right">Acciones</th>
+                <tr className="bg-slate-50/80 border-b border-slate-100 text-sm text-slate-400 uppercase tracking-wider font-bold">
+                  <th className="p-5">Insumo</th>
+                  <th className="p-5">Stock Actual</th>
+                  <th className="p-5">Costo Und.</th>
+                  <th className="p-5">Proveedor / Vida Útil</th>
+                  <th className="p-5 text-right">Acciones</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
-                {insumos.map(i => {
-                  const alertaStock = i.stockMinimo > 0 && i.stockActual <= i.stockMinimo
-                  return (
-                    <tr key={i.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="p-4">
-                        <div className="font-bold text-slate-800 flex items-center gap-2">
-                          {i.nombre}
-                          {alertaStock && <AlertTriangle className="w-4 h-4 text-rose-500" title="Bajo stock" />}
-                        </div>
-                        <div className="text-xs text-slate-500">Unidad: {i.unidadMedida}</div>
-                      </td>
-                      <td className="p-4">
-                        <span className={`font-mono font-bold ${alertaStock ? 'text-rose-600' : 'text-slate-700'}`}>
-                          {i.stockActual} {i.unidadMedida}
-                        </span>
-                      </td>
-                      <td className="p-4 text-slate-600 font-medium">
-                        {toCurrency(i.costoCents)}
-                      </td>
-                      <td className="p-4 flex items-center justify-end gap-2">
-                        <button onClick={() => openMov(i)} className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Ajustar Stock (Entrada/Salida)">
-                          <ArrowUpCircle className="w-5 h-5" />
-                        </button>
-                        <button onClick={() => openEdit(i)} className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="Editar Insumo">
-                          <Edit2 className="w-5 h-5" />
-                        </button>
-                        <button onClick={() => deleteInsumo(i.id)} className="p-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors" title="Eliminar Insumo">
-                          <Trash2 className="w-5 h-5" />
-                        </button>
-                      </td>
-                    </tr>
-                  )
-                })}
-                {insumos.length === 0 && (
+              <tbody className="divide-y divide-slate-100/80">
+                <AnimatePresence>
+                  {insumosFiltrados.map((i, idx) => {
+                    const alertaStock = i.stockMinimo > 0 && i.stockActual <= i.stockMinimo
+                    const prov = proveedores.find(p => p.id === i.proveedorId)
+                    return (
+                      <motion.tr 
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: idx * 0.02 }}
+                        key={i.id} className="hover:bg-slate-50/50 transition-colors group"
+                      >
+                        <td className="p-5">
+                          <div className="font-black text-lg text-slate-800 flex items-center gap-2">
+                            {i.nombre}
+                            {alertaStock && <AlertTriangle className="w-5 h-5 text-amber-500 animate-pulse" title="Bajo stock" />}
+                          </div>
+                          <div className="text-sm font-medium text-slate-400 uppercase tracking-widest mt-1">Unidad: {i.unidadMedida}</div>
+                        </td>
+                        <td className="p-5">
+                          <div className={`font-mono text-xl font-black w-max px-3 py-1.5 rounded-xl border ${alertaStock ? 'text-amber-700 bg-amber-50 border-amber-200' : 'text-emerald-700 bg-emerald-50 border-emerald-200'}`}>
+                            {i.stockActual} <span className="text-sm font-bold opacity-70">{i.unidadMedida}</span>
+                          </div>
+                        </td>
+                        <td className="p-5">
+                          <div className="text-slate-600 font-bold text-lg bg-slate-50 w-max px-3 py-1.5 rounded-xl border border-slate-200/50">
+                            {toCurrency(i.costoCents)}
+                          </div>
+                        </td>
+                        <td className="p-5">
+                          <div className="text-sm font-medium text-slate-600 mb-1">
+                            {prov ? <span className="text-indigo-600 font-bold">🏢 {prov.nombre}</span> : <span className="text-slate-400">Sin proveedor</span>}
+                          </div>
+                          <div className="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded w-max border border-slate-200/50">
+                            ⏳ Vida Útil: {i.diasVidaUtil} d
+                          </div>
+                        </td>
+                        <td className="p-5 flex items-center justify-end gap-2">
+                          <button onClick={() => openMov(i)} className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold rounded-xl shadow-md shadow-emerald-500/20 hover:shadow-emerald-500/40 hover:-translate-y-0.5 transition-all flex items-center gap-2" title="Ajustar Stock">
+                            <ArrowUpCircle className="w-4 h-4" /> Ajustar
+                          </button>
+                          <button onClick={() => openEdit(i)} className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors" title="Editar">
+                            <Edit2 className="w-5 h-5" />
+                          </button>
+                          <button onClick={() => deleteInsumo(i.id)} className="p-2.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors" title="Eliminar">
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </td>
+                      </motion.tr>
+                    )
+                  })}
+                </AnimatePresence>
+                {insumosFiltrados.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="p-8 text-center text-slate-500">No hay insumos registrados. Crea uno nuevo.</td>
+                    <td colSpan={5} className="p-16 text-center text-slate-500">
+                      <PackageSearch className="w-16 h-16 mx-auto mb-4 opacity-20" />
+                      <p className="text-lg font-bold">No se encontraron insumos.</p>
+                      <p className="text-sm">Registra tu materia prima para controlar el inventario.</p>
+                    </td>
                   </tr>
                 )}
               </tbody>
@@ -192,105 +232,117 @@ export default function InventarioClient() {
       )}
 
       {/* Modal Insumo */}
-      {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl">
-            <div className="p-6 border-b border-slate-100">
-              <h2 className="text-2xl font-black text-slate-800">{editando ? 'Editar Insumo' : 'Nuevo Insumo'}</h2>
-            </div>
-            <form onSubmit={saveInsumo} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1">Nombre del Insumo</label>
-                <input required value={form.nombre} onChange={e=>setForm({...form, nombre: e.target.value})} className="w-full border-2 border-slate-200 rounded-xl p-3 focus:border-indigo-500 outline-none" placeholder="Ej. Carne Molida" />
+      <AnimatePresence>
+        {modalOpen && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-md p-4">
+            <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }} className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-white/20">
+              <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+                <h2 className="text-2xl font-black text-slate-800">{editando ? 'Editar Insumo' : 'Nuevo Insumo'}</h2>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <form onSubmit={saveInsumo} className="p-6 space-y-5">
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1">Unidad de Medida</label>
-                  <select value={form.unidadMedida} onChange={e=>setForm({...form, unidadMedida: e.target.value})} className="w-full border-2 border-slate-200 rounded-xl p-3 focus:border-indigo-500 outline-none">
-                    <option>Gramos</option>
-                    <option>Kilogramos</option>
-                    <option>Libras</option>
-                    <option>Mililitros</option>
-                    <option>Litros</option>
-                    <option>Galones</option>
-                    <option>Unidades</option>
-                    <option>Porciones</option>
-                  </select>
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5">Nombre del Insumo</label>
+                  <input required value={form.nombre} onChange={e=>setForm({...form, nombre: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3.5 focus:border-indigo-500 focus:bg-white outline-none transition-colors" placeholder="Ej. Carne Molida" />
                 </div>
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1">Costo por {form.unidadMedida}</label>
-                  <input required type="number" step="0.01" value={form.costo} onChange={e=>setForm({...form, costo: e.target.value})} className="w-full border-2 border-slate-200 rounded-xl p-3 focus:border-indigo-500 outline-none" placeholder="0.00" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                {!editando && (
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1">Stock Inicial</label>
-                    <input type="number" step="0.01" value={form.stockActual} onChange={e=>setForm({...form, stockActual: e.target.value})} className="w-full border-2 border-slate-200 rounded-xl p-3 focus:border-indigo-500 outline-none" />
+                    <label className="block text-sm font-bold text-slate-700 mb-1.5">Unidad de Medida</label>
+                    <select value={form.unidadMedida} onChange={e=>setForm({...form, unidadMedida: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3.5 focus:border-indigo-500 focus:bg-white outline-none transition-colors cursor-pointer">
+                      <option>Gramos</option>
+                      <option>Kilogramos</option>
+                      <option>Libras</option>
+                      <option>Mililitros</option>
+                      <option>Litros</option>
+                      <option>Galones</option>
+                      <option>Unidades</option>
+                      <option>Porciones</option>
+                    </select>
                   </div>
-                )}
-                <div className={editando ? 'col-span-2' : ''}>
-                  <label className="block text-sm font-bold text-slate-700 mb-1">Stock Mínimo (Alerta)</label>
-                  <input type="number" step="0.01" value={form.stockMinimo} onChange={e=>setForm({...form, stockMinimo: e.target.value})} className="w-full border-2 border-slate-200 rounded-xl p-3 focus:border-indigo-500 outline-none" />
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1.5">Costo por {form.unidadMedida}</label>
+                    <input required type="number" step="0.01" value={form.costo} onChange={e=>setForm({...form, costo: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3.5 focus:border-indigo-500 focus:bg-white outline-none transition-colors" placeholder="0.00" />
+                  </div>
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1">Proveedor Principal</label>
-                  <select value={form.proveedorId} onChange={e=>setForm({...form, proveedorId: e.target.value})} className="w-full border-2 border-slate-200 rounded-xl p-3 focus:border-indigo-500 outline-none">
-                    <option value="">Ninguno</option>
-                    {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-                  </select>
+                <div className="grid grid-cols-2 gap-4">
+                  {!editando && (
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-1.5">Stock Inicial</label>
+                      <input type="number" step="0.01" value={form.stockActual} onChange={e=>setForm({...form, stockActual: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3.5 focus:border-indigo-500 focus:bg-white outline-none transition-colors" />
+                    </div>
+                  )}
+                  <div className={editando ? 'col-span-2' : ''}>
+                    <label className="block text-sm font-bold text-slate-700 mb-1.5">Stock Mínimo (Alerta)</label>
+                    <input type="number" step="0.01" value={form.stockMinimo} onChange={e=>setForm({...form, stockMinimo: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3.5 focus:border-indigo-500 focus:bg-white outline-none transition-colors" />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1">Vida Útil (Días)</label>
-                  <input type="number" value={form.diasVidaUtil} onChange={e=>setForm({...form, diasVidaUtil: e.target.value})} className="w-full border-2 border-slate-200 rounded-xl p-3 focus:border-indigo-500 outline-none" placeholder="365" />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1.5">Proveedor</label>
+                    <select value={form.proveedorId} onChange={e=>setForm({...form, proveedorId: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3.5 focus:border-indigo-500 focus:bg-white outline-none transition-colors cursor-pointer">
+                      <option value="">Ninguno</option>
+                      {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1.5">Vida Útil (Días)</label>
+                    <input type="number" value={form.diasVidaUtil} onChange={e=>setForm({...form, diasVidaUtil: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3.5 focus:border-indigo-500 focus:bg-white outline-none transition-colors" placeholder="365" />
+                  </div>
                 </div>
-              </div>
-              <div className="flex gap-3 pt-4">
-                <button type="button" onClick={()=>setModalOpen(false)} className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200">Cancelar</button>
-                <button type="submit" className="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700">Guardar</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+                <div className="flex gap-3 pt-6 border-t border-slate-100">
+                  <button type="button" onClick={()=>setModalOpen(false)} className="flex-1 px-4 py-3.5 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition-colors">Cancelar</button>
+                  <button type="submit" className="flex-1 px-4 py-3.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md shadow-indigo-600/20 transition-colors">Guardar Insumo</button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Modal Ajuste Inventario */}
-      {modalMovOpen && editando && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl">
-            <div className="p-6 border-b border-slate-100">
-              <h2 className="text-2xl font-black text-slate-800">Ajustar Stock</h2>
-              <p className="text-slate-500 mt-1">{editando.nombre} (Stock: {editando.stockActual} {editando.unidadMedida})</p>
-            </div>
-            <form onSubmit={saveMovimiento} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1">Tipo de Movimiento</label>
-                <div className="flex bg-slate-100 p-1 rounded-xl">
-                  <button type="button" onClick={()=>setMovForm({...movForm, tipo: 'ENTRADA'})} className={`flex-1 py-2 text-sm font-bold rounded-lg ${movForm.tipo==='ENTRADA' ? 'bg-white shadow text-emerald-600' : 'text-slate-500'}`}>Entrada</button>
-                  <button type="button" onClick={()=>setMovForm({...movForm, tipo: 'SALIDA'})} className={`flex-1 py-2 text-sm font-bold rounded-lg ${movForm.tipo==='SALIDA' ? 'bg-white shadow text-rose-600' : 'text-slate-500'}`}>Salida</button>
-                  <button type="button" onClick={()=>setMovForm({...movForm, tipo: 'AJUSTE'})} className={`flex-1 py-2 text-sm font-bold rounded-lg ${movForm.tipo==='AJUSTE' ? 'bg-white shadow text-indigo-600' : 'text-slate-500'}`}>Fijar Stock</button>
+      <AnimatePresence>
+        {modalMovOpen && editando && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-md p-4">
+            <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }} className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-white/20">
+              <div className="p-6 border-b border-slate-100 bg-slate-50/50 text-center">
+                <h2 className="text-2xl font-black text-slate-800">Ajustar Stock</h2>
+                <div className="mt-3 inline-flex flex-col items-center">
+                  <span className="font-bold text-slate-600 text-lg">{editando.nombre}</span>
+                  <span className="font-mono bg-white border border-slate-200 px-4 py-1.5 rounded-lg text-indigo-700 font-bold mt-2 shadow-sm">
+                    Stock Actual: {editando.stockActual} {editando.unidadMedida}
+                  </span>
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1">
-                  {movForm.tipo === 'AJUSTE' ? 'Nuevo Stock Real' : 'Cantidad a ' + (movForm.tipo==='ENTRADA' ? 'Sumar' : 'Restar')} ({editando.unidadMedida})
-                </label>
-                <input required type="number" step="0.01" value={movForm.cantidad} onChange={e=>setMovForm({...movForm, cantidad: e.target.value})} className="w-full text-2xl border-2 border-slate-200 rounded-xl p-3 focus:border-indigo-500 outline-none" placeholder="0" />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1">Motivo (Opcional)</label>
-                <input value={movForm.razon} onChange={e=>setMovForm({...movForm, razon: e.target.value})} className="w-full border-2 border-slate-200 rounded-xl p-3 focus:border-indigo-500 outline-none" placeholder="Ej. Compra, Desperdicio, etc." />
-              </div>
-              <div className="flex gap-3 pt-4">
-                <button type="button" onClick={()=>setModalMovOpen(false)} className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200">Cancelar</button>
-                <button type="submit" className={`flex-1 px-4 py-3 text-white rounded-xl font-bold ${movForm.tipo==='ENTRADA' ? 'bg-emerald-600 hover:bg-emerald-700' : movForm.tipo==='SALIDA' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}>Confirmar</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+              <form onSubmit={saveMovimiento} className="p-6 space-y-5">
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Tipo de Ajuste</label>
+                  <div className="flex bg-slate-100/80 p-1.5 rounded-2xl border border-slate-200/50">
+                    <button type="button" onClick={()=>setMovForm({...movForm, tipo: 'ENTRADA'})} className={`flex-1 py-2.5 text-sm font-black rounded-xl transition-all ${movForm.tipo==='ENTRADA' ? 'bg-white shadow-sm text-emerald-600' : 'text-slate-500 hover:text-slate-700'}`}>ENTRADA</button>
+                    <button type="button" onClick={()=>setMovForm({...movForm, tipo: 'SALIDA'})} className={`flex-1 py-2.5 text-sm font-black rounded-xl transition-all ${movForm.tipo==='SALIDA' ? 'bg-white shadow-sm text-rose-600' : 'text-slate-500 hover:text-slate-700'}`}>SALIDA</button>
+                    <button type="button" onClick={()=>setMovForm({...movForm, tipo: 'AJUSTE'})} className={`flex-1 py-2.5 text-sm font-black rounded-xl transition-all ${movForm.tipo==='AJUSTE' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}>FIJAR</button>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5">
+                    {movForm.tipo === 'AJUSTE' ? 'Establecer nuevo stock a:' : 'Cantidad a ' + (movForm.tipo==='ENTRADA' ? 'sumar:' : 'restar:')}
+                  </label>
+                  <div className="relative">
+                    <input required type="number" step="0.01" value={movForm.cantidad} onChange={e=>setMovForm({...movForm, cantidad: e.target.value})} className="w-full text-2xl font-black bg-slate-50 border border-slate-200 rounded-xl p-4 focus:border-indigo-500 focus:bg-white outline-none transition-colors" placeholder="0" />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold uppercase tracking-widest text-sm">{editando.unidadMedida}</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5">Motivo del ajuste (Opcional)</label>
+                  <input value={movForm.razon} onChange={e=>setMovForm({...movForm, razon: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3.5 focus:border-indigo-500 focus:bg-white outline-none transition-colors" placeholder="Ej. Merma, Compra externa, etc." />
+                </div>
+                <div className="flex gap-3 pt-6 border-t border-slate-100">
+                  <button type="button" onClick={()=>setModalMovOpen(false)} className="flex-1 px-4 py-3.5 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition-colors">Cancelar</button>
+                  <button type="submit" className={`flex-1 px-4 py-3.5 text-white rounded-xl font-bold transition-all shadow-md active:scale-95 ${movForm.tipo==='ENTRADA' ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20' : movForm.tipo==='SALIDA' ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/20' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/20'}`}>Confirmar {movForm.tipo}</button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
