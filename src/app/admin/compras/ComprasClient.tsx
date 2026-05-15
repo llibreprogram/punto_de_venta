@@ -1,6 +1,6 @@
 "use client"
 import { useState, useEffect } from 'react'
-import { Plus, Brain, CheckCircle, Clock, XCircle, ChevronRight, PackageCheck, Truck, Receipt, Calendar, AlertTriangle } from 'lucide-react'
+import { Plus, Brain, CheckCircle, Clock, XCircle, ChevronRight, PackageCheck, Truck, Receipt, Calendar, AlertTriangle, Building2 } from 'lucide-react'
 import { useToast } from '@/components/ui/Providers'
 import { toCurrency } from '@/lib/money'
 import { motion, AnimatePresence } from 'framer-motion'
