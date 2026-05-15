@@ -6,10 +6,12 @@ import { toCents, toCurrency, LOCALE, CURRENCY } from '@/lib/money'
 
 type Producto = { id:number; nombre:string; imagenUrl:string|null; precioCents:number; costoCents?:number; categoriaId:number; activo?: boolean; ingredientes?: string[]; extras?: Array<{ nombre:string; precioCents:number }> }
 type Categoria = { id:number; nombre:string }
+type Insumo = { id:number; nombre:string; costoCents:number }
 
 export default function AdminProductosPage() {
   const [productos, setProductos] = useState<Producto[]>([])
   const [categorias, setCategorias] = useState<Categoria[]>([])
+  const [insumos, setInsumos] = useState<Insumo[]>([])
   const [mostrarPapelera, setMostrarPapelera] = useState(false)
   const [q, setQ] = useState('')
   const [order, setOrder] = useState<'cat_name'|'name'>('cat_name')
@@ -18,6 +20,7 @@ export default function AdminProductosPage() {
   const [newPrecio, setNewPrecio] = useState('')
   const [newCosto, setNewCosto] = useState('')
   const [newCategoriaId, setNewCategoriaId] = useState<number|undefined>(undefined)
+  const [newInsumoBaseId, setNewInsumoBaseId] = useState<number|undefined>(undefined)
   const [newFile, setNewFile] = useState<File|null>(null)
   const [newIngredientes, setNewIngredientes] = useState('')
   const [newExtras, setNewExtras] = useState<Array<{nombre:string; precioCents:string}>>([])
@@ -59,18 +62,21 @@ export default function AdminProductosPage() {
     if (mostrarPapelera) params.set('all','1')
     if (q.trim()) params.set('q', q.trim())
     if (order) params.set('order', order)
-    const [resP, resC, resA] = await Promise.all([
+    const [resP, resC, resI, resA] = await Promise.all([
       fetch(`/api/productos?${params.toString()}`),
       fetch('/api/categorias'),
+      fetch('/api/inventario'),
       fetch('/api/ajustes').catch(()=>null as unknown as Response)
     ])
     const data: Producto[] = await resP.json()
     const cats: Categoria[] = await resC.json()
+    const invData = resI.ok ? await resI.json() : []
   if (resA) { try { const aj = await resA.json(); setAjustes({ locale: aj?.locale, currency: aj?.currency }) } catch {} }
     // Si estamos en papelera, mostrar solo inactivos; si no, activos (cuando all=0 ya viene filtrado)
     const filtered = mostrarPapelera ? data.filter(p=>p.activo===false) : data.filter(p=>p.activo!==false)
     setProductos(filtered)
     setCategorias(cats)
+    setInsumos(invData)
   }, [mostrarPapelera, q, order])
   useEffect(()=>{ load() }, [load])
 
@@ -97,7 +103,11 @@ export default function AdminProductosPage() {
     if (!categoriaId) return
   const ingredientes = newIngredientes.split(',').map(s=>s.trim()).filter(Boolean)
   const extras = newExtras.map(e=> ({ nombre: e.nombre.trim(), precioCents: toCents(e.precioCents||'0') })).filter(e=> e.nombre)
-  const res = await fetch('/api/productos', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ nombre, precioCents, costoCents, categoriaId, ingredientes, extras }) })
+  const res = await fetch('/api/productos', { 
+    method:'POST', 
+    headers:{'Content-Type':'application/json'}, 
+    body: JSON.stringify({ nombre, precioCents, costoCents, categoriaId, ingredientes, extras, insumoBaseId: newInsumoBaseId }) 
+  })
     const created: Producto = await res.json()
     if (newFile) {
       const form = new FormData()
@@ -110,6 +120,7 @@ export default function AdminProductosPage() {
     setNewNombre('')
     setNewPrecio('')
   setNewCategoriaId(undefined)
+  setNewInsumoBaseId(undefined)
   setNewCosto('')
   setNewFile(null)
   setNewIngredientes('')
@@ -364,6 +375,22 @@ export default function AdminProductosPage() {
               <input className="input" placeholder="0.00" value={newCosto} onChange={e=>setNewCosto(e.target.value)} />
             </label>
             <label className="grid gap-1">
+              <span className="text-sm font-semibold text-indigo-600">Vincular Insumo (Opcional)</span>
+              <span className="text-xs text-slate-500">Autocompleta nombre y costo y descuenta 1 a 1 de inventario.</span>
+              <select className="input" value={newInsumoBaseId ?? ''} onChange={e=> {
+                const iId = Number(e.target.value)
+                setNewInsumoBaseId(iId)
+                const insumo = insumos.find(i => i.id === iId)
+                if (insumo) {
+                  if (!newNombre) setNewNombre(insumo.nombre)
+                  if (!newCosto) setNewCosto((insumo.costoCents / 100).toFixed(2))
+                }
+              }}>
+                <option value="">No vincular (Producto complejo)</option>
+                {insumos.map(i=> (<option key={i.id} value={i.id}>{i.nombre}</option>))}
+              </select>
+            </label>
+            <label className="grid gap-1 mt-2">
               <span className="text-sm">Categoría</span>
               <select className="input" value={newCategoriaId ?? ''} onChange={e=>setNewCategoriaId(Number(e.target.value))}>
                 <option value="" disabled>Selecciona…</option>
@@ -379,7 +406,7 @@ export default function AdminProductosPage() {
               <input className="input" placeholder="ej. Lechuga, Tomate, Queso" value={newIngredientes} onChange={e=>setNewIngredientes(e.target.value)} />
             </label>
             <div className="flex gap-2 justify-end pt-2">
-              <button className="btn" onClick={()=>{ setShowNew(false); setNewNombre(''); setNewPrecio(''); setNewCosto(''); setNewCategoriaId(undefined); setNewFile(null); }}>Cancelar</button>
+              <button className="btn" onClick={()=>{ setShowNew(false); setNewNombre(''); setNewPrecio(''); setNewCosto(''); setNewCategoriaId(undefined); setNewInsumoBaseId(undefined); setNewFile(null); }}>Cancelar</button>
               <button className="btn btn-primary" onClick={crear}>Crear</button>
             </div>
           </div>

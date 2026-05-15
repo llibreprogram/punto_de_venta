@@ -14,12 +14,12 @@ export default async function RecetarioPage() {
 
   const productos = await prisma.producto.findMany({
     orderBy: { nombre: 'asc' },
-    select: { id: true, nombre: true, requiereCocina: true }
+    select: { id: true, nombre: true, requiereCocina: true, costoCents: true }
   })
   
   const insumos = await prisma.insumo.findMany({
     orderBy: { nombre: 'asc' },
-    select: { id: true, nombre: true, unidadMedida: true }
+    select: { id: true, nombre: true, unidadMedida: true, costoCents: true }
   })
 
   return (

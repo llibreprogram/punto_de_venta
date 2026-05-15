@@ -4,8 +4,8 @@ import { Search, ChevronRight, Plus, Trash2, Save, ChefHat, PackageCheck, AlertC
 import { useToast } from '@/components/ui/Providers'
 import { motion, AnimatePresence } from 'framer-motion'
 
-type ProductoLight = { id: number; nombre: string; requiereCocina: boolean }
-type InsumoLight = { id: number; nombre: string; unidadMedida: string }
+type ProductoLight = { id: number; nombre: string; requiereCocina: boolean; costoCents?: number }
+type InsumoLight = { id: number; nombre: string; unidadMedida: string; costoCents?: number }
 type RecetaItem = { id?: number; insumoId: number; cantidadRequerida: number; insumo?: InsumoLight }
 
 export default function RecetarioClient({ productosRaw, insumosRaw }: { productosRaw: ProductoLight[], insumosRaw: InsumoLight[] }) {
@@ -76,6 +76,26 @@ export default function RecetarioClient({ productosRaw, insumosRaw }: { producto
       push('Error al guardar receta', 'error')
     }
   }
+
+  const updateProductCost = async () => {
+    if (!seleccionado) return
+    const currentCost = receta.reduce((acc, r) => acc + (r.cantidadRequerida * (r.insumo?.costoCents || 0)), 0)
+    const costoCents = Math.round(currentCost)
+    const res = await fetch(`/api/producto/${seleccionado.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ costoCents })
+    })
+    if (res.ok) {
+      push('Costo del producto actualizado', 'success')
+      setProductos(productos.map(p => p.id === seleccionado.id ? { ...p, costoCents } : p))
+      setSeleccionado({ ...seleccionado, costoCents })
+    } else {
+      push('Error al actualizar costo', 'error')
+    }
+  }
+
+  const totalCost = receta.reduce((acc, r) => acc + (r.cantidadRequerida * (r.insumo?.costoCents || 0)), 0)
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 min-h-[75vh]">
@@ -186,6 +206,18 @@ export default function RecetarioClient({ productosRaw, insumosRaw }: { producto
                 </div>
               </div>
 
+              {/* Panel de Costos */}
+              <div className="mb-8 p-5 bg-gradient-to-r from-slate-800 to-slate-900 rounded-2xl text-white shadow-xl shadow-slate-900/20 flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div>
+                  <h3 className="text-slate-400 text-sm font-bold uppercase tracking-wider mb-1">Costo Real de Preparación</h3>
+                  <div className="text-3xl font-black">${(totalCost / 100).toFixed(2)}</div>
+                  <div className="text-xs text-slate-400 mt-1">Costo actual del producto: ${( (seleccionado.costoCents || 0) / 100 ).toFixed(2)}</div>
+                </div>
+                <button onClick={updateProductCost} className="w-full sm:w-auto px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl font-bold transition-all border border-white/10 flex items-center justify-center gap-2">
+                  <Save className="w-4 h-4" /> Sincronizar Costo
+                </button>
+              </div>
+
               {/* Lista Receta */}
               <div className="flex-1 flex flex-col min-h-[300px]">
                 <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Ingredientes de la Receta</h3>
@@ -248,6 +280,7 @@ export default function RecetarioClient({ productosRaw, insumosRaw }: { producto
                                 <div className="font-mono text-lg text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-lg font-black px-4 py-1.5 shadow-inner">
                                   {r.cantidadRequerida} <span className="text-sm text-indigo-400">{r.insumo?.unidadMedida}</span>
                                 </div>
+                                <div className="text-xs font-bold text-slate-400 mt-1">${((r.cantidadRequerida * (r.insumo?.costoCents || 0)) / 100).toFixed(2)}</div>
                               </div>
                               <button onClick={()=>removeInsumo(r.insumoId)} className="p-3 text-slate-300 hover:text-white hover:bg-rose-500 rounded-xl transition-all shadow-sm opacity-50 group-hover:opacity-100">
                                 <Trash2 className="w-5 h-5" />

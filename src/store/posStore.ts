@@ -14,6 +14,8 @@ export type Producto = {
   categoria: { id: number; nombre: string }
   ingredientes?: string[]
   extras?: Array<{ nombre:string; precioCents:number }>
+  stockMaximo?: number | null
+  costoCalculado?: number
 }
 
 export type Linea = {
@@ -85,7 +87,12 @@ export const usePosStore = create<POSState>((set, get) => ({
 
   agregarProducto: (p) => set((state) => {
     const linea = state.carrito[p.id]
-    const cantidad = (linea?.cantidad ?? 0) + 1
+    const cantidadActual = linea?.cantidad ?? 0
+    // Si tenemos stockMaximo configurado (no null) y ya alcanzamos el límite, no agregar
+    if (p.stockMaximo !== null && p.stockMaximo !== undefined && cantidadActual >= p.stockMaximo) {
+      return state // No changes
+    }
+    const cantidad = cantidadActual + 1
     return {
       carrito: {
         ...state.carrito,

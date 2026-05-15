@@ -121,6 +121,7 @@ export function ProductGrid({ productos, cargando, ajustes }: ProductGridProps) 
           ) : (
             visibles.map((p, index) => {
               const cantidadEnCarrito = carrito[p.id]?.cantidad || 0
+              const agotado = p.stockMaximo !== null && p.stockMaximo !== undefined && p.stockMaximo <= 0
               return (
                 <motion.div 
                   key={p.id}
@@ -128,13 +129,22 @@ export function ProductGrid({ productos, cargando, ajustes }: ProductGridProps) 
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.85 }}
                   transition={{ duration: 0.25, delay: index * 0.015 }}
-                  onClick={() => agregarProducto(p)} 
+                  onClick={() => { if (!agotado) agregarProducto(p) }} 
                   role="button"
-                  tabIndex={0}
-                  className="product-card min-h-[160px] sm:min-h-[180px] text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40 group relative cursor-pointer" 
-                  whileTap={{ scale: 0.95 }}
-                  onKeyDown={(e) => { if(e.key==='Enter' || e.key===' ') agregarProducto(p) }}
+                  tabIndex={agotado ? -1 : 0}
+                  className={`product-card min-h-[160px] sm:min-h-[180px] text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40 group relative ${agotado ? 'opacity-50 cursor-not-allowed grayscale-[50%]' : 'cursor-pointer'}`} 
+                  whileTap={agotado ? {} : { scale: 0.95 }}
+                  onKeyDown={(e) => { if(!agotado && (e.key==='Enter' || e.key===' ')) agregarProducto(p) }}
                 >
+                  {/* Etiqueta de Agotado */}
+                  {agotado && (
+                    <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/40 backdrop-blur-[2px] rounded-2xl">
+                      <div className="bg-red-600 text-white font-black text-sm px-4 py-1.5 rounded-lg shadow-lg -rotate-12 border-2 border-white tracking-widest uppercase">
+                        Agotado
+                      </div>
+                    </div>
+                  )}
+
                   {/* Quantity badge */}
                   {cantidadEnCarrito > 0 && (
                     <motion.div 

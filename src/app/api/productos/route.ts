@@ -11,13 +11,42 @@ export async function GET(request: Request) {
   const where = all ? {} : { activo: true }
   const productos = await prisma.producto.findMany({
     where,
-    include: { categoria: true },
+    include: { 
+      categoria: true,
+      recetaItems: {
+        include: { insumo: true }
+      }
+    },
     orderBy: order === 'name' ? [{ nombre: 'asc' }] : [{ categoria: { nombre: 'asc' } }, { nombre: 'asc' }],
   })
-  const filtered = q ? productos.filter((p:{nombre:string; categoria:{nombre:string}|null}) => (
+  const filtered = q ? productos.filter((p: any) => (
     p.nombre.toLowerCase().includes(q) || (p.categoria?.nombre?.toLowerCase() || '').includes(q)
   )) : productos
-  return NextResponse.json(filtered)
+
+  // Calculate stockMaximo and auto-calculated cost
+  const mapped = filtered.map((p: any) => {
+    let stockMaximo = null // null means infinite (no recipe attached)
+    let costoCalculado = p.costoCents
+    
+    if (p.recetaItems && p.recetaItems.length > 0) {
+      const stocks = p.recetaItems.map((r: any) => {
+        if (r.cantidadRequerida <= 0) return 999999
+        return Math.floor(r.insumo.stockActual / r.cantidadRequerida)
+      })
+      stockMaximo = Math.min(...stocks)
+      
+      // We can also calculate the sum of the recipe costs
+      // Insumo has costoCents per unidadMedida. So costo total = sum(cantidadRequerida * costoCents)
+      // Since costoCents is an int, we round it.
+      costoCalculado = Math.round(p.recetaItems.reduce((acc: number, r: any) => acc + (r.cantidadRequerida * r.insumo.costoCents), 0))
+    }
+    
+    // Removing recetaItems to avoid sending too much data to the POS, we only need the result
+    const { recetaItems, ...rest } = p
+    return { ...rest, stockMaximo, costoCalculado }
+  })
+
+  return NextResponse.json(mapped)
 }
 
 export async function POST(req: Request) {
@@ -51,6 +80,26 @@ export async function POST(req: Request) {
     if (!cat) return NextResponse.json({ error: 'No hay categorías' }, { status: 400 })
     categoriaId = cat.id
   }
-  const p = await prisma.producto.create({ data: ({ nombre, precioCents, costoCents, categoriaId, ingredientes, extras } as unknown) as { nombre:string; precioCents:number; costoCents:number; categoriaId:number; ingredientes?: string[]; extras?: Array<{ nombre:string; precioCents:number }> } })
+  const insumoBaseId = typeof body?.insumoBaseId === 'number' && Number.isFinite(body.insumoBaseId) ? body.insumoBaseId : null
+  
+  const p = await prisma.producto.create({ 
+    data: ({ nombre, precioCents, costoCents, categoriaId, ingredientes, extras } as unknown) as { nombre:string; precioCents:number; costoCents:number; categoriaId:number; ingredientes?: string[]; extras?: Array<{ nombre:string; precioCents:number }> } 
+  })
+
+  // Si pasaron un insumo base, creamos automáticamente la receta 1 a 1
+  if (insumoBaseId) {
+    try {
+      await prisma.recetaItem.create({
+        data: {
+          productoId: p.id,
+          insumoId: insumoBaseId,
+          cantidadRequerida: 1
+        }
+      })
+    } catch(e) {
+      console.error('Error vinculando insumo base', e)
+    }
+  }
+
   return NextResponse.json(p, { status: 201 })
 }
