@@ -59,6 +59,13 @@ echo Verificando usuarios por defecto...
 call npm run db:seed
 
 echo.
+echo Limpiando cache de compilacion anterior...
+if exist ".next" (
+    rmdir /S /Q ".next"
+    echo Cache limpiada correctamente.
+)
+
+echo.
 echo Recompilando el sistema para produccion...
 call npm run build
 if %errorLevel% neq 0 (

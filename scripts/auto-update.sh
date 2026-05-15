@@ -56,6 +56,9 @@ fi
 log "[2.6/5] Prisma DB seed (poblar base de datos inicial)"
 npm run db:seed || log "WARNING: Seed falló, pero continuamos"
 
+log "[3/5] Cleaning old build cache"
+rm -rf "$APP_DIR/.next"
+
 log "[3/5] Building (production)"
 if ! NODE_ENV=production npm run build; then
   log "ERROR: Build failed"
