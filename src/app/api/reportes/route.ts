@@ -30,7 +30,7 @@ export async function GET(req: Request) {
   if (!session || session.user.rol !== 'admin') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { searchParams } = new URL(req.url)
-  const type = (searchParams.get('type') || 'dia') as 'dia'|'categoria'|'producto'|'hora'
+  const type = (searchParams.get('type') || 'dia') as 'dia'|'categoria'|'producto'|'hora'|'usuario'
   const format = searchParams.get('format') || 'json'
   const from = searchParams.get('from')
   const to = searchParams.get('to')
@@ -57,6 +57,25 @@ export async function GET(req: Request) {
     where.createdAt = {}
     if (from) where.createdAt.gte = new Date(from)
     if (to) where.createdAt.lte = new Date(to)
+  }
+
+  if (type === 'usuario') {
+    const pedidos = await prisma.pedido.findMany({ 
+      where, 
+      select: { totalCents:true, usuario: { select: { id:true, nombre:true } } } 
+    })
+    const map = new Map<number, { usuario:string; pedidos:number; totalCents:number }>()
+    for (const p of pedidos) {
+      const uId = p.usuario?.id || 0
+      const uName = p.usuario?.nombre || 'Desconocido'
+      const cur = map.get(uId) || { usuario: uName, pedidos: 0, totalCents: 0 }
+      cur.pedidos += 1
+      cur.totalCents += p.totalCents
+      map.set(uId, cur)
+    }
+    const rows = Array.from(map.values()).sort((a,b)=> b.totalCents - a.totalCents)
+    if (format === 'csv') return new NextResponse(toCSV(rows as Row[]), { headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="reporte_usuario.csv"' } })
+    return NextResponse.json(rows)
   }
 
   if (type === 'dia') {

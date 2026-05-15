@@ -74,6 +74,7 @@ export async function POST(req: Request) {
           propinaCents,
           descuentoCents: descuento,
           totalCents: total,
+          usuarioId: session.user.id
         },
         select: { id: true }
       })

@@ -5,7 +5,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts'
-import { DollarSign, ShoppingBag, Receipt, TrendingUp, Package, Loader2, Clock, AlertTriangle, PieChart as PieChartIcon, Calendar } from 'lucide-react'
+import { DollarSign, ShoppingBag, Receipt, TrendingUp, Package, Loader2, Clock, AlertTriangle, PieChart as PieChartIcon, Calendar, Users } from 'lucide-react'
 import { toCurrency, LOCALE, CURRENCY } from '@/lib/money'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -17,6 +17,7 @@ export default function AdminDashboard() {
   const [topProductos, setTopProductos] = useState<any[]>([])
   const [topCategorias, setTopCategorias] = useState<any[]>([])
   const [horasPico, setHorasPico] = useState<any[]>([])
+  const [rendimientoUsuarios, setRendimientoUsuarios] = useState<any[]>([])
   const [alertasInventario, setAlertasInventario] = useState(0)
   const [ajustes, setAjustes] = useState<any>(null)
   
@@ -39,11 +40,12 @@ export default function AdminDashboard() {
 
         const qs = `from=${fromStr}&to=${toStr}T23:59:59Z`
 
-        const [resDia, resProd, resCat, resHora, resInv, resAjustes] = await Promise.all([
+        const [resDia, resProd, resCat, resHora, resUser, resInv, resAjustes] = await Promise.all([
           fetch(`/api/reportes?type=dia&${qs}`),
           fetch(`/api/reportes?type=producto&top=5&${qs}`),
           fetch(`/api/reportes?type=categoria&${qs}`),
           fetch(`/api/reportes?type=hora&${qs}`),
+          fetch(`/api/reportes?type=usuario&${qs}`),
           fetch('/api/inventario'),
           fetch('/api/ajustes').catch(() => null)
         ])
@@ -52,6 +54,7 @@ export default function AdminDashboard() {
         if (resProd.ok) setTopProductos(await resProd.json())
         if (resCat.ok) setTopCategorias(await resCat.json())
         if (resHora.ok) setHorasPico(await resHora.json())
+        if (resUser.ok) setRendimientoUsuarios(await resUser.json())
         
         if (resInv.ok) {
           const inv = await resInv.json()
@@ -320,6 +323,40 @@ export default function AdminDashboard() {
                     <div className="flex-1 flex flex-col items-center justify-center text-slate-400">
                       <Package className="w-12 h-12 mb-2 opacity-20" />
                       <p className="font-bold">No hay ventas registradas</p>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+
+              {/* Rendimiento por Usuario */}
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.6 }} className="lg:col-span-3 bg-white/80 backdrop-blur-xl p-6 rounded-3xl border border-slate-200/60 shadow-xl shadow-slate-200/20 flex flex-col">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl"><Users className="w-5 h-5" /></div>
+                  <div>
+                    <h2 className="text-xl font-black text-slate-800">Rendimiento por Empleado</h2>
+                    <p className="text-sm text-slate-500 font-medium">Volumen de ventas gestionadas por cada usuario</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {rendimientoUsuarios.length > 0 ? rendimientoUsuarios.map((u, i) => (
+                    <div key={i} className="flex items-center justify-between p-5 rounded-2xl bg-white border border-slate-200 hover:border-blue-300 shadow-sm transition-all group">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center text-white font-black shadow-md shadow-blue-500/20">
+                          {u.usuario.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-800 text-lg group-hover:text-blue-600 transition-colors">{u.usuario}</p>
+                          <p className="text-sm font-medium text-slate-400">{u.pedidos} órdenes cobradas</p>
+                        </div>
+                      </div>
+                      <div className="font-black text-lg text-slate-700">
+                        {fmt(u.totalCents)}
+                      </div>
+                    </div>
+                  )) : (
+                    <div className="col-span-full py-8 flex flex-col items-center justify-center text-slate-400">
+                      <Users className="w-12 h-12 mb-2 opacity-20" />
+                      <p className="font-bold">No hay ventas registradas por usuarios</p>
                     </div>
                   )}
                 </div>

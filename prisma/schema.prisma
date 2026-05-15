@@ -93,6 +93,8 @@ model Pedido {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   ticketAccesses TicketAccess[]
+  usuarioId   Int?          // Empleado que registró la orden
+  usuario     Usuario?      @relation(fields: [usuarioId], references: [id])
 }
 
 model PedidoItem {
@@ -133,6 +135,7 @@ model Usuario {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   sessions  Session[]
+  pedidos   Pedido[]
 }
 
 // Ajustes de la aplicación (singleton)
