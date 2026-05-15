@@ -48,6 +48,7 @@ model Producto {
   extras       Json?
   sku         String?   @unique
   activo      Boolean   @default(true)
+  requiereCocina Boolean @default(true)
   categoria   Categoria @relation(fields: [categoriaId], references: [id])
   categoriaId Int
   imagenUrl   String?
@@ -55,6 +56,7 @@ model Producto {
   updatedAt   DateTime  @updatedAt
   items       PedidoItem[]
   integrationMappings IntegrationMapping[]
+  recetaItems         RecetaItem[]
 }
 
 model Mesa {
@@ -108,6 +110,7 @@ model PedidoItem {
   extras     Json?
   extrasCents Int     @default(0) // suma de extras por unidad en centavos
   estado     ItemStatus @default(PENDIENTE)
+  inventarioDescontado Boolean @default(false)
 }
 
 model Pago {
@@ -187,4 +190,44 @@ model IntegrationMapping {
 
   @@unique([platform, productoId])
   @@unique([platform, externalItemId])
+}
+
+// --- Módulo de Inventario y Recetario ---
+
+model Insumo {
+  id           Int       @id @default(autoincrement())
+  nombre       String    @unique
+  stockActual  Float     @default(0) // Puede tener decimales (ej. 1.5 Litros)
+  unidadMedida String    // "Unidad", "Gramos", "Litros", "Mililitros", "Kilogramos"
+  costoCents   Int       @default(0) // Costo por unidadMedida
+  stockMinimo  Float     @default(0) // Para alertas de bajo stock
+  activo       Boolean   @default(true)
+  recetaItems  RecetaItem[]
+  movimientos  MovimientoInventario[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model RecetaItem {
+  id                Int      @id @default(autoincrement())
+  producto          Producto @relation(fields: [productoId], references: [id], onDelete: Cascade)
+  productoId        Int
+  insumo            Insumo   @relation(fields: [insumoId], references: [id], onDelete: Cascade)
+  insumoId          Int
+  cantidadRequerida Float    // Cantidad de la unidadMedida del insumo que se requiere
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([productoId, insumoId])
+}
+
+model MovimientoInventario {
+  id          Int      @id @default(autoincrement())
+  insumo      Insumo   @relation(fields: [insumoId], references: [id], onDelete: Cascade)
+  insumoId    Int
+  tipo        String   // "ENTRADA" (Compra), "SALIDA" (Venta/Merma), "AJUSTE"
+  cantidad    Float    // Cantidad sumada o restada
+  razon       String?  // Ej. "Venta Pedido #123", "Compra a proveedor X"
+  usuarioId   Int?     // Quién registró (opcional si es automático)
+  createdAt   DateTime @default(now())
 }

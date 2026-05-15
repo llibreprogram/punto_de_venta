@@ -9,6 +9,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { cookies } from 'next/headers'
 import { getSession } from '@/lib/auth'
 import { ItemStatus } from '@prisma/client'
+import { descontarInventarioParaItem } from '@/lib/inventoryEngine'
 
 export async function GET(_: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id: idStr } = await context.params
@@ -60,11 +61,12 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
       await tx.pedidoItem.deleteMany({ where: { pedidoId: id } })
       // Obtener costos actuales para snapshot
       const ids = Array.from(new Set(body.items.map(i=>i.productoId)))
-  const select = { id: true, costoCents: true } as const
-  const productosRaw = await (tx.producto as unknown as { findMany: (args: { where: { id: { in: number[] } }, select: typeof select }) => Promise<Array<{ id:number; costoCents:number }>> }).findMany({ where: { id: { in: ids } }, select })
-  const productos = productosRaw as Array<{ id:number; costoCents:number }>
+  const select = { id: true, costoCents: true, requiereCocina: true } as const
+  const productosRaw = await (tx.producto as unknown as { findMany: (args: { where: { id: { in: number[] } }, select: typeof select }) => Promise<Array<{ id:number; costoCents:number; requiereCocina:boolean }>> }).findMany({ where: { id: { in: ids } }, select })
+  const productos = productosRaw as Array<{ id:number; costoCents:number; requiereCocina:boolean }>
   const costoMap = new Map(productos.map((p:{id:number;costoCents:number})=>[p.id, p.costoCents || 0]))
-      await tx.pedidoItem.createMany({
+  const cocinaMap = new Map(productos.map((p:{id:number;requiereCocina:boolean})=>[p.id, p.requiereCocina]))
+      const createdItems = await tx.pedidoItem.createManyAndReturn({
         data: body.items.map(i=>({
           pedidoId: id,
           productoId: i.productoId,
@@ -93,8 +95,16 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
         const pago = await tx.pago.create({ data: { pedidoId: id, metodo: body.pago.metodo, montoCents: body.pago.montoCents, referencia: body.pago.referencia } })
         pagoId = pago.id
       }
-      return { pedidoId: id, pagoId, estado: body.pago ? 'PAGADO' : 'ABIERTO' as const }
+      return { pedidoId: id, pagoId, estado: body.pago ? 'PAGADO' : 'ABIERTO' as const, createdItems, cocinaMap }
     })
+    
+    if (result.pagoId) {
+      for (const it of result.createdItems) {
+        if (!result.cocinaMap.get(it.productoId)) {
+          await descontarInventarioParaItem(it.id, session.user.id)
+        }
+      }
+    }
     // Auto imprimir cocina según ajustes
     try {
       const aj = await prisma.ajustes.findUnique({ where: { id: 1 } }) as unknown as { autoKitchenOnCreate?: boolean; autoKitchenOnReady?: boolean }

@@ -31,6 +31,12 @@ export async function PUT(req: Request) {
   const estado = String(body?.estado)
   if (!id || !['PENDIENTE','EN_PROCESO','LISTO'].includes(estado)) return NextResponse.json({ error: 'Bad request' }, { status: 400 })
   const status = estado as keyof typeof ItemStatus
-  const updated = await prisma.pedidoItem.update({ where: { id }, data: { estado: ItemStatus[status] } })
+  const updated = await prisma.pedidoItem.update({ where: { id }, data: { estado: ItemStatus[status] }, include: { producto: true } })
+  
+  if (status === 'LISTO' && updated.producto.requiereCocina) {
+    const { descontarInventarioParaItem } = await import('@/lib/inventoryEngine')
+    await descontarInventarioParaItem(id, session.user.id)
+  }
+  
   return NextResponse.json(updated)
 }
