@@ -190,8 +190,10 @@ export default function InventarioClient() {
                   <select value={form.unidadMedida} onChange={e=>setForm({...form, unidadMedida: e.target.value})} className="w-full border-2 border-slate-200 rounded-xl p-3 focus:border-indigo-500 outline-none">
                     <option>Gramos</option>
                     <option>Kilogramos</option>
+                    <option>Libras</option>
                     <option>Mililitros</option>
                     <option>Litros</option>
+                    <option>Galones</option>
                     <option>Unidades</option>
                     <option>Porciones</option>
                   </select>
