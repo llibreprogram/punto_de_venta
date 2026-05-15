@@ -1,6 +1,6 @@
 "use client"
 import { useEffect, useState } from 'react'
-import { useConfirm } from '@/components/ui/Providers'
+import { useConfirm, useToast } from '@/components/ui/Providers'
 import AdminLayout from '@/components/AdminLayout'
 
 type Categoria = { id:number; nombre:string; activa:boolean }
