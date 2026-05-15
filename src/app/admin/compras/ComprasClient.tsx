@@ -22,6 +22,8 @@ export default function ComprasClient() {
   const [cargando, setCargando] = useState(true)
   const [cargandoIA, setCargandoIA] = useState(false)
   const [vista, setVista] = useState<'HISTORIAL' | 'SUGERENCIAS'>('HISTORIAL')
+  const [recepcionOrden, setRecepcionOrden] = useState<OrdenCompra | null>(null)
+  const [recepcionCantidades, setRecepcionCantidades] = useState<Record<number, number>>({})
   const { push } = useToast()
 
   const load = async () => {
@@ -87,11 +89,25 @@ export default function ComprasClient() {
     } else push('Error al actualizar', 'error')
   }
 
-  const recibirMercancia = async (id: number) => {
-    if (!confirm('¿Seguro que recibiste esta mercancía? Esto aumentará tu stock en el inventario real.')) return
-    const res = await fetch(`/api/compras/${id}/recibir`, { method: 'POST' })
+  const abrirRecepcion = (o: OrdenCompra) => {
+    setRecepcionOrden(o)
+    const cants: Record<number, number> = {}
+    o.items.forEach(i => cants[i.id] = i.cantidadPedida)
+    setRecepcionCantidades(cants)
+  }
+
+  const confirmarRecepcion = async () => {
+    if (!recepcionOrden) return
+    const res = await fetch(`/api/compras/${recepcionOrden.id}/recibir`, { 
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        itemsRecibidos: Object.entries(recepcionCantidades).map(([id, qty]) => ({ id: Number(id), cantidadRecibida: Number(qty) }))
+      })
+    })
     if (res.ok) {
       push('Mercancía recibida e inventario actualizado', 'success')
+      setRecepcionOrden(null)
       load()
     } else push('Error al recibir mercancía', 'error')
   }
@@ -168,7 +184,7 @@ export default function ComprasClient() {
                                 </button>
                               )}
                               {o.estado === 'ENVIADA' && (
-                                <button onClick={()=>recibirMercancia(o.id)} className="flex items-center gap-2 text-sm bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-xl hover:opacity-90 font-bold shadow-md shadow-emerald-500/20 hover:-translate-y-0.5 transition-all">
+                                <button onClick={()=>abrirRecepcion(o)} className="flex items-center gap-2 text-sm bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-xl hover:opacity-90 font-bold shadow-md shadow-emerald-500/20 hover:-translate-y-0.5 transition-all">
                                   <PackageCheck className="w-4 h-4" /> Recibir Stock
                                 </button>
                               )}
@@ -264,10 +280,36 @@ export default function ComprasClient() {
                                     <span className="text-indigo-500 mr-1">🤖 AI:</span> {s.razonSugerencia}
                                   </div>
                                 </div>
-                                <div className="mt-4 sm:mt-0 text-right w-full sm:w-auto bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
-                                  <div className="text-xs font-bold text-slate-400 uppercase mb-1">Comprar</div>
-                                  <div className="font-mono text-2xl font-black text-emerald-600">
-                                    {s.cantidadSugerida} <span className="text-sm text-slate-400">{s.unidadMedida}</span>
+                                <div className="mt-4 sm:mt-0 text-right w-full sm:w-auto bg-white p-3 rounded-xl border border-slate-100 shadow-sm flex flex-col gap-2">
+                                  <div className="flex items-center justify-end gap-2">
+                                    <span className="text-xs font-bold text-slate-400 uppercase">Cotización:</span>
+                                    <div className="relative">
+                                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
+                                      <input 
+                                        type="number" step="0.01" 
+                                        className="input py-1 pl-6 pr-2 w-24 text-right text-sm font-bold text-slate-700" 
+                                        value={s.costoCents / 100} 
+                                        onChange={e => {
+                                          const val = parseFloat(e.target.value) || 0
+                                          const nuevos = sugerencias.map(x => x.insumoId === s.insumoId ? { ...x, costoCents: val * 100, totalEstimadoCents: val * 100 * x.cantidadSugerida } : x)
+                                          setSugerencias(nuevos)
+                                        }}
+                                      />
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center justify-end gap-2">
+                                    <span className="text-xs font-bold text-slate-400 uppercase">Comprar:</span>
+                                    <input 
+                                      type="number" step="1" 
+                                      className="input py-1 px-2 w-20 text-right text-lg font-black text-emerald-600" 
+                                      value={s.cantidadSugerida} 
+                                      onChange={e => {
+                                        const val = parseFloat(e.target.value) || 0
+                                        const nuevos = sugerencias.map(x => x.insumoId === s.insumoId ? { ...x, cantidadSugerida: val, totalEstimadoCents: val * x.costoCents } : x)
+                                        setSugerencias(nuevos)
+                                      }}
+                                    />
+                                    <span className="text-sm text-slate-400">{s.unidadMedida}</span>
                                   </div>
                                 </div>
                               </div>
@@ -292,6 +334,50 @@ export default function ComprasClient() {
                 </div>
               </div>
             )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal de Recepción Parcial */}
+      <AnimatePresence>
+        {recepcionOrden && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex justify-center items-center p-4">
+            <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }} className="bg-white rounded-3xl shadow-2xl overflow-hidden w-full max-w-xl flex flex-col max-h-[90vh]">
+              <div className="p-6 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-black text-slate-800">Recibir Orden OC-{recepcionOrden.id.toString().padStart(4,'0')}</h3>
+                  <p className="text-sm text-slate-500 font-medium">Edita las cantidades si recibiste menos de lo pedido.</p>
+                </div>
+                <button onClick={()=>setRecepcionOrden(null)} className="p-2 bg-white rounded-xl shadow-sm hover:bg-slate-100 text-slate-400 transition-colors">
+                  <XCircle className="w-6 h-6" />
+                </button>
+              </div>
+              <div className="p-6 overflow-y-auto flex-1 space-y-4">
+                {recepcionOrden.items.map(it => (
+                  <div key={it.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 bg-slate-50 border border-slate-200 rounded-2xl gap-4">
+                    <div>
+                      <div className="font-bold text-slate-800">{it.insumo?.nombre || `Insumo #${it.insumoId}`}</div>
+                      <div className="text-xs text-slate-500 font-medium">Pedido original: {it.cantidadPedida}</div>
+                    </div>
+                    <div className="flex items-center gap-3 w-full sm:w-auto bg-white p-2 rounded-xl border border-slate-200 shadow-sm">
+                      <span className="text-xs font-bold text-slate-400 uppercase">Llegaron:</span>
+                      <input 
+                        type="number" step="0.01" min="0" max={it.cantidadPedida}
+                        className="input flex-1 sm:w-24 text-right font-black text-emerald-600 text-lg py-1 px-2 border-slate-200 focus:border-emerald-500 focus:ring-emerald-500/20"
+                        value={recepcionCantidades[it.id] ?? ''}
+                        onChange={e => setRecepcionCantidades(prev => ({ ...prev, [it.id]: parseFloat(e.target.value) || 0 }))}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+                <button onClick={()=>setRecepcionOrden(null)} className="px-5 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-200 transition-colors">Cancelar</button>
+                <button onClick={confirmarRecepcion} className="px-6 py-3 rounded-xl font-black text-white bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/30 transition-all flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5" /> Confirmar e Ingresar
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

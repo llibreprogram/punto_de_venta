@@ -23,35 +23,59 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         throw new Error('Orden no válida o ya recibida')
       }
 
-      // 1. Marcar orden como RECIBIDA
-      await tx.ordenCompra.update({
-        where: { id: ordenId },
-        data: { estado: 'RECIBIDA' }
-      })
+      const body = await req.json()
+      const itemsRecibidos: { id: number, cantidadRecibida: number }[] = body?.itemsRecibidos || []
+      const recibidosMap = new Map(itemsRecibidos.map(i => [i.id, i.cantidadRecibida]))
+
+      let nuevoTotalCents = 0
 
       // 2. Por cada item, actualizar stock y registrar movimiento
       for (const item of orden.items) {
-        // Asumimos que se recibe todo lo pedido por simplicidad
+        const qtyToReceive = recibidosMap.get(item.id) ?? item.cantidadPedida
+        
+        // Si no se recibe nada de este item, saltamos el stock
+        if (qtyToReceive > 0) {
+          await tx.insumo.update({
+            where: { id: item.insumoId },
+            data: { 
+              stockActual: { increment: qtyToReceive },
+              // Bonus: Actualizar el costo base del inventario con el costo unitario de esta orden (cotización nueva)
+              costoCents: item.costoUnitarioCents 
+            }
+          })
+
+          await tx.movimientoInventario.create({
+            data: {
+              insumoId: item.insumoId,
+              tipo: 'ENTRADA',
+              cantidad: qtyToReceive,
+              razon: `Recepción Orden de Compra #${ordenId}`,
+              usuarioId: session.user.id
+            }
+          })
+        }
+
+        // Registrar qué cantidad real se recibió
         await tx.ordenCompraItem.update({
           where: { id: item.id },
-          data: { cantidadRecibida: item.cantidadPedida }
-        })
-
-        await tx.insumo.update({
-          where: { id: item.insumoId },
-          data: { stockActual: { increment: item.cantidadPedida } }
-        })
-
-        await tx.movimientoInventario.create({
-          data: {
-            insumoId: item.insumoId,
-            tipo: 'ENTRADA',
-            cantidad: item.cantidadPedida,
-            razon: `Recepción Orden de Compra #${ordenId}`,
-            usuarioId: session.user.id
+          data: { 
+            cantidadRecibida: qtyToReceive,
+            totalCents: qtyToReceive * item.costoUnitarioCents
           }
         })
+
+        nuevoTotalCents += (qtyToReceive * item.costoUnitarioCents)
       }
+
+      // 1. Marcar orden como RECIBIDA y ajustar total final
+      await tx.ordenCompra.update({
+        where: { id: ordenId },
+        data: { 
+          estado: 'RECIBIDA',
+          totalCents: nuevoTotalCents
+        }
+      })
+
       return { ok: true }
     })
     
