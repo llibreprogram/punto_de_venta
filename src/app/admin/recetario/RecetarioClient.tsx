@@ -68,10 +68,12 @@ export default function RecetarioClient({ productosRaw, insumosRaw }: { producto
     })
     
     if (res.ok) {
+      const data = await res.json()
+      const newCosto = data.newCostoCents !== undefined ? data.newCostoCents : (seleccionado.costoCents || 0)
       push('Receta guardada exitosamente', 'success')
       // Update local state
-      setProductos(productos.map(p => p.id === seleccionado.id ? { ...p, requiereCocina } : p))
-      setSeleccionado({ ...seleccionado, requiereCocina })
+      setProductos(productos.map(p => p.id === seleccionado.id ? { ...p, requiereCocina, costoCents: newCosto } : p))
+      setSeleccionado({ ...seleccionado, requiereCocina, costoCents: newCosto })
     } else {
       push('Error al guardar receta', 'error')
     }

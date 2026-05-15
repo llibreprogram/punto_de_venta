@@ -31,18 +31,26 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ product
   
   try {
     const result = await prisma.$transaction(async (tx) => {
-      if (body.requiereCocina !== undefined) {
-        await tx.producto.update({
-          where: { id },
-          data: { requiereCocina: body.requiereCocina }
-        })
-      }
+      let totalCostoCents = 0
 
       await tx.recetaItem.deleteMany({
         where: { productoId: id }
       })
 
       if (body.items && body.items.length > 0) {
+        // Obtener los costos actuales de los insumos
+        const insumoIds = body.items.map(i => i.insumoId)
+        const insumos = await tx.insumo.findMany({
+          where: { id: { in: insumoIds } },
+          select: { id: true, costoCents: true }
+        })
+        const insumosMap = new Map(insumos.map(i => [i.id, i.costoCents]))
+
+        for (const item of body.items) {
+          const costoUnidad = insumosMap.get(item.insumoId) || 0
+          totalCostoCents += item.cantidadRequerida * costoUnidad
+        }
+
         await tx.recetaItem.createMany({
           data: body.items.map(i => ({
             productoId: id,
@@ -51,7 +59,19 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ product
           }))
         })
       }
-      return { ok: true }
+
+      // Actualizar el producto con requiereCocina y su nuevo costoCents calculado
+      const dataToUpdate: any = { costoCents: Math.round(totalCostoCents) }
+      if (body.requiereCocina !== undefined) {
+        dataToUpdate.requiereCocina = body.requiereCocina
+      }
+
+      await tx.producto.update({
+        where: { id },
+        data: dataToUpdate
+      })
+
+      return { ok: true, newCostoCents: Math.round(totalCostoCents) }
     })
     return NextResponse.json(result)
   } catch (error) {
