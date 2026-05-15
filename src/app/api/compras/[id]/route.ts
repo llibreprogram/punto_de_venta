@@ -10,24 +10,16 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
   if (!session || session.user.rol !== 'admin') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await context.params
-  const body = await req.json()
+  const body = await req.json() as { estado: string }
   
   try {
-    const updated = await prisma.insumo.update({
+    const orden = await prisma.ordenCompra.update({
       where: { id: Number(id) },
-      data: {
-        nombre: body.nombre,
-        unidadMedida: body.unidadMedida,
-        costoCents: Number(body.costoCents),
-        stockActual: Number(body.stockActual),
-        stockMinimo: Number(body.stockMinimo),
-        proveedorId: body.proveedorId || null,
-        diasVidaUtil: Number(body.diasVidaUtil) || 365
-      }
+      data: { estado: body.estado }
     })
-    return NextResponse.json(updated)
+    return NextResponse.json(orden)
   } catch (error) {
-    return NextResponse.json({ error: 'Error al actualizar insumo' }, { status: 500 })
+    return NextResponse.json({ error: 'Error al actualizar orden' }, { status: 500 })
   }
 }
 
@@ -38,13 +30,10 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ id: 
   if (!session || session.user.rol !== 'admin') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await context.params
-  
   try {
-    await prisma.insumo.delete({
-      where: { id: Number(id) }
-    })
+    await prisma.ordenCompra.delete({ where: { id: Number(id) } })
     return NextResponse.json({ ok: true })
   } catch (error) {
-    return NextResponse.json({ error: 'Error al eliminar insumo' }, { status: 500 })
+    return NextResponse.json({ error: 'Error al eliminar orden' }, { status: 500 })
   }
 }

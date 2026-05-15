@@ -11,25 +11,34 @@ type Insumo = {
   unidadMedida: string
   costoCents: number
   stockMinimo: number
+  proveedorId?: number | null
+  diasVidaUtil: number
 }
+
+type Proveedor = { id: number, nombre: string }
 
 export default function InventarioClient() {
   const [insumos, setInsumos] = useState<Insumo[]>([])
+  const [proveedores, setProveedores] = useState<Proveedor[]>([])
   const [cargando, setCargando] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
   const [modalMovOpen, setModalMovOpen] = useState(false)
   const [editando, setEditando] = useState<Insumo | null>(null)
   
   // Forms
-  const [form, setForm] = useState({ nombre: '', unidadMedida: 'Gramos', costo: '', stockActual: '', stockMinimo: '' })
+  const [form, setForm] = useState({ nombre: '', unidadMedida: 'Gramos', costo: '', stockActual: '', stockMinimo: '', proveedorId: '', diasVidaUtil: '365' })
   const [movForm, setMovForm] = useState({ tipo: 'ENTRADA' as 'ENTRADA'|'SALIDA'|'AJUSTE', cantidad: '', razon: '' })
   const { push } = useToast()
 
   const load = async () => {
     setCargando(true)
     try {
-      const res = await fetch('/api/inventario')
-      if (res.ok) setInsumos(await res.json())
+      const [resIns, resProv] = await Promise.all([
+        fetch('/api/inventario'),
+        fetch('/api/proveedores')
+      ])
+      if (resIns.ok) setInsumos(await resIns.json())
+      if (resProv.ok) setProveedores(await resProv.json())
     } finally {
       setCargando(false)
     }
@@ -50,7 +59,9 @@ export default function InventarioClient() {
         unidadMedida: form.unidadMedida,
         costoCents: Math.round(Number(form.costo) * 100),
         stockActual: Number(form.stockActual) || 0,
-        stockMinimo: Number(form.stockMinimo) || 0
+        stockMinimo: Number(form.stockMinimo) || 0,
+        proveedorId: form.proveedorId ? Number(form.proveedorId) : null,
+        diasVidaUtil: Number(form.diasVidaUtil) || 365
       })
     })
     
@@ -91,13 +102,21 @@ export default function InventarioClient() {
 
   const openNew = () => {
     setEditando(null)
-    setForm({ nombre: '', unidadMedida: 'Gramos', costo: '', stockActual: '', stockMinimo: '' })
+    setForm({ nombre: '', unidadMedida: 'Gramos', costo: '', stockActual: '', stockMinimo: '', proveedorId: '', diasVidaUtil: '365' })
     setModalOpen(true)
   }
 
   const openEdit = (i: Insumo) => {
     setEditando(i)
-    setForm({ nombre: i.nombre, unidadMedida: i.unidadMedida, costo: (i.costoCents / 100).toString(), stockActual: i.stockActual.toString(), stockMinimo: i.stockMinimo.toString() })
+    setForm({ 
+      nombre: i.nombre, 
+      unidadMedida: i.unidadMedida, 
+      costo: (i.costoCents / 100).toString(), 
+      stockActual: i.stockActual.toString(), 
+      stockMinimo: i.stockMinimo.toString(),
+      proveedorId: i.proveedorId ? i.proveedorId.toString() : '',
+      diasVidaUtil: i.diasVidaUtil.toString()
+    })
     setModalOpen(true)
   }
 
@@ -213,6 +232,19 @@ export default function InventarioClient() {
                 <div className={editando ? 'col-span-2' : ''}>
                   <label className="block text-sm font-bold text-slate-700 mb-1">Stock Mínimo (Alerta)</label>
                   <input type="number" step="0.01" value={form.stockMinimo} onChange={e=>setForm({...form, stockMinimo: e.target.value})} className="w-full border-2 border-slate-200 rounded-xl p-3 focus:border-indigo-500 outline-none" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-1">Proveedor Principal</label>
+                  <select value={form.proveedorId} onChange={e=>setForm({...form, proveedorId: e.target.value})} className="w-full border-2 border-slate-200 rounded-xl p-3 focus:border-indigo-500 outline-none">
+                    <option value="">Ninguno</option>
+                    {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-1">Vida Útil (Días)</label>
+                  <input type="number" value={form.diasVidaUtil} onChange={e=>setForm({...form, diasVidaUtil: e.target.value})} className="w-full border-2 border-slate-200 rounded-xl p-3 focus:border-indigo-500 outline-none" placeholder="365" />
                 </div>
               </div>
               <div className="flex gap-3 pt-4">

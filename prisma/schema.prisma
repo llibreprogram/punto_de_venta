@@ -202,8 +202,12 @@ model Insumo {
   costoCents   Int       @default(0) // Costo por unidadMedida
   stockMinimo  Float     @default(0) // Para alertas de bajo stock
   activo       Boolean   @default(true)
+  diasVidaUtil Int       @default(365) // Días de caducidad
+  proveedor    Proveedor? @relation(fields: [proveedorId], references: [id])
+  proveedorId  Int?
   recetaItems  RecetaItem[]
   movimientos  MovimientoInventario[]
+  ordenesItems OrdenCompraItem[]
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 }
@@ -230,4 +234,42 @@ model MovimientoInventario {
   razon       String?  // Ej. "Venta Pedido #123", "Compra a proveedor X"
   usuarioId   Int?     // Quién registró (opcional si es automático)
   createdAt   DateTime @default(now())
+}
+
+model Proveedor {
+  id          Int       @id @default(autoincrement())
+  nombre      String    @unique
+  contacto    String?
+  telefono    String?
+  email       String?
+  diasEntrega Int       @default(1)
+  activo      Boolean   @default(true)
+  insumos     Insumo[]
+  ordenes     OrdenCompra[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model OrdenCompra {
+  id            Int               @id @default(autoincrement())
+  proveedor     Proveedor         @relation(fields: [proveedorId], references: [id])
+  proveedorId   Int
+  estado        String            @default("BORRADOR") // BORRADOR, ENVIADA, RECIBIDA, CANCELADA
+  totalCents    Int               @default(0)
+  fechaEsperada DateTime?
+  items         OrdenCompraItem[]
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+}
+
+model OrdenCompraItem {
+  id                 Int         @id @default(autoincrement())
+  orden              OrdenCompra @relation(fields: [ordenId], references: [id], onDelete: Cascade)
+  ordenId            Int
+  insumo             Insumo      @relation(fields: [insumoId], references: [id])
+  insumoId           Int
+  cantidadPedida     Float
+  cantidadRecibida   Float       @default(0)
+  costoUnitarioCents Int
+  totalCents         Int
 }

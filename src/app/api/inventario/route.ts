@@ -27,9 +27,11 @@ export async function POST(req: Request) {
       data: {
         nombre: body.nombre,
         unidadMedida: body.unidadMedida,
-        costoCents: body.costoCents || 0,
-        stockActual: body.stockActual || 0,
-        stockMinimo: body.stockMinimo || 0,
+        costoCents: Number(body.costoCents) || 0,
+        stockActual: Number(body.stockActual) || 0,
+        stockMinimo: Number(body.stockMinimo) || 0,
+        proveedorId: body.proveedorId || null,
+        diasVidaUtil: Number(body.diasVidaUtil) || 365
       }
     })
     
