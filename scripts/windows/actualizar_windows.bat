@@ -14,13 +14,9 @@ cd /d "%INSTALL_DIR%"
 echo Obteniendo ultimos cambios desde GitHub...
 :: Respaldar la base de datos antes de actualizar para evitar que Git la elimine o sobreescriba
 mkdir "backup_db" 2>nul
-if exist "prisma\*.db" (
+if exist "prisma\dev.db" (
     echo Respaldando base de datos prisma...
-    copy "prisma\*.db" "backup_db\" >nul
-)
-if exist "*.db" (
-    echo Respaldando base de datos raiz...
-    copy "*.db" "backup_db\" >nul
+    copy /Y "prisma\dev.db" "backup_db\dev.db" >nul
 )
 
 :: Guardamos cambios locales temporales
@@ -33,11 +29,10 @@ if %errorLevel% neq 0 (
     exit /b 1
 )
 
-:: Restaurar la base de datos
-if exist "backup_db\*.db" (
+:: Restaurar la base de datos de forma segura
+if exist "backup_db\dev.db" (
     echo Restaurando base de datos...
-    copy "backup_db\*.db" "prisma\" >nul 2>nul
-    copy "backup_db\*.db" ".\" >nul 2>nul
+    copy /Y "backup_db\dev.db" "prisma\dev.db" >nul
 )
 
 echo.
