@@ -11,6 +11,11 @@ echo.
 :: Cambiar al directorio raiz del proyecto de forma explicita
 cd /d "%INSTALL_DIR%"
 
+:: Detener cualquier servidor Node en ejecucion para liberar archivos
+echo Deteniendo el servidor POS activo...
+taskkill /F /IM node.exe /T >nul 2>&1
+timeout /t 2 /nobreak >nul
+
 echo Obteniendo ultimos cambios desde GitHub...
 :: Respaldar la base de datos antes de actualizar para evitar que Git la elimine o sobreescriba
 mkdir "backup_db" 2>nul
