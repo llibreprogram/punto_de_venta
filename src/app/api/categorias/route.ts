@@ -19,6 +19,13 @@ export async function POST(req: Request) {
   const { nombre } = await req.json()
   const name = String(nombre || '').trim()
   if (!name) return NextResponse.json({ error: 'Nombre requerido' }, { status: 400 })
+  
+  // Check for duplicates (case insensitive in memory for SQLite compatibility)
+  const existing = await prisma.categoria.findMany()
+  if (existing.some(c => c.nombre.toLowerCase() === name.toLowerCase())) {
+    return NextResponse.json({ error: 'Ya existe una categoría con este nombre' }, { status: 400 })
+  }
+
   const created = await prisma.categoria.create({ data: { nombre: name } })
   return NextResponse.json(created, { status: 201 })
 }

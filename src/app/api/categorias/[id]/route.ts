@@ -18,7 +18,19 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
   const id = Number(idStr)
   const body = await req.json()
   const data: Partial<{ nombre: string; activa: boolean }> = {}
-  if (typeof body.nombre === 'string') data.nombre = body.nombre
+  
+  if (typeof body.nombre === 'string') {
+    const name = body.nombre.trim()
+    if (!name) return NextResponse.json({ error: 'Nombre no puede estar vacío' }, { status: 400 })
+    
+    // Check for duplicates (case insensitive in memory for SQLite compatibility)
+    const existing = await prisma.categoria.findMany()
+    if (existing.some(c => c.id !== id && c.nombre.toLowerCase() === name.toLowerCase())) {
+      return NextResponse.json({ error: 'Ya existe una categoría con este nombre' }, { status: 400 })
+    }
+    data.nombre = name
+  }
+  
   if (typeof body.activa === 'boolean') data.activa = body.activa
   const cat = await prisma.categoria.update({ where: { id }, data })
   return NextResponse.json(cat)
