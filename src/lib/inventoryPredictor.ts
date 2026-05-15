@@ -18,13 +18,11 @@ export type SugerenciaCompra = {
 
 export async function generarSugerenciasCompra(): Promise<SugerenciaCompra[]> {
   // 1. Obtener insumos que están por debajo o igual al stock mínimo y que tienen proveedor asignado
-  const insumos = await prisma.insumo.findMany({
-    where: { 
-      activo: true,
-      stockActual: { lte: prisma.insumo.fields.stockMinimo }
-    },
+  const todos = await prisma.insumo.findMany({
+    where: { activo: true },
     include: { proveedor: true }
   })
+  const insumos = todos.filter(i => i.stockActual <= i.stockMinimo)
 
   const sugerencias: SugerenciaCompra[] = []
   
