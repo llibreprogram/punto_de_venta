@@ -56,7 +56,7 @@ export async function generarSugerenciasCompra(): Promise<SugerenciaCompra[]> {
     } else {
       // 3. Cálculo JIT: Meta de cobertura de 7 días (1 semana)
       const diasCoberturaMeta = 7
-      let metaInventario = consumoDiarioPromedio * diasCoberturaMeta
+      let metaInventario = Math.max(consumoDiarioPromedio * diasCoberturaMeta, insumo.stockMinimo * 1.2)
 
       // 4. Restricción estricta de caducidad (Vida Útil)
       // Nunca comprar más de lo que se consume en el 80% de su vida útil.

@@ -58,7 +58,7 @@ export default function AdminDashboard() {
         
         if (resInv.ok) {
           const inv = await resInv.json()
-          const alertas = inv.filter((i:any) => i.stockMinimo > 0 && i.stockActual <= i.stockMinimo).length
+          const alertas = inv.filter((i:any) => i.activo && i.stockMinimo > 0 && i.stockActual <= i.stockMinimo).length
           setAlertasInventario(alertas)
         }
 
