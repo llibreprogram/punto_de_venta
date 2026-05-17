@@ -276,3 +276,154 @@ model OrdenCompraItem {
   costoUnitarioCents Int
   totalCents         Int
 }
+
+// --- Módulo de Nómina ---
+
+model Empleado {
+  id              Int       @id @default(autoincrement())
+  codigo          String    @unique                       // Ej: "EMP-001"
+  nombre          String
+  apellido        String
+  cedula          String    @unique                       // Cédula de identidad
+  fechaNacimiento DateTime?
+  sexo            String?                                 // "M", "F"
+  direccion       String?
+  telefono        String?
+  email           String?
+
+  // --- Datos Laborales ---
+  cargo           String                                  // "Cocinero", "Cajero", "Mesero", etc.
+  departamento    String    @default("Operaciones")       // "Cocina", "Servicio", "Admin"
+  tipoContrato    String    @default("INDEFINIDO")        // INDEFINIDO, TEMPORAL, PRUEBA
+  fechaIngreso    DateTime
+  fechaSalida     DateTime?
+  activo          Boolean   @default(true)
+
+  // --- Compensación ---
+  salarioBaseCents Int                                    // Salario mensual en centavos
+  tipoSalario     String    @default("QUINCENAL")        // MENSUAL, QUINCENAL
+  cuentaBanco     String?
+  banco           String?
+
+  // --- Seguridad Social ---
+  nss             String?   @unique                       // Número de Seguridad Social (TSS)
+  afpId           String?                                 // ID en la AFP
+
+  // --- Relaciones ---
+  nominas         Nomina[]
+  asistencias     Asistencia[]
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model Nomina {
+  id              Int       @id @default(autoincrement())
+  periodo         String                                  // "2026-05-Q1" (año-mes-quincena)
+  tipo            String    @default("ORDINARIA")         // ORDINARIA, EXTRAORDINARIA, REGALIA
+  estado          String    @default("BORRADOR")          // BORRADOR, CALCULADA, APROBADA, PAGADA
+
+  empleado        Empleado  @relation(fields: [empleadoId], references: [id])
+  empleadoId      Int
+
+  // --- Ingresos ---
+  salarioBaseCents     Int                                // Salario base del periodo (quincenal)
+  horasExtrasCents     Int   @default(0)                  // Total horas extras
+  comisionesCents      Int   @default(0)
+  bonosCents           Int   @default(0)
+  propinaCents         Int   @default(0)                  // Propinas del periodo
+  otrosIngresosCents   Int   @default(0)
+  totalDevengadoCents  Int   @default(0)                  // Suma de todos los ingresos
+
+  // --- Deducciones Legales ---
+  sfsCents             Int   @default(0)                  // SFS empleado (3.04%)
+  afpCents             Int   @default(0)                  // AFP empleado (2.87%)
+  isrCents             Int   @default(0)                  // ISR retenido
+  totalDeduccionesLegalesCents Int @default(0)
+
+  // --- Deducciones Voluntarias ---
+  adelantoCents        Int   @default(0)
+  otrasDeduccionesCents Int  @default(0)
+  totalDeduccionesCents Int  @default(0)                  // Total deducciones
+
+  // --- Aportes Patronales (info, no se descuenta al empleado) ---
+  sfsPatronalCents     Int   @default(0)                  // SFS patronal (7.09%)
+  afpPatronalCents     Int   @default(0)                  // AFP patronal (7.10%)
+  srlCents             Int   @default(0)                  // SRL (1.0-1.6%)
+  infotepCents         Int   @default(0)                  // INFOTEP (1%)
+  totalPatronalCents   Int   @default(0)
+
+  // --- Neto ---
+  salarioNetoCents     Int   @default(0)                  // Lo que recibe el empleado
+
+  // --- Horas extras desglosadas ---
+  horasExtraDiurnas    Float @default(0)
+  horasExtraNocturnas  Float @default(0)
+  horasExtraFeriado    Float @default(0)
+
+  notas           String?
+  fechaPago       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([empleadoId, periodo, tipo])
+}
+
+// Skeleton para control de asistencia (implementación futura)
+model Asistencia {
+  id              Int       @id @default(autoincrement())
+  empleado        Empleado  @relation(fields: [empleadoId], references: [id])
+  empleadoId      Int
+
+  fecha           DateTime
+  horaEntrada     DateTime?
+  horaSalida      DateTime?
+  horasTrabajadas Float     @default(0)
+  horasExtras     Float     @default(0)
+  tipoExtra       String?                                 // "DIURNA", "NOCTURNA", "FERIADO"
+  ausencia        String?                                 // "JUSTIFICADA", "INJUSTIFICADA", "VACACIONES", "LICENCIA"
+  notas           String?
+
+  createdAt       DateTime  @default(now())
+}
+
+// Configuración de nómina (singleton, parámetros legales actualizables)
+model ConfigNomina {
+  id              Int       @id @default(1)
+
+  // Tasas empleado
+  sfsPct          Float     @default(3.04)
+  afpPct          Float     @default(2.87)
+
+  // Tasas patronal
+  sfsPatronalPct  Float     @default(7.09)
+  afpPatronalPct  Float     @default(7.10)
+  srlPct          Float     @default(1.00)
+  infotepPct      Float     @default(1.00)
+
+  // Topes cotizables (en centavos)
+  topeSfsCents    Int       @default(23223000)   // RD$ 232,230.00
+  topeAfpCents    Int       @default(46446000)   // RD$ 464,460.00
+  topeSrlCents    Int       @default(9289200)    // RD$ 92,892.00
+
+  // ISR - Escalas (anuales en centavos)
+  isrExentoCents       Int  @default(41622000)   // RD$ 416,220.00
+  isrTramo1LimiteCents Int  @default(62432900)   // RD$ 624,329.00
+  isrTramo2LimiteCents Int  @default(86712300)   // RD$ 867,123.00
+  isrTramo1Pct         Float @default(15)
+  isrTramo2Pct         Float @default(20)
+  isrTramo3Pct         Float @default(25)
+  isrTramo1FijoCents   Int  @default(3121600)    // RD$ 31,216.00
+  isrTramo2FijoCents   Int  @default(7977600)    // RD$ 79,776.00
+
+  // Horas extras
+  recargoExtraDiurna   Float @default(35)        // 35%
+  recargoExtraNocturna Float @default(54)        // ~54%
+  recargoFeriado       Float @default(100)       // 100%
+
+  // Jornada
+  horasSemanales       Float @default(44)
+  horasDiarias         Float @default(8)
+
+  updatedAt       DateTime  @updatedAt
+}

@@ -17,6 +17,7 @@ const NAV_ITEMS = [
   { href: '/admin/inventario',  label: 'Inventario',  icon: '🗄️' },
   { href: '/admin/recetario',   label: 'Recetario',   icon: '🍲' },
   { href: '/admin/compras',     label: 'Compras',     icon: '🛒' },
+  { href: '/admin/nomina',      label: 'Nómina',      icon: '💰' },
   { href: '/admin/integraciones', label: 'Integraciones', icon: '🔗' },
   { href: '/reportes',          label: 'Reportes',    icon: '📋' },
   { href: '/ventas',            label: 'Ventas',      icon: '📊' },

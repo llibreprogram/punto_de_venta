@@ -1,0 +1,229 @@
+'use client'
+import { useState } from 'react'
+import { motion } from 'framer-motion'
+import { generarPeriodoQuincenal } from '@/lib/payroll-engine'
+
+interface Empleado {
+  id: number; codigo: string; nombre: string; apellido: string; salarioBaseCents: number; cargo: string
+}
+
+function formatRD(cents: number) {
+  return new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP', minimumFractionDigits: 2 }).format(cents / 100)
+}
+
+type ProcessStep = 'config' | 'processing' | 'results'
+
+export default function NominaProcessor({ empleados, onComplete }: {
+  empleados: Empleado[]; onComplete: () => void
+}) {
+  const [processStep, setProcessStep] = useState<ProcessStep>('config')
+  const [periodo, setPeriodo] = useState(generarPeriodoQuincenal(new Date()))
+  const [progress, setProgress] = useState(0)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [results, setResults] = useState<any>(null)
+  const [error, setError] = useState('')
+
+  const handleProcess = async () => {
+    setProcessStep('processing')
+    setError('')
+    setProgress(0)
+
+    // Animate progress
+    const interval = setInterval(() => {
+      setProgress(p => Math.min(p + 3, 90))
+    }, 100)
+
+    try {
+      const res = await fetch('/api/nomina/calcular', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ periodo }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Error al procesar')
+      clearInterval(interval)
+      setProgress(100)
+      setResults(data)
+      setTimeout(() => setProcessStep('results'), 500)
+    } catch (e) {
+      clearInterval(interval)
+      setError(e instanceof Error ? e.message : 'Error desconocido')
+      setProcessStep('config')
+    }
+  }
+
+  const handleAprobar = async (estado: string) => {
+    await fetch(`/api/nomina/periodos/${periodo}/aprobar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ estado }),
+    })
+    onComplete()
+    setProcessStep('config')
+    setResults(null)
+  }
+
+  // Parse period for display
+  const [y, m, q] = periodo.split('-')
+  const periodoLabel = `${q === 'Q1' ? '1ra' : '2da'} Quincena — ${new Date(Number(y), Number(m) - 1).toLocaleDateString('es-DO', { month: 'long', year: 'numeric' })}`
+
+  return (
+    <div className="card p-6">
+      {processStep === 'config' && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <div className="flex items-start gap-4 mb-6">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-2xl shadow-lg">⚡</div>
+            <div>
+              <h3 className="text-lg font-bold text-slate-900">Procesar Nómina Quincenal</h3>
+              <p className="text-sm text-slate-500 mt-1">Calcula automáticamente TSS, ISR y aportes patronales para todos los empleados activos.</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 mb-1.5">Periodo</label>
+              <select className="input w-full" value={periodo} onChange={e => setPeriodo(e.target.value)}>
+                {generatePeriodoOptions().map(p => (
+                  <option key={p.value} value={p.value}>{p.label}</option>
+                ))}
+              </select>
+              <p className="text-xs text-slate-400 mt-1">📅 {periodoLabel}</p>
+            </div>
+            <div className="flex flex-col justify-end">
+              <div className="p-3 rounded-xl bg-blue-50 border border-blue-100">
+                <div className="text-xs text-blue-600 font-medium">Empleados a procesar</div>
+                <div className="text-2xl font-extrabold text-blue-800">{empleados.length}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Preview */}
+          <div className="mb-6 rounded-xl border border-slate-100 overflow-hidden">
+            <div className="px-4 py-2 bg-slate-50 text-xs font-semibold text-slate-500 uppercase">Vista previa</div>
+            <div className="divide-y divide-slate-50 max-h-48 overflow-y-auto">
+              {empleados.map(emp => (
+                <div key={emp.id} className="px-4 py-2 flex justify-between items-center text-sm">
+                  <span className="text-slate-700">{emp.nombre} {emp.apellido} <span className="text-slate-400">— {emp.cargo}</span></span>
+                  <span className="font-semibold text-slate-600">{formatRD(Math.round(emp.salarioBaseCents / 2))}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {error && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg mb-4">⚠️ {error}</p>}
+
+          <button onClick={handleProcess} disabled={empleados.length === 0}
+            className="btn btn-primary w-full flex items-center justify-center gap-2 py-3 text-base">
+            ⚡ Calcular Nómina ({empleados.length} empleados)
+          </button>
+        </motion.div>
+      )}
+
+      {processStep === 'processing' && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-12">
+          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center">
+            <motion.span className="text-3xl" animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}>⚙️</motion.span>
+          </div>
+          <h3 className="text-lg font-bold text-slate-900 mb-2">Procesando Nómina...</h3>
+          <p className="text-sm text-slate-500 mb-6">Calculando TSS, ISR y aportes patronales</p>
+          <div className="w-full max-w-xs mx-auto h-3 bg-slate-100 rounded-full overflow-hidden">
+            <motion.div className="h-full bg-gradient-to-r from-amber-400 to-orange-500 rounded-full"
+              animate={{ width: `${progress}%` }} transition={{ duration: 0.3 }} />
+          </div>
+          <p className="text-xs text-slate-400 mt-2">{Math.round(progress)}%</p>
+        </motion.div>
+      )}
+
+      {processStep === 'results' && results && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center text-2xl">✅</div>
+            <div>
+              <h3 className="text-lg font-bold text-slate-900">Nómina Calculada</h3>
+              <p className="text-sm text-slate-500">{periodoLabel} — {results.total} empleados</p>
+            </div>
+          </div>
+
+          {/* Summary KPIs */}
+          <div className="grid grid-cols-3 gap-3 mb-6">
+            {(() => {
+              const totals = results.resultados.reduce((acc: { bruto: number; neto: number; patronal: number }, r: { nomina: { totalDevengadoCents: number; salarioNetoCents: number; totalPatronalCents: number } }) => ({
+                bruto: acc.bruto + r.nomina.totalDevengadoCents,
+                neto: acc.neto + r.nomina.salarioNetoCents,
+                patronal: acc.patronal + r.nomina.totalPatronalCents,
+              }), { bruto: 0, neto: 0, patronal: 0 })
+              return (
+                <>
+                  <div className="p-3 rounded-xl bg-blue-50 border border-blue-100 text-center">
+                    <div className="text-xs text-blue-500 font-medium">Total Bruto</div>
+                    <div className="text-lg font-extrabold text-blue-800">{formatRD(totals.bruto)}</div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-100 text-center">
+                    <div className="text-xs text-emerald-500 font-medium">Total Neto</div>
+                    <div className="text-lg font-extrabold text-emerald-800">{formatRD(totals.neto)}</div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-purple-50 border border-purple-100 text-center">
+                    <div className="text-xs text-purple-500 font-medium">Costo Patronal</div>
+                    <div className="text-lg font-extrabold text-purple-800">{formatRD(totals.patronal)}</div>
+                  </div>
+                </>
+              )
+            })()}
+          </div>
+
+          {/* Detail Table */}
+          <div className="rounded-xl border border-slate-100 overflow-hidden mb-6">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-50 text-xs font-semibold text-slate-500 uppercase">
+                  <th className="px-3 py-2 text-left">Empleado</th>
+                  <th className="px-3 py-2 text-right">Bruto</th>
+                  <th className="px-3 py-2 text-right">TSS</th>
+                  <th className="px-3 py-2 text-right">ISR</th>
+                  <th className="px-3 py-2 text-right font-bold">Neto</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {results.resultados.map((r: { empleado: { id: number; nombre: string; apellido: string }; nomina: { totalDevengadoCents: number; sfsCents: number; afpCents: number; isrCents: number; salarioNetoCents: number } }) => (
+                  <tr key={r.empleado.id} className="hover:bg-slate-50/50">
+                    <td className="px-3 py-2 font-medium">{r.empleado.nombre} {r.empleado.apellido}</td>
+                    <td className="px-3 py-2 text-right">{formatRD(r.nomina.totalDevengadoCents)}</td>
+                    <td className="px-3 py-2 text-right text-red-500">-{formatRD(r.nomina.sfsCents + r.nomina.afpCents)}</td>
+                    <td className="px-3 py-2 text-right text-red-500">{r.nomina.isrCents > 0 ? `-${formatRD(r.nomina.isrCents)}` : '—'}</td>
+                    <td className="px-3 py-2 text-right font-bold text-emerald-700">{formatRD(r.nomina.salarioNetoCents)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex gap-3">
+            <button onClick={() => handleAprobar('APROBADA')} className="btn flex-1 text-sm bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100">
+              ✅ Aprobar
+            </button>
+            <button onClick={() => handleAprobar('PAGADA')} className="btn btn-primary flex-1 text-sm">
+              💵 Marcar como Pagada
+            </button>
+            <button onClick={() => { setProcessStep('config'); setResults(null) }} className="btn text-sm">
+              Volver
+            </button>
+          </div>
+        </motion.div>
+      )}
+    </div>
+  )
+}
+
+function generatePeriodoOptions() {
+  const options = []
+  const now = new Date()
+  for (let i = -2; i <= 2; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1)
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const monthName = d.toLocaleDateString('es-DO', { month: 'long', year: 'numeric' })
+    options.push({ value: `${y}-${m}-Q1`, label: `1ra Quincena — ${monthName}` })
+    options.push({ value: `${y}-${m}-Q2`, label: `2da Quincena — ${monthName}` })
+  }
+  return options
+}
