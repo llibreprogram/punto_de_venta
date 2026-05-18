@@ -1,5 +1,6 @@
 'use client'
 import { motion } from 'framer-motion'
+import { useState, useEffect } from 'react'
 
 function formatRD(cents: number) {
   return new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP', minimumFractionDigits: 2 }).format(cents / 100)
@@ -7,9 +8,12 @@ function formatRD(cents: number) {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default function VolantePago({ nomina, onClose }: { nomina: any; onClose: () => void }) {
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+
   const emp = nomina.empleado || {}
   const [y, m, q] = (nomina.periodo || '').split('-')
-  const periodoLabel = `${q === 'Q1' ? '1ra' : '2da'} Quincena — ${new Date(Number(y), Number(m) - 1).toLocaleDateString('es-DO', { month: 'long', year: 'numeric' })}`
+  const periodoLabel = `${q === 'Q1' ? '1ra' : '2da'} Quincena — ${mounted ? new Date(Number(y), Number(m) - 1).toLocaleDateString('es-DO', { month: 'long', year: 'numeric' }) : ''}`
 
   const hasPropina = (nomina.propinaCents || 0) > 0
   const totalRecibir = nomina.totalRecibirCents || (nomina.salarioNetoCents + (nomina.propinaCents || 0))

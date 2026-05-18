@@ -1,4 +1,5 @@
 'use client'
+import { useState, useEffect } from 'react'
 
 function formatRD(cents: number) {
   return new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP', minimumFractionDigits: 2 }).format(cents / 100)
@@ -6,9 +7,12 @@ function formatRD(cents: number) {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default function VolanteClient({ nomina, ajustes }: { nomina: any; ajustes: any }) {
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+
   const emp = nomina.empleado || {}
   const [y, m, q] = (nomina.periodo || '').split('-')
-  const periodoLabel = `${q === 'Q1' ? '1ra' : '2da'} Quincena — ${new Date(Number(y), Number(m) - 1).toLocaleDateString('es-DO', { month: 'long', year: 'numeric' })}`
+  const periodoLabel = `${q === 'Q1' ? '1ra' : '2da'} Quincena — ${mounted ? new Date(Number(y), Number(m) - 1).toLocaleDateString('es-DO', { month: 'long', year: 'numeric' }) : ''}`
   const businessName = ajustes?.businessName || 'Mi Empresa'
   const businessRnc = ajustes?.businessRnc || ''
 
@@ -189,7 +193,7 @@ export default function VolanteClient({ nomina, ajustes }: { nomina: any; ajuste
                 La propina legal del 10% se documenta conforme al Art. 228 del Código de Trabajo (Ley 16-92).
               </p>
             )}
-            <p className="mt-1">Generado el {new Date().toLocaleDateString('es-DO', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+            <p className="mt-1">Generado el {mounted ? new Date().toLocaleDateString('es-DO', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</p>
           </div>
         </div>
       </div>

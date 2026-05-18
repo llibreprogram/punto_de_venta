@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { generarPeriodoQuincenal } from '@/lib/payroll-engine'
 
@@ -41,6 +41,9 @@ export default function NominaProcessor({ empleados, onComplete }: {
   const [propinaData, setPropinaData] = useState<PropinaData | null>(null)
   const [loadingPropinas, setLoadingPropinas] = useState(false)
   const [incluirPropinas, setIncluirPropinas] = useState(true)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => setMounted(true), [])
 
   const loadPropinas = async () => {
     setLoadingPropinas(true)
@@ -109,7 +112,7 @@ export default function NominaProcessor({ empleados, onComplete }: {
 
   // Parse period for display
   const [y, m, q] = periodo.split('-')
-  const periodoLabel = `${q === 'Q1' ? '1ra' : '2da'} Quincena — ${new Date(Number(y), Number(m) - 1).toLocaleDateString('es-DO', { month: 'long', year: 'numeric' })}`
+  const periodoLabel = `${q === 'Q1' ? '1ra' : '2da'} Quincena — ${mounted ? new Date(Number(y), Number(m) - 1).toLocaleDateString('es-DO', { month: 'long', year: 'numeric' }) : ''}`
 
   return (
     <div className="card p-6">
