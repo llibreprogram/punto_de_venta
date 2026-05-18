@@ -11,6 +11,9 @@ export default function VolantePago({ nomina, onClose }: { nomina: any; onClose:
   const [y, m, q] = (nomina.periodo || '').split('-')
   const periodoLabel = `${q === 'Q1' ? '1ra' : '2da'} Quincena — ${new Date(Number(y), Number(m) - 1).toLocaleDateString('es-DO', { month: 'long', year: 'numeric' })}`
 
+  const hasPropina = (nomina.propinaCents || 0) > 0
+  const totalRecibir = nomina.totalRecibirCents || (nomina.salarioNetoCents + (nomina.propinaCents || 0))
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
@@ -36,15 +39,14 @@ export default function VolantePago({ nomina, onClose }: { nomina: any; onClose:
         </div>
 
         <div className="p-6 grid gap-5">
-          {/* Ingresos */}
-          <Section title="💰 Ingresos" color="emerald">
+          {/* Ingresos Salariales */}
+          <Section title="💰 Ingresos Salariales" color="emerald">
             <Row label="Salario Base (Quincenal)" value={nomina.salarioBaseCents} />
             {nomina.horasExtrasCents > 0 && <Row label="Horas Extras" value={nomina.horasExtrasCents} />}
             {nomina.comisionesCents > 0 && <Row label="Comisiones" value={nomina.comisionesCents} />}
             {nomina.bonosCents > 0 && <Row label="Bonos" value={nomina.bonosCents} />}
-            {nomina.propinaCents > 0 && <Row label="Propinas" value={nomina.propinaCents} />}
             {nomina.otrosIngresosCents > 0 && <Row label="Otros Ingresos" value={nomina.otrosIngresosCents} />}
-            <TotalRow label="Total Devengado" value={nomina.totalDevengadoCents} color="text-emerald-700" />
+            <TotalRow label="Total Devengado Salarial" value={nomina.totalDevengadoSalarialCents || nomina.totalDevengadoCents} color="text-emerald-700" />
           </Section>
 
           {/* Deducciones */}
@@ -57,13 +59,50 @@ export default function VolantePago({ nomina, onClose }: { nomina: any; onClose:
             <TotalRow label="Total Deducciones" value={-nomina.totalDeduccionesCents} color="text-red-600" />
           </Section>
 
-          {/* Neto */}
+          {/* Salario Neto */}
           <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-200">
             <div className="flex justify-between items-center">
               <span className="text-base font-bold text-emerald-800">💵 SALARIO NETO</span>
               <span className="text-2xl font-extrabold text-emerald-700">{formatRD(nomina.salarioNetoCents)}</span>
             </div>
           </div>
+
+          {/* Propina Legal - Sección Separada */}
+          {hasPropina && (
+            <div className="rounded-xl border-2 border-amber-300 overflow-hidden">
+              <div className="px-4 py-3 bg-gradient-to-r from-amber-100 to-yellow-100">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-lg">🍽️</span>
+                  <h3 className="text-sm font-bold text-amber-900 uppercase tracking-wide">Propina Legal (Art. 228 CT)</h3>
+                </div>
+                <p className="text-xs text-amber-700">
+                  Distribución del 10% obligatorio. No constituye salario (Art. 197 CT).
+                </p>
+              </div>
+              <div className="px-4 py-3 bg-amber-50/50">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-amber-800 font-medium">Propina asignada del periodo</span>
+                  <span className="text-lg font-extrabold text-amber-800">{formatRD(nomina.propinaCents)}</span>
+                </div>
+                <p className="text-xs text-amber-600 mt-2 italic">
+                  No cotiza TSS • No genera ISR • No se incluye en prestaciones laborales
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Total a Recibir */}
+          {hasPropina && (
+            <div className="p-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg">
+              <div className="flex justify-between items-center">
+                <div>
+                  <span className="text-base font-bold">✨ TOTAL A RECIBIR</span>
+                  <p className="text-xs text-blue-200 mt-0.5">Salario Neto + Propina</p>
+                </div>
+                <span className="text-2xl font-extrabold">{formatRD(totalRecibir)}</span>
+              </div>
+            </div>
+          )}
 
           {/* Aportes Patronales */}
           <Section title="🏛️ Aportes Patronales (Información)" color="purple">

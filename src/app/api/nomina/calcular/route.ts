@@ -5,11 +5,25 @@ import { calcularNominaQuincenal, type ConfigNominaData, CONFIG_DEFAULTS, genera
 async function getConfig(): Promise<ConfigNominaData> {
   const cfg = await prisma.configNomina.findUnique({ where: { id: 1 } })
   if (!cfg) return CONFIG_DEFAULTS
-  return cfg as unknown as ConfigNominaData
+
+  // Parse propinaDistribucion from JSON string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const raw = cfg as any
+  let propinaDistribucion = CONFIG_DEFAULTS.propinaDistribucion
+  if (raw.propinaDistribucion) {
+    try {
+      propinaDistribucion = JSON.parse(raw.propinaDistribucion)
+    } catch { /* use defaults */ }
+  }
+
+  return {
+    ...raw as ConfigNominaData,
+    propinaDistribucion,
+  }
 }
 
 // POST /api/nomina/calcular — Calcula nómina quincenal
-// Body: { periodo?: string, empleadoId?: number, extras?: {...} }
+// Body: { periodo?: string, empleadoId?: number, extras?: {...}, incluirPropinas?: boolean }
 // Si no se pasa periodo, se calcula el actual
 // Si no se pasa empleadoId, se calculan todos los activos
 export async function POST(req: Request) {
@@ -17,6 +31,7 @@ export async function POST(req: Request) {
   const config = await getConfig()
   const periodo = body.periodo || generarPeriodoQuincenal(new Date())
   const extras = body.extras || {}
+  const propinasDistribuidas = body.propinasDistribuidas || {} // { [empleadoId]: centavos }
 
   let empleados
   if (body.empleadoId) {
@@ -37,6 +52,11 @@ export async function POST(req: Request) {
 
     // Use per-employee extras if provided, otherwise global extras
     const empExtras = extras[emp.id] || extras.global || {}
+
+    // Add tip amount if distributed
+    if (propinasDistribuidas[emp.id]) {
+      empExtras.propinaCents = propinasDistribuidas[emp.id]
+    }
 
     const calculo = calcularNominaQuincenal(emp.salarioBaseCents, empExtras, config)
 

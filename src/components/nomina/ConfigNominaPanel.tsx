@@ -14,25 +14,48 @@ interface Config {
   isrTramo3Pct: number; isrTramo1FijoCents: number; isrTramo2FijoCents: number
   recargoExtraDiurna: number; recargoExtraNocturna: number; recargoFeriado: number
   horasSemanales: number; horasDiarias: number
+  propinaDistribucion: string // JSON string
+}
+
+interface PropinaDistribucion {
+  [key: string]: number
 }
 
 export default function ConfigNominaPanel() {
   const [config, setConfig] = useState<Config | null>(null)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [propinaCategories, setPropinaCategories] = useState<PropinaDistribucion>({})
+  const [newCatName, setNewCatName] = useState('')
 
   useEffect(() => {
-    fetch('/api/nomina/config').then(r => r.json()).then(setConfig)
+    fetch('/api/nomina/config').then(r => r.json()).then(data => {
+      setConfig(data)
+      // Parse propinaDistribucion
+      try {
+        const dist = JSON.parse(data.propinaDistribucion || '{}')
+        setPropinaCategories(dist)
+      } catch {
+        setPropinaCategories({ Servicio: 40, Cocina: 35, Barra: 15, Auxiliar: 10 })
+      }
+    })
   }, [])
 
   const handleSave = async () => {
     if (!config) return
     setSaving(true)
     setSaved(false)
+    
+    // Save with propinaDistribucion as JSON string
+    const payload = {
+      ...config,
+      propinaDistribucion: JSON.stringify(propinaCategories),
+    }
+    
     await fetch('/api/nomina/config', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(config),
+      body: JSON.stringify(payload),
     })
     setSaving(false)
     setSaved(true)
@@ -42,6 +65,27 @@ export default function ConfigNominaPanel() {
   if (!config) return <div className="card p-8 text-center text-slate-400">Cargando configuración...</div>
 
   const set = (key: keyof Config, value: number) => setConfig(c => c ? { ...c, [key]: value } : c)
+
+  const totalPropinaPct = Object.values(propinaCategories).reduce((a, b) => a + b, 0)
+  const propinaValid = Math.abs(totalPropinaPct - 100) < 0.01
+
+  const handlePropinaChange = (cat: string, value: number) => {
+    setPropinaCategories(prev => ({ ...prev, [cat]: value }))
+  }
+
+  const handleRemoveCategory = (cat: string) => {
+    setPropinaCategories(prev => {
+      const next = { ...prev }
+      delete next[cat]
+      return next
+    })
+  }
+
+  const handleAddCategory = () => {
+    if (!newCatName.trim() || propinaCategories[newCatName]) return
+    setPropinaCategories(prev => ({ ...prev, [newCatName.trim()]: 0 }))
+    setNewCatName('')
+  }
 
   const InputField = ({ label, field, suffix, isCents }: { label: string; field: keyof Config; suffix?: string; isCents?: boolean }) => (
     <div>
@@ -67,6 +111,54 @@ export default function ConfigNominaPanel() {
       </div>
 
       <div className="grid gap-6">
+        {/* Propina Distribution - Featured first */}
+        <Section title="🍽️ Distribución de Propinas (Art. 228 CT)">
+          <div className="mb-3">
+            <p className="text-xs text-slate-500 mb-3">
+              Define qué porcentaje del pool de propinas recibe cada departamento. 
+              Personal administrativo y gerencial está excluido por ley.
+              Los porcentajes deben sumar <strong>100%</strong>.
+            </p>
+            
+            <div className="grid gap-2">
+              {Object.entries(propinaCategories).map(([cat, pct]) => (
+                <div key={cat} className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-slate-700 w-24">{cat}</span>
+                  <div className="relative flex-1">
+                    <input type="number" min={0} max={100} step={1}
+                      className="input w-full text-sm pr-8"
+                      value={pct}
+                      onChange={e => handlePropinaChange(cat, Number(e.target.value))} />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">%</span>
+                  </div>
+                  <button onClick={() => handleRemoveCategory(cat)}
+                    className="text-red-400 hover:text-red-600 text-sm px-2 py-1" title="Eliminar">
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Add new category */}
+            <div className="flex items-center gap-2 mt-3">
+              <input type="text" className="input text-sm flex-1" placeholder="Nueva categoría..."
+                value={newCatName} onChange={e => setNewCatName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleAddCategory() }} />
+              <button onClick={handleAddCategory} disabled={!newCatName.trim()}
+                className="btn text-sm px-3 py-1.5">+ Agregar</button>
+            </div>
+
+            {/* Total indicator */}
+            <div className={`mt-3 p-2 rounded-lg text-sm font-bold text-center ${
+              propinaValid 
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                : 'bg-red-50 text-red-700 border border-red-200'
+            }`}>
+              Total: {totalPropinaPct}% {propinaValid ? '✅' : '⚠️ Debe sumar 100%'}
+            </div>
+          </div>
+        </Section>
+
         {/* TSS Empleado */}
         <Section title="👤 Retenciones TSS (Empleado)">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -128,12 +220,15 @@ export default function ConfigNominaPanel() {
       </div>
 
       <div className="mt-6 flex items-center gap-3">
-        <button onClick={handleSave} disabled={saving} className="btn btn-primary">
+        <button onClick={handleSave} disabled={saving || !propinaValid} className="btn btn-primary">
           {saving ? '⏳ Guardando...' : '💾 Guardar Configuración'}
         </button>
         {saved && (
           <motion.span initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
             className="text-sm text-emerald-600 font-medium">✅ Guardado</motion.span>
+        )}
+        {!propinaValid && (
+          <span className="text-sm text-red-500 font-medium">⚠️ Los % de propinas deben sumar 100%</span>
         )}
       </div>
     </div>

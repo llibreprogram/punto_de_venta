@@ -18,10 +18,18 @@ export async function GET() {
 export async function PUT(req: Request) {
   const body = await req.json()
 
+  // Build allowed fields from CONFIG_DEFAULTS + propinaDistribucion (stored as string)
   const allowedFields = Object.keys(CONFIG_DEFAULTS)
   const data: Record<string, unknown> = {}
   for (const key of allowedFields) {
-    if (body[key] !== undefined) data[key] = body[key]
+    if (body[key] !== undefined) {
+      // propinaDistribucion: store as JSON string if it's an object
+      if (key === 'propinaDistribucion' && typeof body[key] === 'object') {
+        data[key] = JSON.stringify(body[key])
+      } else {
+        data[key] = body[key]
+      }
+    }
   }
 
   const config = await prisma.configNomina.upsert({

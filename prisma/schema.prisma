@@ -331,9 +331,10 @@ model Nomina {
   horasExtrasCents     Int   @default(0)                  // Total horas extras
   comisionesCents      Int   @default(0)
   bonosCents           Int   @default(0)
-  propinaCents         Int   @default(0)                  // Propinas del periodo
+  propinaCents         Int   @default(0)                  // Propinas del periodo (Art. 228 CT — NO es salario)
   otrosIngresosCents   Int   @default(0)
-  totalDevengadoCents  Int   @default(0)                  // Suma de todos los ingresos
+  totalDevengadoSalarialCents Int @default(0)              // Solo ingresos salariales (sin propina)
+  totalDevengadoCents  Int   @default(0)                  // Incluye propina (referencia)
 
   // --- Deducciones Legales ---
   sfsCents             Int   @default(0)                  // SFS empleado (3.04%)
@@ -354,7 +355,8 @@ model Nomina {
   totalPatronalCents   Int   @default(0)
 
   // --- Neto ---
-  salarioNetoCents     Int   @default(0)                  // Lo que recibe el empleado
+  salarioNetoCents     Int   @default(0)                  // Salario neto sin propina
+  totalRecibirCents    Int   @default(0)                  // Salario neto + propina = total a recibir
 
   // --- Horas extras desglosadas ---
   horasExtraDiurnas    Float @default(0)
@@ -424,6 +426,10 @@ model ConfigNomina {
   // Jornada
   horasSemanales       Float @default(44)
   horasDiarias         Float @default(8)
+
+  // Distribución de propinas por departamento (JSON)
+  // Ej: {"Servicio":40,"Cocina":35,"Barra":15,"Auxiliar":10}
+  propinaDistribucion  String @default("{\"Servicio\":40,\"Cocina\":35,\"Barra\":15,\"Auxiliar\":10}")
 
   updatedAt       DateTime  @updatedAt
 }

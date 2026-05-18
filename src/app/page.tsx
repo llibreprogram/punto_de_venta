@@ -3,16 +3,30 @@ import { getSession } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 
 const PAGES = [
+  // --- Operaciones ---
   { href:'/pos', title:'POS', desc:'Pantalla principal de ventas rápidas.', icon:'🖥️', color:'bg-orange-50 border-orange-200 text-orange-700' },
   { href:'/ventas', title:'Ventas', desc:'Historial de ventas con filtros por fecha.', icon:'📊', color:'bg-blue-50 border-blue-200 text-blue-700', sensitive:true },
   { href:'/kds', title:'Cocina (KDS)', desc:'Pantalla de estado de preparación.', icon:'👨‍🍳', color:'bg-emerald-50 border-emerald-200 text-emerald-700' },
+  { href:'/admin/mesas', title:'Mesas', desc:'Gestión y configuración de mesas.', icon:'🪑', color:'bg-stone-50 border-stone-200 text-stone-700', sensitive:true },
+  { href:'/delivery', title:'Delivery', desc:'Pedidos de plataformas externas.', icon:'🛵', color:'bg-rose-50 border-rose-200 text-rose-700', sensitive:true },
+  // --- Administración ---
   { href:'/admin', title:'Dashboard', desc:'Resumen del rendimiento del negocio.', icon:'📈', color:'bg-violet-50 border-violet-200 text-violet-700', sensitive:true },
   { href:'/admin/productos', title:'Productos', desc:'Gestión de imágenes y datos de productos.', icon:'📦', color:'bg-amber-50 border-amber-200 text-amber-700', sensitive:true },
   { href:'/admin/categorias', title:'Categorías', desc:'Alta, edición y activación de categorías.', icon:'🏷️', color:'bg-teal-50 border-teal-200 text-teal-700', sensitive:true },
+  { href:'/admin/recetario', title:'Recetario', desc:'Recetas e ingredientes por producto.', icon:'📖', color:'bg-pink-50 border-pink-200 text-pink-700', sensitive:true },
+  // --- Inventario y Compras ---
+  { href:'/admin/inventario', title:'Inventario', desc:'Control de insumos y stock disponible.', icon:'📦', color:'bg-lime-50 border-lime-200 text-lime-700', sensitive:true },
+  { href:'/admin/proveedores', title:'Proveedores', desc:'Directorio de proveedores del negocio.', icon:'🏭', color:'bg-sky-50 border-sky-200 text-sky-700', sensitive:true },
+  { href:'/admin/compras', title:'Órdenes de Compra', desc:'Gestión de pedidos a proveedores.', icon:'🛒', color:'bg-fuchsia-50 border-fuchsia-200 text-fuchsia-700', sensitive:true },
+  // --- Personal y Finanzas ---
   { href:'/admin/usuarios', title:'Usuarios', desc:'Gestión de operarios y administradores.', icon:'👥', color:'bg-indigo-50 border-indigo-200 text-indigo-700', sensitive:true },
+  { href:'/admin/nomina', title:'Nómina', desc:'Gestión de empleados, nómina y propinas.', icon:'💰', color:'bg-yellow-50 border-yellow-200 text-yellow-700', sensitive:true },
   { href:'/reportes', title:'Reportes', desc:'Resumen por día, categoría o producto.', icon:'📋', color:'bg-cyan-50 border-cyan-200 text-cyan-700', sensitive:true },
+  // --- Sistema ---
   { href:'/configuracion', title:'Configuración', desc:'Ajustes globales del sistema.', icon:'⚙️', color:'bg-slate-50 border-slate-200 text-slate-700', sensitive:true },
+  { href:'/admin/integraciones', title:'Integraciones', desc:'Conexión con UberEats, PedidosYa.', icon:'🔗', color:'bg-purple-50 border-purple-200 text-purple-700', sensitive:true },
   { href:'/admin/salud', title:'Salud del Sistema', desc:'Estado de la base de datos y backups.', icon:'💚', color:'bg-green-50 border-green-200 text-green-700', sensitive:true },
+  { href:'/admin/manual', title:'Manual', desc:'Documentación y guía de uso del sistema.', icon:'📚', color:'bg-neutral-50 border-neutral-200 text-neutral-700' },
 ]
 
 export default async function Home() {

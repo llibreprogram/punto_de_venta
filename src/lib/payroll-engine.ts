@@ -30,6 +30,7 @@ export interface ConfigNominaData {
   recargoFeriado: number;
   horasSemanales: number;
   horasDiarias: number;
+  propinaDistribucion: Record<string, number>; // {"Servicio":40,"Cocina":35,...}
 }
 
 // Valores por defecto (2026)
@@ -56,6 +57,7 @@ export const CONFIG_DEFAULTS: ConfigNominaData = {
   recargoFeriado: 100,
   horasSemanales: 44,
   horasDiarias: 8,
+  propinaDistribucion: { Servicio: 40, Cocina: 35, Barra: 15, Auxiliar: 10 },
 };
 
 export interface TSSResult {
@@ -82,15 +84,18 @@ export interface HorasExtrasResult {
 }
 
 export interface NominaCalculada {
-  // Ingresos
+  // Ingresos salariales (base para TSS/ISR)
   salarioBaseCents: number;
   horasExtrasCents: number;
   comisionesCents: number;
   bonosCents: number;
-  propinaCents: number;
   otrosIngresosCents: number;
+  totalDevengadoSalarialCents: number; // Solo ingresos salariales (sin propina)
+  // Propina legal (Art. 228 CT — NO es salario, Art. 197 CT)
+  propinaCents: number;
+  // Total devengado (incluye propina para referencia)
   totalDevengadoCents: number;
-  // Deducciones legales
+  // Deducciones legales (calculadas SOLO sobre totalDevengadoSalarialCents)
   sfsCents: number;
   afpCents: number;
   isrCents: number;
@@ -99,14 +104,15 @@ export interface NominaCalculada {
   adelantoCents: number;
   otrasDeduccionesCents: number;
   totalDeduccionesCents: number;
-  // Patronal
+  // Patronal (calculado SOLO sobre base salarial)
   sfsPatronalCents: number;
   afpPatronalCents: number;
   srlCents: number;
   infotepCents: number;
   totalPatronalCents: number;
-  // Neto
-  salarioNetoCents: number;
+  // Netos
+  salarioNetoCents: number;         // Salario neto sin propina (ingresos salariales - deducciones)
+  totalRecibirCents: number;        // Salario neto + propina = lo que recibe el empleado
   // Horas extras desglose
   horasExtraDiurnas: number;
   horasExtraNocturnas: number;
@@ -282,29 +288,34 @@ export function calcularNominaQuincenal(
     config
   );
 
-  // Total devengado quincenal
+  // Ingresos salariales (sin propina)
   const comisionesCents = extras.comisionesCents || 0;
   const bonosCents = extras.bonosCents || 0;
-  const propinaCents = extras.propinaCents || 0;
   const otrosIngresosCents = extras.otrosIngresosCents || 0;
 
-  const totalDevengadoCents = salarioQuincenalBase
+  // PROPINA LEGAL — Art. 228 Código de Trabajo
+  // NO es salario (Art. 197 CT) — NO cotiza TSS, NO genera ISR, NO entra en prestaciones
+  const propinaCents = extras.propinaCents || 0;
+
+  // Total devengado SALARIAL (base para TSS/ISR — SIN propina)
+  const totalDevengadoSalarialCents = salarioQuincenalBase
     + horasExtrasResult.totalCents
     + comisionesCents
     + bonosCents
-    + propinaCents
     + otrosIngresosCents;
 
-  // Para TSS e ISR, proyectar a mensual y luego dividir
-  // Salario bruto mensual = salario base + (extras del periodo * 2 como estimación)
+  // Total devengado completo (con propina, solo para referencia)
+  const totalDevengadoCents = totalDevengadoSalarialCents + propinaCents;
+
+  // Para TSS e ISR: proyectar a mensual SOLO la base salarial (excluyendo propinas)
   const salarioBrutoMensualEstimado = salarioMensualCents + (horasExtrasResult.totalCents * 2) + (comisionesCents * 2);
 
-  // TSS sobre base mensual, luego quincenal
+  // TSS sobre base salarial mensual, luego quincenal
   const tss = calcularTSS(salarioBrutoMensualEstimado, config);
   const sfsCentsQuincenal = Math.round(tss.sfsCents / 2);
   const afpCentsQuincenal = Math.round(tss.afpCents / 2);
 
-  // ISR sobre base mensual, luego quincenal
+  // ISR sobre base salarial mensual, luego quincenal
   const isrMensual = calcularISR(salarioBrutoMensualEstimado, tss.totalCents, config);
   const isrQuincenal = Math.round(isrMensual / 2);
 
@@ -316,19 +327,23 @@ export function calcularNominaQuincenal(
 
   const totalDeduccionesCents = totalDeduccionesLegalesCents + adelantoCents + otrasDeduccionesCents;
 
-  // Aportes patronales (calculados sobre base mensual, divididos)
+  // Aportes patronales (calculados sobre base salarial, sin propina)
   const patronal = calcularPatronal(salarioBrutoMensualEstimado, config);
 
-  // Neto
-  const salarioNetoCents = totalDevengadoCents - totalDeduccionesCents;
+  // Salario neto (sin propina)
+  const salarioNetoCents = totalDevengadoSalarialCents - totalDeduccionesCents;
+
+  // Total a recibir = salario neto + propina
+  const totalRecibirCents = salarioNetoCents + propinaCents;
 
   return {
     salarioBaseCents: salarioQuincenalBase,
     horasExtrasCents: horasExtrasResult.totalCents,
     comisionesCents,
     bonosCents,
-    propinaCents,
     otrosIngresosCents,
+    totalDevengadoSalarialCents,
+    propinaCents,
     totalDevengadoCents,
     sfsCents: sfsCentsQuincenal,
     afpCents: afpCentsQuincenal,
@@ -343,6 +358,7 @@ export function calcularNominaQuincenal(
     infotepCents: Math.round(patronal.infotepCents / 2),
     totalPatronalCents: Math.round(patronal.totalCents / 2),
     salarioNetoCents,
+    totalRecibirCents,
     horasExtraDiurnas: extras.horasExtraDiurnas || 0,
     horasExtraNocturnas: extras.horasExtraNocturnas || 0,
     horasExtraFeriado: extras.horasExtraFeriado || 0,
