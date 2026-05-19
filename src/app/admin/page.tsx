@@ -230,7 +230,7 @@ export default function AdminDashboard() {
                         <Tooltip 
                           cursor={{ fill: '#f8fafc' }}
                           contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 'bold' }}
-                          formatter={(value: any, name: string) => [name === 'pedidos' ? value : fmt(Number(value)), name === 'pedidos' ? 'Pedidos' : 'Ingresos']}
+                          formatter={(value: any, name: any) => [name === 'pedidos' ? value : fmt(Number(value)), name === 'pedidos' ? 'Pedidos' : 'Ingresos']}
                           labelFormatter={(label) => `Hora: ${label}`}
                         />
                         <Bar dataKey="pedidos" fill="#f59e0b" radius={[6, 6, 0, 0]} />
