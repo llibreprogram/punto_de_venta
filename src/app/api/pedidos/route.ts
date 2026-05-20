@@ -10,6 +10,7 @@ import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { getSession } from '@/lib/auth'
 import { descontarInventarioParaItem } from '@/lib/inventoryEngine'
+import { registrarVentaContabilidad } from '@/lib/accounting'
 
 type Item = { productoId: number; cantidad: number; precioCents: number; removidos?: string[]; extras?: string[]; extrasCents?: number; notas?: string }
 type Body = {
@@ -21,6 +22,8 @@ type Body = {
   itebisCents?: number
   propinaCents?: number
   descuentoCents?: number
+  ncfTipo?: string
+  notas?: string
   pago?: { metodo: 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA'; montoCents: number; referencia?: string }
 }
 
@@ -74,7 +77,9 @@ export async function POST(req: Request) {
           propinaCents,
           descuentoCents: descuento,
           totalCents: total,
-          usuarioId: session.user.id
+          usuarioId: session.user.id,
+          ncfTipo: data.ncfTipo || 'B02',
+          notas: data.notas || null
         },
         select: { id: true }
       })
@@ -122,6 +127,11 @@ export async function POST(req: Request) {
         if (!result.cocinaMap.get(it.productoId)) {
           await descontarInventarioParaItem(it.id, session.user.id)
         }
+      }
+      try {
+        await registrarVentaContabilidad(result.pedidoId)
+      } catch (err) {
+        console.error("Error registrando contabilidad de venta:", err)
       }
     }
     // Auto imprimir cocina al crear

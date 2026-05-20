@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import AdminLayout from '@/components/AdminLayout'
 import { LOCALE, CURRENCY, toCurrency } from '@/lib/money'
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 
 type PedidoRow = { id:number; numero:number; createdAt:string; totalCents:number; estado:string; subCuenta?: number | null; mesa?: { nombre: string } | null }
 type PedidoDetalle = { id:number; numero:number; items: Array<{ id:number; cantidad:number; precioCents:number; totalCents:number; producto:{nombre:string}; extras?: string[]|null; removidos?: string[]|null; notas?: string|null }> }
@@ -89,8 +89,8 @@ export default function VentasPage() {
             ) : data.length === 0 ? (
               <tr><td className="p-4" colSpan={7}>Sin resultados</td></tr>
             ) : data.map((p) => (
-              <>
-                <tr key={p.id} className="border-t">
+              <Fragment key={p.id}>
+                <tr className="border-t">
                   <td className="p-2">
                     <button className="mr-2 underline" onClick={async()=>{
                       setOpen(o=>({ ...o, [p.id]: !o[p.id] }))
@@ -117,7 +117,7 @@ export default function VentasPage() {
                           <div key={it.id} className="flex justify-between">
                             <div>
                               <div>{it.producto.nombre}</div>
-                              <div className="text-[11px] text-gray-600">x{it.cantidad} · {toCurrency(it.precioCents, ajustes?.locale || LOCALE, ajustes?.currency || CURRENCY)}</div>
+                              <div className="text-[11px] text-gray-650 dark:text-gray-400">x{it.cantidad} · {toCurrency(it.precioCents, ajustes?.locale || LOCALE, ajustes?.currency || CURRENCY)}</div>
                               {!!(it.extras && it.extras.length) && (
                                 <div className="text-[11px] text-green-700">Extra: {it.extras.join(', ')}</div>
                               )}
@@ -135,7 +135,7 @@ export default function VentasPage() {
                     </td>
                   </tr>
                 )}
-              </>
+              </Fragment>
             ))}
           </tbody>
         </table>

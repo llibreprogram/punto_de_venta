@@ -21,6 +21,8 @@ const PAGES = [
   // --- Personal y Finanzas ---
   { href:'/admin/usuarios', title:'Usuarios', desc:'Gestión de operarios y administradores.', icon:'👥', color:'bg-indigo-50 border-indigo-200 text-indigo-700', sensitive:true },
   { href:'/admin/nomina', title:'Nómina', desc:'Gestión de empleados, nómina y propinas.', icon:'💰', color:'bg-yellow-50 border-yellow-200 text-yellow-700', sensitive:true },
+  { href:'/admin/contabilidad', title:'Contabilidad', desc:'Catálogo, diario y reportes DGII.', icon:'🧾', color:'bg-emerald-50 border-emerald-200 text-emerald-700', sensitive:true },
+  { href:'/admin/tesoreria', title:'Tesorería', desc:'Cuentas bancarias, cuentas por pagar y cobrar.', icon:'🏦', color:'bg-blue-50 border-blue-200 text-blue-700', sensitive:true },
   { href:'/reportes', title:'Reportes', desc:'Resumen por día, categoría o producto.', icon:'📋', color:'bg-cyan-50 border-cyan-200 text-cyan-700', sensitive:true },
   // --- Sistema ---
   { href:'/configuracion', title:'Configuración', desc:'Ajustes globales del sistema.', icon:'⚙️', color:'bg-slate-50 border-slate-200 text-slate-700', sensitive:true },

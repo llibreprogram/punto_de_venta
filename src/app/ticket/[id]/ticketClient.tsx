@@ -7,19 +7,23 @@ import { toCurrency, LOCALE, CURRENCY } from '@/lib/money'
 import type { TicketPedido, TicketAjustes } from './page'
 import { useEffect, useMemo } from 'react'
 
-export default function TicketClient({ pedido, ajustes }: { pedido: TicketPedido; ajustes: TicketAjustes }) {
+export default function TicketClient({ 
+  pedido, 
+  ajustes, 
+  minimal, 
+  autoPrint 
+}: { 
+  pedido: TicketPedido; 
+  ajustes: TicketAjustes; 
+  minimal: boolean; 
+  autoPrint: boolean; 
+}) {
   const locale = ajustes?.locale || LOCALE
   const currency = ajustes?.currency || CURRENCY
   const fecha = new Intl.DateTimeFormat(locale, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(pedido.createdAt))
   const business = ajustes?.businessName || process.env.NEXT_PUBLIC_BUSINESS_NAME || 'Mi Restaurante'
   const footer = ajustes?.ticketFooter || process.env.NEXT_PUBLIC_TICKET_FOOTER || '¡Gracias por su compra!'
   const logoUrl = ajustes?.logoUrl || process.env.NEXT_PUBLIC_LOGO_URL || '/logo.png'
-  const { minimal, autoPrint } = useMemo(() => {
-    const sp = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
-    const hasSig = !!sp?.get('sig') && !!sp?.get('exp')
-    const printFlag = sp?.get('print') === '1'
-    return { minimal: hasSig || printFlag, autoPrint: printFlag }
-  }, [])
 
   useEffect(() => {
     if (autoPrint) {
@@ -27,6 +31,37 @@ export default function TicketClient({ pedido, ajustes }: { pedido: TicketPedido
       return () => clearTimeout(t)
     }
   }, [autoPrint])
+
+  const parsedCliente = useMemo(() => {
+    if (!pedido.notas) return null
+    const rncMatch = pedido.notas.match(/RNC:\s*(\d+)/i)
+    const nombreMatch = pedido.notas.match(/Nombre:\s*(.*)/i)
+    if (!rncMatch) return null
+    return {
+      rnc: rncMatch[1],
+      nombre: nombreMatch ? nombreMatch[1].trim() : ''
+    }
+  }, [pedido.notas])
+
+  const qrUrl = useMemo(() => {
+    if (!pedido.ncf || !ajustes?.businessRnc) return null
+    const rncEmisor = ajustes.businessRnc.replace(/\D/g, '')
+    const ncf = pedido.ncf
+    const total = (pedido.totalCents / 100).toFixed(2)
+    const dateObj = new Date(pedido.createdAt)
+    const day = String(dateObj.getDate()).padStart(2, '0')
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0')
+    const year = dateObj.getFullYear()
+    const fechaEmision = `${day}-${month}-${year}`
+    const isCreditoFiscal = pedido.ncfTipo === 'B01' || pedido.ncf.startsWith('E31')
+    
+    if (isCreditoFiscal) {
+      const rncComprador = parsedCliente?.rnc?.replace(/\D/g, '') || '22400005391'
+      return `https://ecf.dgii.gov.do/ecf/ConsultaTimbre?RncEmisor=${rncEmisor}&RncComprador=${rncComprador}&eNCF=${ncf}&MontoTotal=${total}&FechaEmision=${fechaEmision}&CodigoSeguridad=e6a7c3`
+    } else {
+      return `https://fc.dgii.gov.do/eCF/ConsultaTimbreFC?RncEmisor=${rncEmisor}&eNCF=${ncf}&MontoTotal=${total}&CodigoSeguridad=e6a7c3`
+    }
+  }, [pedido, ajustes, parsedCliente])
   return (
     <AdminLayout title={`Ticket #${pedido.numero}`} minimal={minimal}>
       <div className="mx-auto max-w-sm p-4 print:p-0">
@@ -38,7 +73,23 @@ export default function TicketClient({ pedido, ajustes }: { pedido: TicketPedido
           {ajustes?.businessAddress && <div className="text-xs text-gray-700">{ajustes.businessAddress}</div>}
           {ajustes?.businessPhone && <div className="text-xs text-gray-700">Tel: {ajustes.businessPhone}</div>}
           <div className="text-xs text-gray-600 mt-1">Ticket #{pedido.numero}{pedido.mesa?` • Mesa ${pedido.mesa.nombre}${pedido.nombreCuenta ? ` • ${pedido.nombreCuenta}` : (pedido.subCuenta?` C${pedido.subCuenta}`:'')}`:''}</div>
-          <div className="text-sm text-gray-600">{fecha}</div>
+          <div className="text-sm text-gray-600" suppressHydrationWarning>{fecha}</div>
+          {pedido.ncf && (
+            <div className="mt-3 p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-left font-mono grid gap-1">
+              <div className="font-bold text-center text-slate-800 border-b border-slate-200/60 pb-1.5 mb-1">
+                {pedido.ncfTipo === 'B01' ? 'FACTURA DE CRÉDITO FISCAL' : 'CONSUMIDOR FINAL'}
+              </div>
+              <div><span className="font-semibold text-slate-600">NCF:</span> {pedido.ncf}</div>
+              {parsedCliente && (
+                <>
+                  <div><span className="font-semibold text-slate-600">RNC/Cédula:</span> {parsedCliente.rnc}</div>
+                  {parsedCliente.nombre && (
+                    <div><span className="font-semibold text-slate-600">Razón Social:</span> {parsedCliente.nombre}</div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
         </div>
         {pedido.mesa && (
           <div className="text-sm font-bold mt-2">Mesa: {pedido.mesa.nombre}{pedido.nombreCuenta ? ` / ${pedido.nombreCuenta}` : (pedido.subCuenta?` / C${pedido.subCuenta}`:'')}</div>
@@ -81,9 +132,28 @@ export default function TicketClient({ pedido, ajustes }: { pedido: TicketPedido
           ) : null}
           <div className="flex justify-between font-bold"><span>Total</span><span>{toCurrency(pedido.totalCents, locale, currency)}</span></div>
         </div>
-        <hr className="my-3" />
+         <hr className="my-3" />
         <div className="text-xs text-gray-600 text-center">{footer}</div>
-  <div className="mt-4 no-print flex flex-wrap gap-2 items-center">
+        
+        {qrUrl && (
+          <div className="mt-4 pt-4 border-t border-dashed border-gray-300 flex flex-col items-center gap-1.5 text-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img 
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(qrUrl)}`} 
+              alt="Código QR DGII e-CF" 
+              className="w-28 h-28 border p-1 bg-white rounded"
+            />
+            <div className="text-[9px] text-gray-500 font-mono leading-tight">
+              <span className="font-bold">COMPROBANTE FISCAL ELECTRÓNICO</span>
+              <br />
+              Tecnología e-CF - Validación Oficial DGII
+              <br />
+              Código Seg: <span className="font-bold">e6a7c3</span>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-4 no-print flex flex-wrap gap-2 items-center">
           <button className="border px-3 py-2 rounded" onClick={() => window.print()}>Imprimir</button>
           <a className="border px-3 py-2 rounded" href={`/api/print/ticket/${pedido.id}`} target="_blank">Descargar ESC/POS</a>
           <SerialPrintButton payloadUrl={`/api/print/ticket/${pedido.id}`} defaultBaud={ajustes?.serialBaud ?? undefined} />

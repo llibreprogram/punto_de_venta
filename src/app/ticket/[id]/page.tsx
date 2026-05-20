@@ -5,7 +5,7 @@ import TicketClient from './ticketClient'
 
 type AjustesRow = { id:number; updatedAt:Date; locale:string; currency:string; taxPct:number; propinaPct?:number; businessName:string; businessAddress?:string|null; businessRnc?:string|null; businessPhone?:string|null; ticketFooter:string; logoUrl:string; printerIp?:string|null; printerPort?:number|null; serialBaud?:number|null }
 type PedidoItem = { id:number; cantidad:number; precioCents:number; totalCents:number; removidos?: string[] | null; extras?: string[] | null; notas?: string | null; producto:{ nombre:string } }
-type Pedido = { id:number; numero:number; createdAt:Date; subtotalCents:number; impuestoCents:number; itebisCents:number; propinaCents:number; descuentoCents:number; totalCents:number; mesa?:{nombre:string}|null; subCuenta?:number; nombreCuenta?:string|null; items:PedidoItem[] }
+type Pedido = { id:number; numero:number; createdAt:Date; subtotalCents:number; impuestoCents:number; itebisCents:number; propinaCents:number; descuentoCents:number; totalCents:number; mesa?:{nombre:string}|null; subCuenta?:number; nombreCuenta?:string|null; ncf?:string|null; ncfTipo?:string|null; notas?:string|null; items:PedidoItem[] }
 
 export default async function TicketPage({ params, searchParams }: { params: Promise<{ id: string }>, searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { id: idStr } = await params
@@ -24,13 +24,17 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
     notFound()
   }
   // Audit access (non-blocking best-effort)
-  const signed = !!sp?.sig && !!sp?.exp
+  const hasSig = !!sp?.sig && !!sp?.exp
+  const printFlag = sp?.print === '1'
+  const minimal = hasSig || printFlag
+  const autoPrint = printFlag
+
   try {
     const h = await headers()
     const ip = h.get('x-forwarded-for')?.split(',')[0]?.trim() || h.get('x-real-ip') || null
-    await prisma.ticketAccess.create({ data: { pedidoId: id, signed, ip: ip ?? undefined } })
+    await prisma.ticketAccess.create({ data: { pedidoId: id, signed: hasSig, ip: ip ?? undefined } })
   } catch {}
-  return <TicketClient pedido={pedido} ajustes={ajustes} />
+  return <TicketClient pedido={pedido} ajustes={ajustes} minimal={minimal} autoPrint={autoPrint} />
 }
 
 // Server component delega la UI interactiva a un client component para evitar errores Edge.

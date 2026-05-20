@@ -10,6 +10,7 @@ import { cookies } from 'next/headers'
 import { getSession } from '@/lib/auth'
 import { ItemStatus } from '@prisma/client'
 import { descontarInventarioParaItem } from '@/lib/inventoryEngine'
+import { registrarVentaContabilidad } from '@/lib/accounting'
 
 export async function GET(_: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id: idStr } = await context.params
@@ -44,6 +45,8 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
     propinaCents?: number
     descuentoCents?: number
     nombreCuenta?: string | null
+    ncfTipo?: string
+    notas?: string
     pago?: { metodo: 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA'; montoCents: number; referencia?: string }
   }
   if (!Array.isArray(body.items) || body.items.length === 0) return NextResponse.json({ error: 'Sin items' }, { status: 400 })
@@ -89,6 +92,8 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
         totalCents: total,
         estado: body.pago ? 'PAGADO' : 'ABIERTO',
         ...(body.nombreCuenta !== undefined && { nombreCuenta: body.nombreCuenta }),
+        ...(body.ncfTipo !== undefined && { ncfTipo: body.ncfTipo }),
+        ...(body.notas !== undefined && { notas: body.notas }),
       }})
       let pagoId: number | undefined
       if (body.pago) {
@@ -103,6 +108,11 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
         if (!result.cocinaMap.get(it.productoId)) {
           await descontarInventarioParaItem(it.id, session.user.id)
         }
+      }
+      try {
+        await registrarVentaContabilidad(result.pedidoId)
+      } catch (err) {
+        console.error("Error registrando contabilidad de venta (PUT):", err)
       }
     }
     // Auto imprimir cocina según ajustes

@@ -22,6 +22,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <Link href="/admin/productos" className="hover:underline">Productos</Link>
         <Link href="/admin/usuarios" className="hover:underline">Usuarios</Link>
         <Link href="/admin/mesas" className="hover:underline">Mesas</Link>
+        <Link href="/admin/tesoreria" className="hover:underline">Tesorería</Link>
         <Link href="/configuracion" className="ml-auto hover:underline">Configuración</Link>
       </nav>
       <div className="flex-1">{children}</div>

@@ -28,6 +28,21 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
   const nombreCuenta: string | undefined | null = (pedido as unknown as { nombreCuenta?: string | null }).nombreCuenta
   const itebisCents: number = (pedido as unknown as { itebisCents?: number }).itebisCents ?? 0
   const propinaCents: number = (pedido as unknown as { propinaCents?: number }).propinaCents ?? 0
+  const ncf: string | null = (pedido as any).ncf || null
+  const ncfTipo: string | null = (pedido as any).ncfTipo || null
+  const notasStr: string | null = (pedido as any).notas || null
+
+  let clienteRnc: string | null = null
+  let clienteNombre: string | null = null
+  if (notasStr) {
+    const rncMatch = notasStr.match(/RNC:\s*(\d+)/i)
+    const nombreMatch = notasStr.match(/Nombre:\s*(.*)/i)
+    if (rncMatch) {
+      clienteRnc = rncMatch[1]
+      clienteNombre = nombreMatch ? nombreMatch[1].trim() : null
+    }
+  }
+
   const payload = escposTicket({
     business,
     address: ajustes?.businessAddress,
@@ -38,6 +53,10 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
     mesa: mesaNombre,
     subCuenta,
     nombreCuenta,
+    ncf,
+    ncfTipo,
+    clienteRnc,
+    clienteNombre,
   items: items.map(it => ({ nombre: it.producto.nombre + (Array.isArray(it.extras) && it.extras.length? `\n  + ${it.extras.join(', ')}`:'' ) + (Array.isArray(it.removidos) && it.removidos.length? `\n  - Sin: ${it.removidos.join(', ')}`:'' ) + (it.notas? `\n  * ${it.notas}`:''), cantidad: it.cantidad, unit: toCurrency(it.precioCents, locale, currency), total: toCurrency(it.totalCents, locale, currency) })),
   subtotal: toCurrency(pedido.subtotalCents, locale, currency),
   itebis: itebisCents > 0 ? toCurrency(itebisCents, locale, currency) : undefined,

@@ -37,6 +37,10 @@ export function escposTicket(opts: {
   mesa?: string | null
   subCuenta?: number
   nombreCuenta?: string | null
+  ncf?: string | null
+  ncfTipo?: string | null
+  clienteRnc?: string | null
+  clienteNombre?: string | null
   items: { nombre:string; cantidad:number; unit:string; total:string }[]
   subtotal: string
   itebis?: string
@@ -46,7 +50,7 @@ export function escposTicket(opts: {
   total: string
   footer?: string
 }) {
-  const { business, address, rnc, phone, numero, fecha, mesa, subCuenta, nombreCuenta, items, subtotal, itebis, propina, impuesto, descuento, total, footer } = opts
+  const { business, address, rnc, phone, numero, fecha, mesa, subCuenta, nombreCuenta, ncf, ncfTipo, clienteRnc, clienteNombre, items, subtotal, itebis, propina, impuesto, descuento, total, footer } = opts
   let out = ''
   out += escposHeader(business)
   if (rnc) out += `RNC: ${rnc}\n`
@@ -54,6 +58,16 @@ export function escposTicket(opts: {
   if (phone) out += `Tel: ${phone}\n`
   if (rnc || address || phone) out += '\n'
   out += `Ticket #${numero}` + (mesa ? `  Mesa: ${mesa}${nombreCuenta ? ` - ${nombreCuenta}` : (subCuenta ? ` C${subCuenta}` : '')}` : '') + "\n" + fecha + "\n\n"
+  
+  if (ncf) {
+    out += escposSeparator()
+    out += ncfTipo === 'B01' ? "FACTURA DE CREDITO FISCAL\n" : "CONSUMIDOR FINAL\n"
+    out += `NCF: ${ncf}\n`
+    if (clienteRnc) out += `RNC Cliente: ${clienteRnc}\n`
+    if (clienteNombre) out += `Razon Social: ${clienteNombre}\n`
+    out += escposSeparator()
+  }
+
   out += escposSeparator()
   for (const it of items) {
     out += it.nombre + "\n"

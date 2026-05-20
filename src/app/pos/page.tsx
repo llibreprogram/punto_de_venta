@@ -145,7 +145,17 @@ export default function POSPage() {
   }, [tipo, mesaId])
 
   // Lógica para enviar orden (Guardar o Cobrar)
-  const procesarOrden = async (esCobro: boolean, metodoPago?: MetodoPago, montoEntregado?: number, overrideCarrito?: Record<number, Linea>, descuentoForce?: number, printPrecuenta?: boolean) => {
+  const procesarOrden = async (
+    esCobro: boolean, 
+    metodoPago?: MetodoPago, 
+    montoEntregado?: number, 
+    overrideCarrito?: Record<number, Linea>, 
+    descuentoForce?: number, 
+    printPrecuenta?: boolean,
+    ncfTipo?: string,
+    rncCedula?: string,
+    nombreCliente?: string
+  ) => {
     const carritoActual = overrideCarrito || carrito
     const descActual = descuentoForce ?? descuentoPendiente
     if (Object.values(carritoActual).length === 0) return
@@ -206,6 +216,8 @@ export default function POSPage() {
       itebisCents: finalItebis,
       propinaCents: finalPropina,
       descuentoCents: descActual,
+      ncfTipo: ncfTipo || 'B02',
+      notas: ncfTipo === 'B01' && rncCedula ? `RNC: ${rncCedula}\nNombre: ${nombreCliente || ''}` : undefined,
       ...(nombreCuenta !== null && { nombreCuenta })
     }
 
@@ -392,9 +404,9 @@ export default function POSPage() {
           totalCents={getTotales(ajustes?.taxPct || 0, ajustes?.propinaPct || 0, descuentoPendiente).total}
           ajustes={ajustes}
           onClose={() => setCobrando(false)}
-          onConfirm={(metodo, entregado) => {
+          onConfirm={(metodo, entregado, ncfTipo, rnc, nombre) => {
             setCobrando(false)
-            procesarOrden(true, metodo, entregado)
+            procesarOrden(true, metodo, entregado, undefined, undefined, false, ncfTipo, rnc, nombre)
           }}
         />
       )}
@@ -422,7 +434,7 @@ export default function POSPage() {
           })()}
           ajustes={ajustes}
           onClose={() => setCobrandoSel(false)}
-          onConfirm={(metodo, entregado) => {
+          onConfirm={(metodo, entregado, ncfTipo, rnc, nombre) => {
             setCobrandoSel(false)
             const overrideCarrito: Record<number, Linea> = {}
             for (const [id, qty] of Object.entries(selPendiente)) {
@@ -430,7 +442,7 @@ export default function POSPage() {
                 overrideCarrito[Number(id)] = { ...carrito[Number(id)], cantidad: qty }
               }
             }
-            procesarOrden(true, metodo, entregado, overrideCarrito)
+            procesarOrden(true, metodo, entregado, overrideCarrito, undefined, false, ncfTipo, rnc, nombre)
           }}
         />
       )}

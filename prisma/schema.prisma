@@ -95,6 +95,9 @@ model Pedido {
   ticketAccesses TicketAccess[]
   usuarioId   Int?          // Empleado que registró la orden
   usuario     Usuario?      @relation(fields: [usuarioId], references: [id])
+  ncf            String?
+  ncfTipo        String?
+  registroFiscal RegistroFiscal?
 }
 
 model PedidoItem {
@@ -245,10 +248,12 @@ model Proveedor {
   contacto    String?
   telefono    String?
   email       String?
+  rnc         String?
   diasEntrega Int       @default(1)
   activo      Boolean   @default(true)
   insumos     Insumo[]
   ordenes     OrdenCompra[]
+  documentosPorPagar DocumentoPorPagar[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 }
@@ -263,6 +268,9 @@ model OrdenCompra {
   items         OrdenCompraItem[]
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
+  ncf            String?
+  ncfTipo        String?
+  registroFiscal RegistroFiscal?
 }
 
 model OrdenCompraItem {
@@ -367,6 +375,8 @@ model Nomina {
   fechaPago       DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
+  transaccionId   Int?
+  transaccion     TransaccionContable? @relation(fields: [transaccionId], references: [id])
 
   @@unique([empleadoId, periodo, tipo])
 }
@@ -432,4 +442,201 @@ model ConfigNomina {
   propinaDistribucion  String @default("{\"Servicio\":40,\"Cocina\":35,\"Barra\":15,\"Auxiliar\":10}")
 
   updatedAt       DateTime  @updatedAt
+}
+
+// --- MÓDULO DE CONTABILIDAD ---
+
+model CuentaContable {
+  id            Int              @id @default(autoincrement())
+  codigo        String           @unique // Ej. "1.1.01.01" (Activo - Corriente - Efectivo - Caja Chica)
+  nombre        String
+  tipo          String           // "ACTIVO", "PASIVO", "PATRIMONIO", "INGRESO", "COSTO", "GASTO"
+  naturaleza    String           // "DEBITO" o "CREDITO"
+  activa        Boolean          @default(true)
+  padreId       Int?
+  padre         CuentaContable?  @relation("Jerarquia", fields: [padreId], references: [id])
+  subCuentas    CuentaContable[] @relation("Jerarquia")
+  apuntes       ApunteContable[]
+  cuentasBancarias CuentaBancaria[]
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+}
+
+model TransaccionContable {
+  id          Int              @id @default(autoincrement())
+  numero      String           @unique // Ej. "AS-2026-05-0001"
+  fecha       DateTime
+  glDate      DateTime         @default(now())
+  descripcion String
+  estado      String           @default("BORRADOR") // "BORRADOR", "POSTEADO", "ANULADO"
+  referencia  String?          // Ej: "Pedido #1024"
+  origen      String?          // "POS", "NOMINA", "COMPRAS", "MANUAL"
+  apuntes     ApunteContable[]
+  nominas     Nomina[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model ApunteContable {
+  id            Int                 @id @default(autoincrement())
+  transaccion   TransaccionContable @relation(fields: [transaccionId], references: [id], onDelete: Cascade)
+  transaccionId Int
+  cuenta        CuentaContable      @relation(fields: [cuentaId], references: [id])
+  cuentaId      Int
+  debitoCents   Int                 @default(0)
+  creditoCents  Int                 @default(0)
+  referencia    String?
+}
+
+// --- MÓDULO CONTROL FISCAL Y DGII ---
+
+model SecuenciaNcf {
+  id            Int      @id @default(autoincrement())
+  tipo          String   // "B01", "B02", "B14", "B15"
+  prefijo       String   // "B"
+  tipoCodigo    String   // "01", "02", "14", "15"
+  inicio        Int
+  fin           Int
+  actual        Int
+  vencimiento   DateTime
+  activa        Boolean  @default(true)
+  descripcion   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model RegistroFiscal {
+  id              Int      @id @default(autoincrement())
+  tipo            String   // "COMPRA" o "VENTA"
+  rncCedula       String
+  tipoId          Int
+  tipoGasto       String?
+  ncf             String
+  ncfModificado   String?
+  fechaComprobante DateTime
+  fechaPago       DateTime?
+  montoFacturadoCents Int
+  itebisFacturadoCents Int     @default(0)
+  itebisRetenidoCents  Int     @default(0)
+  itebisSujetoProporcionalidadCents Int @default(0)
+  itebisLlevadoCostoCents Int  @default(0)
+  itebisPorAdelantarCents Int  @default(0)
+  itebisPercibidoCents Int     @default(0)
+  isrRetenidoCents     Int     @default(0)
+  tipoRetencionIsr    String?
+  impuestoSelectivoConsumoCents Int @default(0)
+  otrosImpuestosCents  Int     @default(0)
+  propinaLegalCents    Int     @default(0)
+  
+  montoEfectivoCents   Int     @default(0)
+  montoTarjetaCents    Int     @default(0)
+  montoCreditoCents    Int     @default(0)
+  montoTransferenciaCents Int  @default(0)
+  otrasFormasPagoCents Int     @default(0)
+
+  pedidoId        Int?     @unique
+  pedido          Pedido?  @relation(fields: [pedidoId], references: [id])
+  ordenCompraId   Int?     @unique
+  ordenCompra     OrdenCompra? @relation(fields: [ordenCompraId], references: [id])
+  
+  estado          String   @default("ACTIVO")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model NcfAnulado {
+  id              Int      @id @default(autoincrement())
+  ncf             String   @unique
+  fechaComprobante DateTime
+  fechaAnulacion  DateTime @default(now())
+  tipoAnulacion   String
+  comentario      String?
+  createdAt       DateTime @default(now())
+}
+
+// --- MÓDULO DE TESORERÍA ---
+
+model CuentaBancaria {
+  id              Int       @id @default(autoincrement())
+  nombre          String    // "Banco Popular - Cuenta Corriente"
+  banco           String    // "Banco Popular", "Banreservas", etc.
+  tipoCuenta      String    // "CORRIENTE", "AHORRO"
+  numeroCuenta    String?   // Últimos 4 dígitos o completo
+  cuentaContableId Int      // Vincula a CuentaContable (ej: 1.1.01.02)
+  cuentaContable  CuentaContable @relation(fields: [cuentaContableId], references: [id])
+  activa          Boolean   @default(true)
+  movimientos     MovimientoBanco[]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model MovimientoBanco {
+  id               Int            @id @default(autoincrement())
+  cuentaBancaria   CuentaBancaria @relation(fields: [cuentaBancariaId], references: [id])
+  cuentaBancariaId Int
+  tipo             String         // "DEPOSITO", "RETIRO", "TRANSFERENCIA_IN", "TRANSFERENCIA_OUT", "PAGO_CXP", "COBRO_CXC"
+  montoCents       Int
+  descripcion      String
+  referencia       String?        // Ej: "Pedido #123", "Cheque #456"
+  fecha            DateTime       @default(now())
+  createdAt        DateTime       @default(now())
+}
+
+model DocumentoPorPagar {
+  id               Int       @id @default(autoincrement())
+  proveedorId      Int?
+  proveedor        Proveedor? @relation(fields: [proveedorId], references: [id])
+  ordenCompraId    Int?
+  categoria        String    @default("INVENTARIO") // INVENTARIO, ALQUILER, SERVICIOS, NOMINA, IMPUESTOS, OTROS
+  descripcion      String    // "Factura #123 - Alquiler local"
+  ncf              String?
+  montoCents       Int       // Monto total de la deuda
+  pagadoCents      Int       @default(0) // Cuánto se ha pagado
+  estado           String    @default("PENDIENTE") // PENDIENTE, PARCIAL, PAGADO
+  fechaVencimiento DateTime?
+  fechaDocumento   DateTime  @default(now())
+  pagos            PagoCXP[]
+  facturaEscaneadaUrl String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+model PagoCXP {
+  id          Int               @id @default(autoincrement())
+  documento   DocumentoPorPagar @relation(fields: [documentoId], references: [id])
+  documentoId Int
+  montoCents  Int
+  metodoPago  String            // "EFECTIVO", "TRANSFERENCIA", "CHEQUE"
+  referencia  String?           // Número de cheque, referencia bancaria
+  fecha       DateTime          @default(now())
+  createdAt   DateTime          @default(now())
+}
+
+model DocumentoPorCobrar {
+  id               Int       @id @default(autoincrement())
+  clienteNombre    String
+  clienteRnc       String?
+  clienteTelefono  String?
+  pedidoId         Int?
+  descripcion      String
+  ncf              String?
+  montoCents       Int
+  cobradoCents     Int       @default(0)
+  estado           String    @default("PENDIENTE") // PENDIENTE, PARCIAL, COBRADO
+  fechaVencimiento DateTime?
+  fechaDocumento   DateTime  @default(now())
+  cobros           CobroCXC[]
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+model CobroCXC {
+  id          Int                @id @default(autoincrement())
+  documento   DocumentoPorCobrar @relation(fields: [documentoId], references: [id])
+  documentoId Int
+  montoCents  Int
+  metodoPago  String             // "EFECTIVO", "TRANSFERENCIA", "TARJETA"
+  referencia  String?
+  fecha       DateTime           @default(now())
+  createdAt   DateTime           @default(now())
 }

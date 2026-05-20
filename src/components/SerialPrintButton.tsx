@@ -18,11 +18,20 @@ type SerialPort = {
 }
 
 export default function SerialPrintButton({ payloadUrl, className, defaultBaud }: Props) {
-  const hasSerial = useMemo(() => Boolean((navigator as unknown as { serial?: unknown }).serial), [])
+  const [mounted, setMounted] = useState(false)
   const [port, setPort] = useState<SerialPort | null>(null)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [baud, setBaud] = useState<number>(defaultBaud || 115200)
+
+  const hasSerial = useMemo(() => {
+    if (typeof window === 'undefined') return false
+    return Boolean((navigator as unknown as { serial?: unknown }).serial)
+  }, [])
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Load saved baud from localStorage
   useEffect(() => {
@@ -37,10 +46,10 @@ export default function SerialPrintButton({ payloadUrl, className, defaultBaud }
     try {
       const serial = (navigator as unknown as { serial?: SerialLike }).serial
       if (!serial) throw new Error('Web Serial no soportado')
-  const p = await serial.requestPort()
+      const p = await serial.requestPort()
       await p.open({ baudRate: baud })
       setPort(p)
-  try { localStorage.setItem('pos.serialBaud', String(baud)) } catch {}
+      try { localStorage.setItem('pos.serialBaud', String(baud)) } catch {}
     } catch (e) {
       setErr((e as Error).message)
     }
@@ -65,7 +74,7 @@ export default function SerialPrintButton({ payloadUrl, className, defaultBaud }
     }
   }
 
-  if (!hasSerial) {
+  if (!mounted || !hasSerial) {
     return (
       <button className={className || 'border px-3 py-2 rounded opacity-50 cursor-not-allowed'} title="Tu navegador no soporta Web Serial" disabled>
         Imprimir por Serial (no soportado)

@@ -5,17 +5,24 @@
  * Protegido por Ley 65-00 (Rep. Dominicana).
  */
 "use client"
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { toCurrency, LOCALE, CURRENCY } from '@/lib/money'
 import { MetodoPago } from '@/store/posStore'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, CreditCard, Banknote, Landmark, CheckCircle2 } from 'lucide-react'
+import { validarDocumentoIdentidad } from '@/lib/ncf-client'
 
 interface PaymentModalProps {
   totalCents: number
   ajustes: any
   onClose: () => void
-  onConfirm: (metodo: MetodoPago, entregadoCents: number) => void
+  onConfirm: (
+    metodo: MetodoPago,
+    entregadoCents: number,
+    ncfTipo: string,
+    rncCedula?: string,
+    nombreCliente?: string
+  ) => void
 }
 
 const METHODS: { value: MetodoPago; label: string; icon: React.ReactNode }[] = [
@@ -27,6 +34,63 @@ const METHODS: { value: MetodoPago; label: string; icon: React.ReactNode }[] = [
 export function PaymentModal({ totalCents, ajustes, onClose, onConfirm }: PaymentModalProps) {
   const [metodo, setMetodo] = useState<MetodoPago>('EFECTIVO')
   const [entregado, setEntregado] = useState('')
+  const [ncfTipo, setNcfTipo] = useState<'B02' | 'B01'>('B02')
+  const [rncCedula, setRncCedula] = useState('')
+  const [nombreCliente, setNombreCliente] = useState('')
+  const [loadingRnc, setLoadingRnc] = useState(false)
+  const [rncError, setRncError] = useState('')
+
+  const docStatus = useMemo(() => {
+    if (!rncCedula) return { valido: false, tipo: 'DESCONOCIDO', mensaje: '' }
+    const res = validarDocumentoIdentidad(rncCedula)
+    if (!res.valido) {
+      return { ...res, mensaje: 'Documento inválido (checksum incorrecto)' }
+    }
+    return { ...res, mensaje: `✓ ${res.tipo} Válido` }
+  }, [rncCedula])
+
+  useEffect(() => {
+    if (ncfTipo !== 'B01') return
+    if (!docStatus.valido) {
+      setRncError('')
+      return
+    }
+
+    let active = true
+    const fetchRnc = async () => {
+      setLoadingRnc(true)
+      setRncError('')
+      try {
+        const response = await fetch(`/api/contabilidad/consulta-rnc?rnc=${rncCedula}`)
+        if (!response.ok) {
+          const errData = await response.json()
+          throw new Error(errData.error || 'No encontrado en DGII')
+        }
+        const data = await response.json()
+        if (active && data.razonSocial) {
+          setNombreCliente(data.razonSocial)
+        }
+      } catch (err: any) {
+        if (active) {
+          setRncError(err.message || 'Error al consultar RNC')
+        }
+      } finally {
+        if (active) {
+          setLoadingRnc(false)
+        }
+      }
+    }
+
+    // Debounce query to avoid spamming the backend during typing
+    const timeout = setTimeout(() => {
+      fetchRnc()
+    }, 450)
+
+    return () => {
+      active = false
+      clearTimeout(timeout)
+    }
+  }, [rncCedula, docStatus.valido, ncfTipo])
 
   const fmt = (cents: number) => toCurrency(cents, ajustes?.locale || LOCALE, ajustes?.currency || CURRENCY)
 
@@ -43,8 +107,24 @@ export function PaymentModal({ totalCents, ajustes, onClose, onConfirm }: Paymen
     .filter(b => b > totalCents)
     .slice(0, 4)
 
+  const canConfirm = useMemo(() => {
+    if (metodo === 'EFECTIVO' && entregadoCents < totalCents) return false
+    if (ncfTipo === 'B01') {
+      if (!docStatus.valido) return false
+      if (!nombreCliente.trim()) return false
+    }
+    return true
+  }, [metodo, entregadoCents, totalCents, ncfTipo, docStatus, nombreCliente])
+
   const handleConfirm = () => {
-    onConfirm(metodo, metodo === 'EFECTIVO' ? entregadoCents : totalCents)
+    if (!canConfirm) return
+    onConfirm(
+      metodo,
+      metodo === 'EFECTIVO' ? entregadoCents : totalCents,
+      ncfTipo,
+      ncfTipo === 'B01' ? rncCedula : undefined,
+      ncfTipo === 'B01' ? nombreCliente : undefined
+    )
   }
 
   return (
@@ -71,7 +151,8 @@ export function PaymentModal({ totalCents, ajustes, onClose, onConfirm }: Paymen
             </button>
           </div>
 
-          <div className="p-5 grid gap-5">
+          {/* Scrollable Form Body */}
+          <div className="p-5 grid gap-5 max-h-[70vh] overflow-y-auto no-scrollbar">
             {/* Total display */}
             <div className="flex items-center justify-between rounded-xl p-4 border border-orange-100"
               style={{ background: 'var(--gradient-brand-soft)' }}
@@ -108,6 +189,88 @@ export function PaymentModal({ totalCents, ajustes, onClose, onConfirm }: Paymen
                 ))}
               </div>
             </div>
+
+            {/* Tipo de Factura (NCF) */}
+            <div>
+              <label className="text-sm font-bold text-slate-600 mb-2 block">Tipo de Factura</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setNcfTipo('B02')}
+                  className={`py-2.5 rounded-xl border text-sm font-bold transition-all active:scale-95 ${
+                    ncfTipo === 'B02'
+                      ? 'border-orange-500 bg-orange-50 text-orange-700 font-extrabold shadow-sm'
+                      : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+                  }`}
+                >
+                  Consumidor Final (B02)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNcfTipo('B01')}
+                  className={`py-2.5 rounded-xl border text-sm font-bold transition-all active:scale-95 ${
+                    ncfTipo === 'B01'
+                      ? 'border-orange-500 bg-orange-50 text-orange-700 font-extrabold shadow-sm'
+                      : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+                  }`}
+                >
+                  Crédito Fiscal (B01)
+                </button>
+              </div>
+            </div>
+
+            {/* Campos adicionales para Crédito Fiscal */}
+            {ncfTipo === 'B01' && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                className="grid gap-3.5 p-4 bg-slate-50 border border-slate-200/60 rounded-xl overflow-hidden"
+              >
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">RNC / Cédula del Cliente</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={rncCedula}
+                      onChange={(e) => setRncCedula(e.target.value.replace(/[^0-9]/g, ''))}
+                      placeholder="Ej: 101850043 o 00116452285"
+                      className="w-full text-sm font-bold p-2.5 pr-10 border border-slate-200 bg-white rounded-lg focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none"
+                    />
+                    {loadingRnc && (
+                      <div className="absolute right-3 top-3">
+                        <div className="w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    )}
+                  </div>
+                  {rncCedula && !loadingRnc && (
+                    <span className={`text-xs font-semibold mt-1 block ${docStatus.valido ? 'text-emerald-600' : 'text-rose-500'}`}>
+                      {docStatus.mensaje}
+                    </span>
+                  )}
+                  {loadingRnc && (
+                    <span className="text-xs font-semibold mt-1 text-amber-600 animate-pulse block">
+                      🔍 Consultando Razón Social en DGII...
+                    </span>
+                  )}
+                  {rncError && (
+                    <span className="text-xs font-semibold mt-1 text-amber-500 block">
+                      ⚠️ {rncError} (Puedes escribir el nombre manualmente)
+                    </span>
+                  )}
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Nombre / Razón Social</label>
+                  <input
+                    type="text"
+                    value={nombreCliente}
+                    onChange={(e) => setNombreCliente(e.target.value)}
+                    placeholder="Ej: Dominicana Corp SRL"
+                    className="w-full text-sm font-bold p-2.5 border border-slate-200 bg-white rounded-lg focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none"
+                  />
+                </div>
+              </motion.div>
+            )}
 
             {/* Cash details */}
             {metodo === 'EFECTIVO' && (
@@ -159,11 +322,11 @@ export function PaymentModal({ totalCents, ajustes, onClose, onConfirm }: Paymen
             </button>
             <button 
               onClick={handleConfirm} 
-              disabled={metodo === 'EFECTIVO' && entregadoCents < totalCents}
+              disabled={!canConfirm}
               className="flex-[2] py-3 text-white font-bold rounded-xl shadow-lg transition-all active:scale-[.98] disabled:opacity-40 disabled:shadow-none"
               style={{ 
-                background: metodo === 'EFECTIVO' && entregadoCents < totalCents ? '#cbd5e1' : 'var(--gradient-brand)',
-                boxShadow: metodo === 'EFECTIVO' && entregadoCents < totalCents ? 'none' : '0 4px 14px rgba(234,88,12,.3)'
+                background: !canConfirm ? '#cbd5e1' : 'var(--gradient-brand)',
+                boxShadow: !canConfirm ? 'none' : '0 4px 14px rgba(234,88,12,.3)'
               }}
             >
               Confirmar Pago
