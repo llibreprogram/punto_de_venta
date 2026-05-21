@@ -7,11 +7,20 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { crearAsiento } from '@/lib/accounting'
+import { crearAsiento, isPeriodClosed } from '@/lib/accounting'
+import { cookies } from 'next/headers'
+import { getSession } from '@/lib/auth'
 
 // GET /api/contabilidad/asientos
 export async function GET(request: NextRequest) {
   try {
+    const cookieStore = await cookies()
+    const token = cookieStore.get('session')?.value
+    const session = await getSession(token)
+    if (!session) {
+      return NextResponse.json({ ok: false, error: 'No autorizado' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const fechaInicio = searchParams.get('fechaInicio')
     const fechaFin = searchParams.get('fechaFin')
@@ -52,6 +61,13 @@ export async function GET(request: NextRequest) {
 // POST /api/contabilidad/asientos
 export async function POST(request: NextRequest) {
   try {
+    const cookieStore = await cookies()
+    const token = cookieStore.get('session')?.value
+    const session = await getSession(token)
+    if (!session || session.user.rol !== 'admin') {
+      return NextResponse.json({ ok: false, error: 'No autorizado' }, { status: 401 })
+    }
+
     const body = await request.json()
     const { fecha, descripcion, referencia, origen, apuntes } = body
 
@@ -62,12 +78,32 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const targetDate = new Date(fecha)
+
+    // Validar período cerrado antes de llamar a crearAsiento
+    if (await isPeriodClosed(targetDate)) {
+      const year = targetDate.getFullYear()
+      const month = String(targetDate.getMonth() + 1).padStart(2, '0')
+      return NextResponse.json(
+        { ok: false, error: `El período ${year}-${month} está cerrado. No se permiten registrar nuevos asientos.` },
+        { status: 400 }
+      )
+    }
+
+    const ip = request.headers.get('x-forwarded-for') || '127.0.0.1'
+
     const asientoCreado = await crearAsiento(
-      new Date(fecha),
+      targetDate,
       descripcion,
       referencia || '',
       origen || 'MANUAL',
-      apuntes
+      apuntes,
+      undefined,
+      {
+        usuarioId: session.user.id,
+        usuarioNombre: session.user.nombre,
+        ip
+      }
     )
 
     return NextResponse.json({ ok: true, asiento: asientoCreado })

@@ -65,7 +65,7 @@ type DashboardData = {
 }
 
 export default function ContabilidadDashboard() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'financials' | 'dgii' | 'ncf'>('dashboard')
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'financials' | 'dgii' | 'ncf' | 'cierre'>('dashboard')
   const [periodo, setPeriodo] = useState(() => {
     const d = new Date()
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
@@ -182,6 +182,56 @@ export default function ContabilidadDashboard() {
   const [dashData, setDashData] = useState<DashboardData | null>(null)
   const [loadingDash, setLoadingDash] = useState(false)
 
+  // Cierre y auditoría state
+  const [periodosCerrados, setPeriodosCerrados] = useState<any[]>([])
+  const [auditLogs, setAuditLogs] = useState<any[]>([])
+  const [loadingCierre, setLoadingCierre] = useState(false)
+  const [cierrePeriodoInput, setCierrePeriodoInput] = useState(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  })
+
+  const loadCierreData = async () => {
+    try {
+      setLoadingCierre(true)
+      const [resPeriodos, resLogs] = await Promise.all([
+        fetch('/api/contabilidad/periodos'),
+        fetch('/api/contabilidad/auditoria?limite=100')
+      ])
+      const dataP = await resPeriodos.json()
+      const dataL = await resLogs.json()
+      if (dataP.ok) setPeriodosCerrados(dataP.periodos)
+      if (dataL.ok) setAuditLogs(dataL.logs)
+    } catch (err) {
+      console.error(err)
+      push('Error al cargar la información de cierre y auditoría', 'error')
+    } finally {
+      setLoadingCierre(false)
+    }
+  }
+
+  const handleCerrarPeriodo = async () => {
+    if (!confirm(`¿Está seguro de que desea cerrar el período contable ${cierrePeriodoInput}? Se bloquearán todas las transacciones previas y se generará el asiento de liquidación de cuentas nominales.`)) {
+      return
+    }
+    try {
+      const res = await fetch('/api/contabilidad/periodos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ periodo: cierrePeriodoInput })
+      })
+      const data = await res.json()
+      if (data.ok) {
+        push(`Período ${cierrePeriodoInput} cerrado correctamente.`, 'success')
+        loadCierreData()
+      } else {
+        push(data.error || 'No se pudo cerrar el período', 'error')
+      }
+    } catch (err: any) {
+      push(err.message || 'Error al conectar con el servidor', 'error')
+    }
+  }
+
   const loadDashboard = async () => {
     try {
       setLoadingDash(true)
@@ -204,6 +254,8 @@ export default function ContabilidadDashboard() {
       loadDgiiData()
     } else if (activeTab === 'ncf') {
       loadNcfData()
+    } else if (activeTab === 'cierre') {
+      loadCierreData()
     }
   }, [activeTab, reportType, fechaInicio, fechaFin, periodo])
 
@@ -344,6 +396,7 @@ export default function ContabilidadDashboard() {
           {tabBtn('financials', <BarChart3 size={14} />, 'Reportes')}
           {tabBtn('dgii', <FileSpreadsheet size={14} />, 'DGII')}
           {tabBtn('ncf', <Settings size={14} />, 'NCF')}
+          {tabBtn('cierre', <CheckCircle2 size={14} />, 'Cierres')}
         </div>
       }
     >
@@ -573,6 +626,13 @@ export default function ContabilidadDashboard() {
                 title="Actualizar datos"
               >
                 <RefreshCw size={14} />
+              </button>
+              <button
+                onClick={() => window.open(`/api/contabilidad/reportes/export?tipo=${reportType}&fechaInicio=${fechaInicio}&fechaFin=${fechaFin}`)}
+                className="btn border-slate-200 dark:border-slate-800 hover:border-indigo-600/50 p-2.5 text-indigo-600 dark:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 rounded-xl shadow-lg transition-all duration-200"
+                title="Exportar a CSV / Excel"
+              >
+                <Download size={14} />
               </button>
               <button
                 onClick={() => window.print()}
@@ -1167,6 +1227,127 @@ export default function ContabilidadDashboard() {
                     </div>
                   )
                 })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 4. SECCIÓN: CIERRES Y AUDITORÍA */}
+      {activeTab === 'cierre' && (
+        <div className="grid gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Formulario Cierre */}
+            <div className="glass-panel border border-slate-200 dark:border-slate-800/40 rounded-3xl p-6 shadow-2xl flex flex-col justify-between">
+              <div>
+                <h4 className="text-base font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                  <CheckCircle2 className="text-indigo-500" size={18} />
+                  Cierre de Período Contable
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                  El cierre mensual consolida las cuentas nominales (Ingresos, Costos, Gastos) contra Resultados Acumulados (Patrimonio), impidiendo modificaciones posteriores en dicho período.
+                </p>
+              </div>
+
+              <div className="grid gap-4 mt-6">
+                <label className="grid gap-1">
+                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Seleccionar Período (Mes)</span>
+                  <input
+                    type="month"
+                    className="input w-full bg-white dark:bg-slate-950/60 border-slate-300 dark:border-slate-850 hover:border-slate-400 dark:hover:border-slate-700 focus:border-indigo-500 text-slate-800 dark:text-slate-100 rounded-xl transition-all duration-200 px-3 py-2 text-xs"
+                    value={cierrePeriodoInput}
+                    onChange={(e) => setCierrePeriodoInput(e.target.value)}
+                  />
+                </label>
+
+                <button
+                  onClick={handleCerrarPeriodo}
+                  className="btn btn-primary text-xs w-full py-2.5 rounded-xl shadow-lg transition-all duration-200 flex items-center justify-center gap-1.5"
+                >
+                  <CheckCircle2 size={14} />
+                  Cerrar Período
+                </button>
+              </div>
+            </div>
+
+            {/* Listado Periodos Cerrados */}
+            <div className="glass-panel border border-slate-200 dark:border-slate-800/40 rounded-3xl p-6 shadow-2xl md:col-span-2">
+              <h4 className="text-base font-extrabold text-slate-800 dark:text-slate-100 mb-4">
+                Historial de Períodos Cerrados
+              </h4>
+              {loadingCierre ? (
+                <div className="text-xs muted py-10 animate-pulse text-center">Cargando períodos...</div>
+              ) : periodosCerrados.length === 0 ? (
+                <div className="text-xs text-slate-400 py-10 text-center">No hay períodos contables cerrados aún.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-200 dark:border-slate-800/60 text-slate-500 dark:text-slate-400 font-bold">
+                        <th className="py-2">Período</th>
+                        <th className="py-2">Cerrado El</th>
+                        <th className="py-2">Cerrado Por</th>
+                        <th className="py-2 text-right">Asiento de Cierre</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {periodosCerrados.map((p) => (
+                        <tr key={p.id} className="border-b border-slate-100 dark:border-slate-800/20 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/10">
+                          <td className="py-2 font-mono font-bold text-indigo-600 dark:text-indigo-400">{p.periodo}</td>
+                          <td className="py-2">{new Date(p.createdAt).toLocaleString()}</td>
+                          <td className="py-2">{p.cerradoPor}</td>
+                          <td className="py-2 text-right font-mono text-slate-500">
+                            {p.asientoId ? `#${p.asientoId}` : 'Ninguno (Vacío)'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Audit Logs */}
+          <div className="glass-panel border border-slate-200 dark:border-slate-800/40 rounded-3xl p-6 shadow-2xl">
+            <h4 className="text-base font-extrabold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2">
+              <Clock className="text-violet-500" size={18} />
+              Registro de Auditoría Contable (Últimos 100 eventos)
+            </h4>
+            {loadingCierre ? (
+              <div className="text-xs muted py-10 animate-pulse text-center">Cargando logs...</div>
+            ) : auditLogs.length === 0 ? (
+              <div className="text-xs text-slate-400 py-10 text-center">No hay eventos de auditoría registrados.</div>
+            ) : (
+              <div className="overflow-x-auto max-h-96 overflow-y-auto pr-1">
+                <table className="w-full text-xs text-left border-collapse">
+                  <thead className="sticky top-0 bg-white dark:bg-slate-900 z-10">
+                    <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold">
+                      <th className="py-2">Fecha/Hora</th>
+                      <th className="py-2">Módulo</th>
+                      <th className="py-2">Acción</th>
+                      <th className="py-2">Usuario</th>
+                      <th className="py-2">IP</th>
+                      <th className="py-2">Detalle</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {auditLogs.map((l) => (
+                      <tr key={l.id} className="border-b border-slate-100 dark:border-slate-800/10 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/10">
+                        <td className="py-2.5 whitespace-nowrap text-slate-500">{new Date(l.createdAt).toLocaleString()}</td>
+                        <td className="py-2.5 whitespace-nowrap font-bold"><span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px] text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">{l.entidad}</span></td>
+                        <td className="py-2.5 whitespace-nowrap"><span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          l.accion === 'CREAR' ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900' :
+                          l.accion === 'ANULAR' ? 'bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900' :
+                          'bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900'
+                        }`}>{l.accion}</span></td>
+                        <td className="py-2.5 whitespace-nowrap">{l.usuarioNombre || 'Sistema'}</td>
+                        <td className="py-2.5 whitespace-nowrap text-slate-500 font-mono">{l.ip || '—'}</td>
+                        <td className="py-2.5 text-slate-600 dark:text-slate-300">{l.detalle}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>

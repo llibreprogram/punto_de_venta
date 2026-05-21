@@ -15,48 +15,58 @@ export async function GET() {
     const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
     const endOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59)
 
-    // 1. KPIs — Ingresos, Gastos, Utilidad del mes actual vs anterior
-    const cuentas = await prisma.cuentaContable.findMany({
-      include: {
-        apuntes: {
-          where: {
-            transaccion: {
-              fecha: { gte: startOfPrevMonth, lte: now },
-              estado: 'POSTEADO',
-            },
-          },
-          include: { transaccion: { select: { fecha: true } } },
-        },
-      },
-      orderBy: { codigo: 'asc' },
+    // Obtener catálogo de cuentas base para mapear tipos y naturalezas
+    const cuentasBase = await prisma.cuentaContable.findMany({
+      select: {
+        id: true,
+        tipo: true,
+        naturaleza: true,
+        padreId: true
+      }
     })
+    const cuentaMap = new Map(cuentasBase.map(c => [c.id, c]))
 
-    const calcPeriod = (start: Date, end: Date) => {
+    const aggregatePeriod = async (start: Date, end: Date) => {
+      const aggregates = await prisma.apunteContable.groupBy({
+        by: ['cuentaId'],
+        where: {
+          transaccion: {
+            fecha: { gte: start, lte: end },
+            estado: 'POSTEADO'
+          }
+        },
+        _sum: {
+          debitoCents: true,
+          creditoCents: true
+        }
+      })
+
       let ingresos = 0, costos = 0, gastos = 0
-      for (const c of cuentas) {
-        const apuntesInRange = c.apuntes.filter(
-          (a) => a.transaccion.fecha >= start && a.transaccion.fecha <= end
-        )
-        const deb = apuntesInRange.reduce((s, a) => s + a.debitoCents, 0)
-        const cred = apuntesInRange.reduce((s, a) => s + a.creditoCents, 0)
+      aggregates.forEach(agg => {
+        const c = cuentaMap.get(agg.cuentaId)
+        if (!c) return
+
+        const deb = agg._sum.debitoCents || 0
+        const cred = agg._sum.creditoCents || 0
         const bal = c.naturaleza === 'DEBITO' ? deb - cred : cred - deb
 
         if (c.tipo === 'INGRESO' && c.padreId) ingresos += bal
         if (c.tipo === 'COSTO' && c.padreId) costos += bal
         if (c.tipo === 'GASTO' && c.padreId) gastos += bal
-      }
+      })
+
       return { ingresos, costos, gastos, utilidad: ingresos - costos - gastos }
     }
 
-    const mesActual = calcPeriod(startOfMonth, now)
-    const mesAnterior = calcPeriod(startOfPrevMonth, endOfPrevMonth)
+    const mesActual = await aggregatePeriod(startOfMonth, now)
+    const mesAnterior = await aggregatePeriod(startOfPrevMonth, endOfPrevMonth)
 
-    // 2. Flujo de caja — últimos 6 meses
+    // 2. Flujo de caja — últimos 6 meses (agregado eficientemente)
     const cashFlow: Array<{ mes: string; ingresos: number; gastos: number }> = []
     for (let i = 5; i >= 0; i--) {
       const mStart = new Date(now.getFullYear(), now.getMonth() - i, 1)
       const mEnd = i === 0 ? now : new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59)
-      const data = calcPeriod(mStart, mEnd)
+      const data = await aggregatePeriod(mStart, mEnd)
       cashFlow.push({
         mes: mStart.toLocaleDateString('es-DO', { month: 'short', year: '2-digit' }),
         ingresos: data.ingresos,
@@ -139,7 +149,7 @@ export async function GET() {
         trendIngresos: mesAnterior.ingresos > 0
           ? Math.round(((mesActual.ingresos - mesAnterior.ingresos) / mesAnterior.ingresos) * 100)
           : 0,
-        trendGastos: mesAnterior.gastos > 0
+        trendGastos: (mesAnterior.costos + mesAnterior.gastos) > 0
           ? Math.round((((mesActual.costos + mesActual.gastos) - (mesAnterior.costos + mesAnterior.gastos)) / (mesAnterior.costos + mesAnterior.gastos)) * 100)
           : 0,
         alertas: ncfAlerts + cxpVencidas + cxcVencidas,

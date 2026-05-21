@@ -84,6 +84,30 @@ export default function AsientosContablesPage() {
   const PAGE_SIZE = 15
 
   const { push } = useToast()
+  const [anulandoId, setAnulandoId] = useState<number | null>(null)
+
+  const handleAnular = async (id: number) => {
+    if (!confirm('¿Está seguro de que desea anular este asiento contable? Se generará una transacción de reversión/contraasiento y se anularán los registros fiscales relacionados.')) {
+      return
+    }
+    try {
+      setAnulandoId(id)
+      const res = await fetch(`/api/contabilidad/asientos/${id}/anular`, {
+        method: 'POST'
+      })
+      const data = await res.json()
+      if (data.ok) {
+        push('Asiento anulado correctamente. Reversión generada.', 'success')
+        loadData()
+      } else {
+        push(data.error || 'No se pudo anular el asiento', 'error')
+      }
+    } catch (err: any) {
+      push(err.message || 'Error al conectar con el servidor', 'error')
+    } finally {
+      setAnulandoId(null)
+    }
+  }
 
   const loadData = async () => {
     try {
@@ -436,10 +460,25 @@ export default function AsientosContablesPage() {
                   >
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       <ChevronDown size={14} className={`text-slate-400 transition-transform duration-200 flex-shrink-0 ${isExpanded ? 'rotate-0' : '-rotate-90'}`} />
-                      <span className="font-mono text-xs bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-bold border border-indigo-200 dark:border-indigo-900 px-2 py-0.5 rounded flex-shrink-0">
+                      <span className={`font-mono text-xs font-bold border px-2 py-0.5 rounded flex-shrink-0 ${
+                        a.estado === 'ANULADO'
+                          ? 'bg-rose-100 dark:bg-rose-950 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900'
+                          : 'bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-900'
+                      }`}>
                         {a.numero}
                       </span>
-                      <span className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">{a.descripcion}</span>
+                      <span className={`text-sm font-semibold truncate ${
+                        a.estado === 'ANULADO'
+                          ? 'text-slate-400 dark:text-slate-500 line-through'
+                          : 'text-slate-800 dark:text-slate-100'
+                      }`}>
+                        {a.descripcion}
+                      </span>
+                      {a.estado === 'ANULADO' && (
+                        <span className="text-[10px] bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-400 px-2 py-0.5 rounded border border-rose-200 dark:border-rose-900/50 font-bold uppercase tracking-wider">
+                          Anulado
+                        </span>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-3 text-xs flex-shrink-0">
@@ -509,6 +548,24 @@ export default function AsientosContablesPage() {
                             RD$ {(debTotal / 100).toFixed(2)}
                           </div>
                         </div>
+                        {a.estado !== 'ANULADO' ? (
+                          <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/10">
+                            <button
+                              disabled={anulandoId === a.id}
+                              onClick={() => handleAnular(a.id)}
+                              className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/20 dark:hover:bg-rose-950/40 text-rose-600 dark:text-rose-400 font-medium rounded-lg text-xs transition-colors flex items-center gap-1 border border-rose-200 dark:border-rose-900/50"
+                            >
+                              <Trash2 size={12} />
+                              {anulandoId === a.id ? 'Anulando...' : 'Anular Asiento'}
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex justify-end mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/10">
+                            <span className="px-2 py-1 bg-slate-100 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase rounded border border-slate-200 dark:border-slate-700">
+                              ANULADO / REVERTIDO
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}

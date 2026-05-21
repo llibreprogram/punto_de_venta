@@ -9,10 +9,51 @@ import { prisma } from './db'
 import { formatNcf } from './ncf'
 
 /**
+ * Verifica si un período contable está cerrado.
+ */
+export async function isPeriodClosed(fecha: Date, tx?: any): Promise<boolean> {
+  const client = tx || prisma
+  const year = fecha.getFullYear()
+  const month = String(fecha.getMonth() + 1).padStart(2, '0')
+  const periodo = `${year}-${month}`
+  const closed = await client.periodoCerrado.findUnique({
+    where: { periodo }
+  })
+  return !!closed
+}
+
+/**
+ * Registra un log de auditoría contable.
+ */
+export async function registrarAuditoria(
+  entidad: string,
+  entidadId: number,
+  accion: string,
+  detalle: string,
+  usuarioId?: number,
+  usuarioNombre?: string,
+  ip?: string,
+  tx?: any
+) {
+  const client = tx || prisma
+  await client.auditoriaContable.create({
+    data: {
+      entidad,
+      entidadId,
+      accion,
+      detalle,
+      usuarioId,
+      usuarioNombre,
+      ip
+    }
+  })
+}
+
+/**
  * Genera el número correlativo para un asiento contable.
  * Formato: AS-YYYY-MM-XXXX
  */
-export async function generarNumeroAsiento(fecha: Date, tx?: any): Promise<string> {
+export async function generarNumeroAsiento(fecha: Date, tx?: any, offset = 0): Promise<string> {
   const client = tx || prisma
   const year = fecha.getFullYear()
   const month = String(fecha.getMonth() + 1).padStart(2, '0')
@@ -27,7 +68,7 @@ export async function generarNumeroAsiento(fecha: Date, tx?: any): Promise<strin
     },
   })
 
-  const correlativo = String(count + 1).padStart(4, '0')
+  const correlativo = String(count + 1 + offset).padStart(4, '0')
   return `${prefijo}${correlativo}`
 }
 
@@ -48,9 +89,17 @@ export async function crearAsiento(
   referencia: string,
   origen: string,
   apuntes: ApunteInput[],
-  tx?: any
+  tx?: any,
+  metaAuditoria?: { usuarioId?: number; usuarioNombre?: string; ip?: string }
 ) {
   const client = tx || prisma
+
+  // 0. Validar período cerrado
+  if (await isPeriodClosed(fecha, client)) {
+    const year = fecha.getFullYear()
+    const month = String(fecha.getMonth() + 1).padStart(2, '0')
+    throw new Error(`Error Contable: El período ${year}-${month} está cerrado. No se pueden registrar transacciones.`)
+  }
 
   // 1. Validar partida doble
   const totalDebito = apuntes.reduce((sum, item) => sum + item.debitoCents, 0)
@@ -65,9 +114,6 @@ export async function crearAsiento(
       )}). Diferencia: RD$ ${((totalDebito - totalCredito) / 100).toFixed(2)}`
     )
   }
-
-  // 2. Generar número correlativo
-  const numero = await generarNumeroAsiento(fecha, client)
 
   // 3. Obtener todas las cuentas indicadas
   const codigos = apuntes.map((a) => a.cuentaCodigo)
@@ -87,25 +133,62 @@ export async function crearAsiento(
     }
   }
 
-  // 4. Crear la transacción y detalles
-  return await client.transaccionContable.create({
-    data: {
-      numero,
-      fecha,
-      descripcion,
-      referencia,
-      origen,
-      estado: 'POSTEADO',
-      apuntes: {
-        create: apuntes.map((a) => ({
-          cuentaId: mapaCuentas[a.cuentaCodigo],
-          debitoCents: a.debitoCents,
-          creditoCents: a.creditoCents,
-          referencia: a.referencia,
-        })),
-      },
-    },
-  })
+  // 2. Generar número correlativo con reintentos en caso de colisión (Race Condition)
+  let numero = ''
+  let asiento = null
+  let attempts = 0
+  const maxAttempts = 5
+
+  while (attempts < maxAttempts) {
+    try {
+      numero = await generarNumeroAsiento(fecha, client, attempts)
+
+      // 4. Crear la transacción y detalles
+      asiento = await client.transaccionContable.create({
+        data: {
+          numero,
+          fecha,
+          descripcion,
+          referencia,
+          origen,
+          estado: 'POSTEADO',
+          apuntes: {
+            create: apuntes.map((a) => ({
+              cuentaId: mapaCuentas[a.cuentaCodigo],
+              debitoCents: a.debitoCents,
+              creditoCents: a.creditoCents,
+              referencia: a.referencia,
+            })),
+          },
+        },
+      })
+      break
+    } catch (error: any) {
+      if (error.code === 'P2002' && error.meta?.target?.includes('numero')) {
+        attempts++
+        if (attempts >= maxAttempts) {
+          throw new Error(`Error Contable: No se pudo generar un número correlativo único para el asiento después de ${maxAttempts} intentos.`)
+        }
+      } else {
+        throw error
+      }
+    }
+  }
+
+  if (asiento) {
+    await registrarAuditoria(
+      'ASIENTO',
+      asiento.id,
+      'CREAR',
+      `Creado asiento contable ${asiento.numero} (${origen}): ${descripcion}`,
+      metaAuditoria?.usuarioId,
+      metaAuditoria?.usuarioNombre,
+      metaAuditoria?.ip,
+      client
+    )
+  }
+
+  return asiento!
 }
 
 /**
@@ -186,8 +269,7 @@ export async function registrarVentaContabilidad(pedidoId: number): Promise<any>
         rncCedula = match[1]
         tipoId = rncCedula.length === 9 ? 1 : 2
       } else {
-        rncCedula = '130000000' // Genérico temporal si no se especificó para evitar fallos
-        tipoId = 1
+        throw new Error(`El pedido requiere factura de Crédito Fiscal (B01) pero no se encontró un RNC/Cédula de 9 o 11 dígitos válido en las notas del pedido (Ej: 'RNC: 101882191').`)
       }
     }
 
@@ -263,12 +345,23 @@ export async function registrarVentaContabilidad(pedidoId: number): Promise<any>
     }
 
     // Crear el Asiento
-    await crearAsiento(
+    const asiento = await crearAsiento(
       pedido.createdAt,
       `Venta POS Correlativa Pedido #${pedido.numero} NCF ${ncfAsignado}`,
       `Pedido #${pedido.numero}`,
       'POS',
       apuntes,
+      tx
+    )
+
+    await registrarAuditoria(
+      'NCF',
+      pedido.id,
+      'CREAR',
+      `Asignado NCF ${ncfAsignado} (Tipo ${ncfTipo}) al Pedido #${pedido.numero}`,
+      pedido.usuarioId,
+      pedido.usuario?.nombre,
+      undefined,
       tx
     )
 
@@ -347,7 +440,7 @@ export async function registrarCompraContabilidad(
     // Débito a ITBIS Pagado / Adelantado (Activo/Pasivo Neto)
     if (params.itebisFacturadoCents > 0) {
       apuntes.push({
-        cuentaCodigo: '2.1.02.01', // ITBIS por Pagar (cuenta neta)
+        cuentaCodigo: '1.1.03.01', // ITBIS Adelantado / Crédito Fiscal
         debitoCents: params.itebisFacturadoCents,
         creditoCents: 0,
         referencia: `ITBIS Pagado en Compra NCF ${params.ncf}`,
@@ -501,5 +594,251 @@ export async function registrarNominaContabilidad(nominaId: number): Promise<any
     })
 
     return asiento
+  })
+}
+
+/**
+ * Anula un asiento contable. Modifica el estado del original a ANULADO,
+ * crea un contraasiento revertiendo los montos y anula los registros fiscales asociados.
+ */
+export async function anularAsiento(
+  asientoId: number,
+  usuarioId?: number,
+  usuarioNombre?: string,
+  ip?: string
+) {
+  return await prisma.$transaction(async (tx) => {
+    // 1. Obtener asiento original con apuntes
+    const asiento = await tx.transaccionContable.findUnique({
+      where: { id: asientoId },
+      include: { apuntes: { include: { cuenta: true } } },
+    })
+
+    if (!asiento) throw new Error(`Asiento contable #${asientoId} no encontrado.`)
+    if (asiento.estado === 'ANULADO') throw new Error(`El asiento contable ya está anulado.`)
+
+    // Verificar si el período está cerrado
+    if (await isPeriodClosed(asiento.fecha, tx)) {
+      throw new Error(`No se puede anular un asiento en un período contable cerrado.`)
+    }
+
+    // 2. Cambiar estado a ANULADO
+    await tx.transaccionContable.update({
+      where: { id: asientoId },
+      data: { estado: 'ANULADO' },
+    })
+
+    // 3. Crear contraasiento (reversión) con apuntes invertidos
+    const apuntesInvertidos = asiento.apuntes.map((ap: any) => ({
+      cuentaCodigo: ap.cuenta.codigo,
+      debitoCents: ap.creditoCents,
+      creditoCents: ap.debitoCents,
+      referencia: `Reversión de asiento ${asiento.numero}`
+    }))
+
+    const asientoReversion = await crearAsiento(
+      asiento.fecha,
+      `Reversión / Anulación de Asiento ${asiento.numero} - ${asiento.descripcion}`,
+      `REV-${asiento.numero}`,
+      asiento.origen || 'MANUAL',
+      apuntesInvertidos,
+      tx,
+      { usuarioId, usuarioNombre, ip }
+    )
+
+    // 4. Anular registro fiscal si está asociado
+    if (asiento.origen === 'POS' && asiento.referencia) {
+      const match = asiento.referencia.match(/Pedido\s*#\s*(\d+)/i)
+      if (match) {
+        const numero = parseInt(match[1], 10)
+        const pedido = await tx.pedido.findUnique({ where: { numero } })
+        if (pedido) {
+          await tx.registroFiscal.updateMany({
+            where: { pedidoId: pedido.id },
+            data: { estado: 'ANULADO' }
+          })
+        }
+      }
+    } else if (asiento.origen === 'COMPRAS' && asiento.referencia) {
+      const match = asiento.referencia.match(/Orden\s*Compra\s*#\s*(\d+)/i)
+      if (match) {
+        const ordenCompraId = parseInt(match[1], 10)
+        await tx.registroFiscal.updateMany({
+          where: { ordenCompraId },
+          data: { estado: 'ANULADO' }
+        })
+      }
+    }
+
+    // 5. Registrar auditoría
+    await registrarAuditoria(
+      'ASIENTO',
+      asiento.id,
+      'ANULAR',
+      `Anulado asiento ${asiento.numero}. Generada reversión ${asientoReversion.numero}`,
+      usuarioId,
+      usuarioNombre,
+      ip,
+      tx
+    )
+
+    return { original: asiento, reversion: asientoReversion }
+  })
+}
+
+/**
+ * Cierra un período contable (mes). Calcula la utilidad o pérdida neta del período,
+ * genera el asiento de cierre liquidando cuentas nominales a Resultados Acumulados,
+ * y registra el periodo en PeriodoCerrado.
+ */
+export async function cerrarPeriodoContable(
+  periodo: string, // "YYYY-MM"
+  usuarioId?: number,
+  usuarioNombre?: string,
+  ip?: string
+) {
+  return await prisma.$transaction(async (tx) => {
+    // 1. Verificar si ya está cerrado
+    const existe = await tx.periodoCerrado.findUnique({
+      where: { periodo }
+    })
+    if (existe) {
+      throw new Error(`El período ${periodo} ya está cerrado.`)
+    }
+
+    // 2. Determinar fechas de inicio y fin de mes
+    const [yearStr, monthStr] = periodo.split('-')
+    const year = parseInt(yearStr, 10)
+    const month = parseInt(monthStr, 10)
+    const startDate = new Date(year, month - 1, 1, 0, 0, 0, 0)
+    const endDate = new Date(year, month, 0, 23, 59, 59, 999)
+
+    // 3. Obtener todas las cuentas nominales de detalle (hijas sin subcuentas, o con movimientos)
+    // Para simplificar, obtenemos todas las cuentas de ingresos, costos y gastos.
+    const cuentas = await tx.cuentaContable.findMany({
+      where: {
+        tipo: { in: ['INGRESO', 'COSTO', 'GASTO'] },
+      },
+      include: {
+        apuntes: {
+          where: {
+            transaccion: {
+              fecha: { gte: startDate, lte: endDate },
+              estado: 'POSTEADO',
+            }
+          }
+        }
+      }
+    })
+
+    // 4. Calcular el saldo de cada cuenta en ese rango y acumular para el asiento de cierre
+    const apuntesCierre: ApunteInput[] = []
+    let totalIncomesCents = 0
+    let totalExpensesCents = 0
+
+    cuentas.forEach((c: any) => {
+      const totalDebito = c.apuntes.reduce((sum: number, a: any) => sum + a.debitoCents, 0)
+      const totalCredito = c.apuntes.reduce((sum: number, a: any) => sum + a.creditoCents, 0)
+
+      if (c.tipo === 'INGRESO') {
+        const saldoCredito = totalCredito - totalDebito
+        if (saldoCredito !== 0) {
+          totalIncomesCents += saldoCredito
+          // Se debita la cuenta de ingreso para saldarla (llevar a cero)
+          apuntesCierre.push({
+            cuentaCodigo: c.codigo,
+            debitoCents: Math.abs(saldoCredito),
+            creditoCents: 0,
+            referencia: `Cierre del período ${periodo}`
+          })
+        }
+      } else { // COSTO o GASTO
+        const saldoDebito = totalDebito - totalCredito
+        if (saldoDebito !== 0) {
+          totalExpensesCents += saldoDebito
+          // Se acredita la cuenta de costo/gasto para saldarla (llevar a cero)
+          apuntesCierre.push({
+            cuentaCodigo: c.codigo,
+            debitoCents: 0,
+            creditoCents: Math.abs(saldoDebito),
+            referencia: `Cierre del período ${periodo}`
+          })
+        }
+      }
+    })
+
+    const utilidadNetaCents = totalIncomesCents - totalExpensesCents
+
+    // Si no hay movimientos en absoluto en el período
+    if (apuntesCierre.length === 0) {
+      const pc = await tx.periodoCerrado.create({
+        data: {
+          periodo,
+          cerradoPor: usuarioNombre || 'SISTEMA',
+        }
+      })
+      await registrarAuditoria(
+        'PERIODO',
+        pc.id,
+        'CERRAR',
+        `Cierre del período ${periodo} sin movimientos contables.`,
+        usuarioId,
+        usuarioNombre,
+        ip,
+        tx
+      )
+      return { ok: true, period: pc, asiento: null }
+    }
+
+    // 5. Agregar el apunte a Resultados Acumulados / Utilidad Retenida (3.1.02)
+    if (utilidadNetaCents > 0) {
+      apuntesCierre.push({
+        cuentaCodigo: '3.1.02',
+        debitoCents: 0,
+        creditoCents: utilidadNetaCents,
+        referencia: `Utilidad neta del período ${periodo}`
+      })
+    } else if (utilidadNetaCents < 0) {
+      apuntesCierre.push({
+        cuentaCodigo: '3.1.02',
+        debitoCents: Math.abs(utilidadNetaCents),
+        creditoCents: 0,
+        referencia: `Pérdida neta del período ${periodo}`
+      })
+    }
+
+    // 6. Crear el Asiento de Cierre Contable en la fecha de fin de período
+    const asientoCierre = await crearAsiento(
+      endDate,
+      `Asiento de Cierre de Cuentas Nominales - Período ${periodo}`,
+      `CIERRE-${periodo}`,
+      'MANUAL',
+      apuntesCierre,
+      tx,
+      { usuarioId, usuarioNombre, ip }
+    )
+
+    // 7. Registrar el período cerrado
+    const pc = await tx.periodoCerrado.create({
+      data: {
+        periodo,
+        asientoId: asientoCierre.id,
+        cerradoPor: usuarioNombre || 'SISTEMA',
+      }
+    })
+
+    // 8. Registrar auditoría
+    await registrarAuditoria(
+      'PERIODO',
+      pc.id,
+      'CERRAR',
+      `Cierre del período ${periodo} con asiento de cierre ${asientoCierre.numero}`,
+      usuarioId,
+      usuarioNombre,
+      ip,
+      tx
+    )
+
+    return { ok: true, period: pc, asiento: asientoCierre }
   })
 }

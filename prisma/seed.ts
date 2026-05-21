@@ -67,6 +67,8 @@ async function main() {
       { codigo: '1.1.01.02', nombre: 'Banco Popular', tipo: 'ACTIVO', naturaleza: 'DEBITO', padreCodigo: '1.1.01' },
       { codigo: '1.1.02', nombre: 'Cuentas por Cobrar', tipo: 'ACTIVO', naturaleza: 'DEBITO', padreCodigo: '1.1' },
       { codigo: '1.1.02.01', nombre: 'Cuentas por Cobrar Clientes', tipo: 'ACTIVO', naturaleza: 'DEBITO', padreCodigo: '1.1.02' },
+      { codigo: '1.1.03', nombre: 'Impuestos por Adelantar', tipo: 'ACTIVO', naturaleza: 'DEBITO', padreCodigo: '1.1' },
+      { codigo: '1.1.03.01', nombre: 'ITBIS Adelantado / Crédito Fiscal', tipo: 'ACTIVO', naturaleza: 'DEBITO', padreCodigo: '1.1.03' },
       { codigo: '1.1.04', nombre: 'Inventarios', tipo: 'ACTIVO', naturaleza: 'DEBITO', padreCodigo: '1.1' },
       { codigo: '1.1.04.01', nombre: 'Inventario de Insumos', tipo: 'ACTIVO', naturaleza: 'DEBITO', padreCodigo: '1.1.04' },
       { codigo: '1.2', nombre: 'Activos No Corrientes', tipo: 'ACTIVO', naturaleza: 'DEBITO', padreCodigo: '1' },
@@ -89,6 +91,7 @@ async function main() {
       { codigo: '3.1', nombre: 'Capital Contable', tipo: 'PATRIMONIO', naturaleza: 'CREDITO', padreCodigo: '3' },
       { codigo: '3.1.01', nombre: 'Capital Social', tipo: 'PATRIMONIO', naturaleza: 'CREDITO', padreCodigo: '3.1' },
       { codigo: '3.1.01.01', nombre: 'Capital Social Autorizado', tipo: 'PATRIMONIO', naturaleza: 'CREDITO', padreCodigo: '3.1.01' },
+      { codigo: '3.1.02', nombre: 'Resultados Acumulados / Utilidad Retenida', tipo: 'PATRIMONIO', naturaleza: 'CREDITO', padreCodigo: '3.1' },
 
       { codigo: '4', nombre: 'Ingresos', tipo: 'INGRESO', naturaleza: 'CREDITO', padreCodigo: null },
       { codigo: '4.1', nombre: 'Ingresos Operacionales', tipo: 'INGRESO', naturaleza: 'CREDITO', padreCodigo: '4' },

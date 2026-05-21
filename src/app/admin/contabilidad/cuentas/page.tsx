@@ -52,9 +52,32 @@ export default function CatalogCuentasPage() {
   const [selectedCuenta, setSelectedCuenta] = useState<Cuenta | null>(null)
   const [movimientos, setMovimientos] = useState<any[]>([])
   const [loadingMovimientos, setLoadingMovimientos] = useState(false)
+  const [sidebarTab, setSidebarTab] = useState<'info' | 'mayor'>('info')
+  const [mayorData, setMayorData] = useState<any>(null)
+  const [loadingMayor, setLoadingMayor] = useState(false)
+
+  const loadMayor = async (codigo: string) => {
+    try {
+      setLoadingMayor(true)
+      const res = await fetch(`/api/contabilidad/mayor?cuentaCodigo=${codigo}`)
+      const data = await res.json()
+      if (data.ok) {
+        setMayorData(data)
+      } else {
+        push(data.error || 'Error al generar Libro Mayor', 'error')
+      }
+    } catch (err) {
+      console.error(err)
+      push('Error de red al cargar el Libro Mayor', 'error')
+    } finally {
+      setLoadingMayor(false)
+    }
+  }
 
   const handleSelectCuenta = async (cuenta: Cuenta) => {
     setSelectedCuenta(cuenta)
+    setSidebarTab('info')
+    setMayorData(null)
     try {
       setLoadingMovimientos(true)
       setMovimientos([])
@@ -71,6 +94,7 @@ export default function CatalogCuentasPage() {
     } finally {
       setLoadingMovimientos(false)
     }
+    loadMayor(cuenta.codigo)
   }
 
   const loadCuentas = async () => {
@@ -606,50 +630,126 @@ export default function CatalogCuentasPage() {
                 </div>
               </div>
 
-              {/* Transactions List */}
-              <div className="flex-1 flex flex-col min-h-0">
-                <h4 className="text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 font-bold mb-3">Movimientos Recientes (Posteados)</h4>
-                
-                <div className="flex-1 overflow-y-auto pr-1">
-                  {loadingMovimientos ? (
-                    <div className="flex flex-col gap-2 mt-4 animate-pulse">
-                      {[1, 2, 3].map((i) => (
-                        <div key={i} className="h-16 bg-slate-100 dark:bg-slate-800/50 rounded-xl" />
-                      ))}
-                    </div>
-                  ) : movimientos.length === 0 ? (
-                    <div className="text-center py-12 text-xs text-slate-400 dark:text-slate-500 italic bg-slate-50 dark:bg-slate-950/20 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
-                      No hay transacciones registradas para esta cuenta.
-                    </div>
-                  ) : (
-                    <div className="grid gap-2">
-                      {movimientos.map((mov) => (
-                        <div key={mov.id} className="bg-slate-50 dark:bg-slate-950/40 border border-slate-150 dark:border-slate-800/30 p-3.5 rounded-xl hover:border-slate-300 dark:hover:border-slate-800 transition-all flex flex-col gap-1 text-xs">
-                          <div className="flex justify-between items-center text-[10px]">
-                            <span className="font-mono text-indigo-600 dark:text-indigo-400 font-bold">{mov.transaccion.numero}</span>
-                            <span className="text-slate-400 dark:text-slate-500">{new Date(mov.transaccion.fecha).toLocaleDateString()}</span>
-                          </div>
-                          <span className="text-slate-700 dark:text-slate-200 font-semibold">{mov.transaccion.descripcion}</span>
-                          {mov.transaccion.referencia && (
-                            <span className="text-[10px] text-slate-400 dark:text-slate-500">Ref: {mov.transaccion.referencia}</span>
-                          )}
-                          <div className="flex justify-between border-t border-slate-200 dark:border-slate-855 pt-2 mt-1.5 font-mono text-[11px]">
-                            <span className="text-slate-400 dark:text-slate-500">Monto asignado</span>
-                            <div>
-                              {mov.debitoCents > 0 && (
-                                <span className="text-emerald-600 dark:text-emerald-400 font-bold">D: RD$ {(mov.debitoCents / 100).toFixed(2)}</span>
-                              )}
-                              {mov.creditoCents > 0 && (
-                                <span className="text-indigo-600 dark:text-indigo-400 font-bold">C: RD$ {(mov.creditoCents / 100).toFixed(2)}</span>
-                              )}
+              {/* Tab Selector */}
+              <div className="flex border-b border-slate-100 dark:border-slate-800">
+                <button
+                  onClick={() => setSidebarTab('info')}
+                  className={`flex-1 pb-2.5 text-xs font-bold text-center border-b-2 transition-all ${
+                    sidebarTab === 'info'
+                      ? 'border-indigo-650 text-indigo-600 dark:text-indigo-405 dark:border-indigo-400 font-extrabold'
+                      : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                  }`}
+                >
+                  Movimientos Simples
+                </button>
+                <button
+                  onClick={() => setSidebarTab('mayor')}
+                  className={`flex-1 pb-2.5 text-xs font-bold text-center border-b-2 transition-all ${
+                    sidebarTab === 'mayor'
+                      ? 'border-indigo-650 text-indigo-600 dark:text-indigo-405 dark:border-indigo-400 font-extrabold'
+                      : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                  }`}
+                >
+                  Libro Mayor (Saldo Acumulado)
+                </button>
+              </div>
+
+              {sidebarTab === 'info' ? (
+                <div className="flex-1 flex flex-col min-h-0">
+                  <h4 className="text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 font-bold mb-3">Movimientos Recientes (Posteados)</h4>
+                  <div className="flex-1 overflow-y-auto pr-1">
+                    {loadingMovimientos ? (
+                      <div className="flex flex-col gap-2 mt-4 animate-pulse">
+                        {[1, 2, 3].map((i) => (
+                          <div key={i} className="h-16 bg-slate-100 dark:bg-slate-800/50 rounded-xl" />
+                        ))}
+                      </div>
+                    ) : movimientos.length === 0 ? (
+                      <div className="text-center py-12 text-xs text-slate-400 dark:text-slate-500 italic bg-slate-50 dark:bg-slate-950/20 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
+                        No hay transacciones registradas para esta cuenta.
+                      </div>
+                    ) : (
+                      <div className="grid gap-2">
+                        {movimientos.map((mov) => (
+                          <div key={mov.id} className="bg-slate-50 dark:bg-slate-950/40 border border-slate-150 dark:border-slate-800/30 p-3.5 rounded-xl hover:border-slate-300 dark:hover:border-slate-800 transition-all flex flex-col gap-1 text-xs">
+                            <div className="flex justify-between items-center text-[10px]">
+                              <span className="font-mono text-indigo-600 dark:text-indigo-400 font-bold">{mov.transaccion.numero}</span>
+                              <span className="text-slate-400 dark:text-slate-500">{new Date(mov.transaccion.fecha).toLocaleDateString()}</span>
+                            </div>
+                            <span className="text-slate-700 dark:text-slate-200 font-semibold">{mov.transaccion.descripcion}</span>
+                            {mov.transaccion.referencia && (
+                              <span className="text-[10px] text-slate-400 dark:text-slate-500">Ref: {mov.transaccion.referencia}</span>
+                            )}
+                            <div className="flex justify-between border-t border-slate-200 dark:border-slate-855 pt-2 mt-1.5 font-mono text-[11px]">
+                              <span className="text-slate-400 dark:text-slate-500">Monto asignado</span>
+                              <div>
+                                {mov.debitoCents > 0 && (
+                                  <span className="text-emerald-600 dark:text-emerald-400 font-bold">D: RD$ {(mov.debitoCents / 100).toFixed(2)}</span>
+                                )}
+                                {mov.creditoCents > 0 && (
+                                  <span className="text-indigo-600 dark:text-indigo-400 font-bold">C: RD$ {(mov.creditoCents / 100).toFixed(2)}</span>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="flex-1 flex flex-col min-h-0">
+                  <div className="flex justify-between items-center mb-3">
+                    <h4 className="text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 font-bold">Movimientos de Libro Mayor</h4>
+                    {mayorData && (
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">
+                        Saldo Inicial: RD$ {(mayorData.saldoInicialCents / 100).toLocaleString('es-DO', { minimumFractionDigits: 2 })}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto pr-1">
+                    {loadingMayor ? (
+                      <div className="flex flex-col gap-2 mt-4 animate-pulse">
+                        {[1, 2, 3].map((i) => (
+                          <div key={i} className="h-16 bg-slate-100 dark:bg-slate-800/50 rounded-xl" />
+                        ))}
+                      </div>
+                    ) : !mayorData || mayorData.movimientos.length === 0 ? (
+                      <div className="text-center py-12 text-xs text-slate-400 dark:text-slate-500 italic bg-slate-50 dark:bg-slate-950/20 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
+                        No hay movimientos registrados en el Libro Mayor.
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-[10px] text-left border-collapse font-mono">
+                          <thead>
+                            <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold">
+                              <th className="py-2 pr-2">Fecha</th>
+                              <th className="py-2 pr-2">Asiento</th>
+                              <th className="py-2 pr-2">Detalle</th>
+                              <th className="py-2 pr-2 text-right">Débito</th>
+                              <th className="py-2 pr-2 text-right">Crédito</th>
+                              <th className="py-2 text-right">Saldo</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {mayorData.movimientos.map((m: any) => (
+                              <tr key={m.id} className="border-b border-slate-100 dark:border-slate-800/20 hover:bg-slate-50 dark:hover:bg-slate-800/10 text-slate-850 dark:text-slate-250">
+                                <td className="py-2 pr-2 whitespace-nowrap text-slate-500">{new Date(m.fecha).toLocaleDateString(undefined, { month: '2-digit', day: '2-digit' })}</td>
+                                <td className="py-2 pr-2 font-bold text-indigo-600 dark:text-indigo-400">{m.asientoNumero}</td>
+                                <td className="py-2 pr-2 truncate max-w-[90px] font-sans" title={m.descripcion}>{m.descripcion}</td>
+                                <td className="py-2 pr-2 text-right text-emerald-600">{m.debitoCents > 0 ? (m.debitoCents / 100).toFixed(2) : '—'}</td>
+                                <td className="py-2 pr-2 text-right text-indigo-600">{m.creditoCents > 0 ? (m.creditoCents / 100).toFixed(2) : '—'}</td>
+                                <td className="py-2 text-right font-bold text-slate-800 dark:text-slate-100">{(m.saldoAcumuladoCents / 100).toLocaleString('es-DO', { minimumFractionDigits: 2 })}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </motion.div>
           </div>
         )}

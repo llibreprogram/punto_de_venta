@@ -640,3 +640,23 @@ model CobroCXC {
   fecha       DateTime           @default(now())
   createdAt   DateTime           @default(now())
 }
+
+model AuditoriaContable {
+  id            Int      @id @default(autoincrement())
+  entidad       String   // "ASIENTO", "CUENTA", "NCF", "PERIODO"
+  entidadId     Int
+  accion        String   // "CREAR", "ANULAR", "MODIFICAR", "CERRAR"
+  detalle       String?
+  usuarioId     Int?
+  usuarioNombre String?
+  ip            String?
+  createdAt     DateTime @default(now())
+}
+
+model PeriodoCerrado {
+  id           Int      @id @default(autoincrement())
+  periodo      String   @unique  // "YYYY-MM"
+  asientoId    Int?              // Asiento de cierre generado
+  cerradoPor   String?
+  createdAt    DateTime @default(now())
+}
