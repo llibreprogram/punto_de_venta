@@ -192,6 +192,19 @@ export default function CatalogCuentasPage() {
     setShowNew(true)
   }
 
+  // Color por tipo de cuenta
+  const tipoColor = (tipo: string) => {
+    switch (tipo) {
+      case 'ACTIVO':     return 'bg-sky-100 border-sky-300 text-sky-700'
+      case 'PASIVO':     return 'bg-rose-100 border-rose-300 text-rose-700'
+      case 'PATRIMONIO': return 'bg-violet-100 border-violet-300 text-violet-700'
+      case 'INGRESO':    return 'bg-emerald-100 border-emerald-300 text-emerald-700'
+      case 'COSTO':      return 'bg-amber-100 border-amber-300 text-amber-700'
+      case 'GASTO':      return 'bg-orange-100 border-orange-300 text-orange-700'
+      default:           return 'bg-slate-100 border-slate-300 text-slate-600'
+    }
+  }
+
   // Filtrado de cuentas list
   const filteredCuentasList = cuentasList.filter(
     (c) =>
@@ -221,13 +234,13 @@ export default function CatalogCuentasPage() {
         <div
           style={{ paddingLeft: `${depth * 1.5}rem` }}
           onClick={() => handleSelectCuenta(node)}
-          className="flex items-center justify-between py-2.5 px-3 hover:bg-slate-850/60 dark:hover:bg-slate-800/40 rounded-lg transition-colors border-b border-slate-200 dark:border-slate-800/20 group cursor-pointer"
+          className="flex items-center justify-between py-2.5 px-3 hover:bg-slate-100/60 rounded-lg transition-colors border-b border-slate-200 group cursor-pointer"
         >
           <div className="flex items-center gap-2">
             {isParent ? (
               <button
                 onClick={(e) => { e.stopPropagation(); toggleNode(node.id) }}
-                className="text-slate-400 hover:text-white p-0.5 rounded hover:bg-slate-700/50"
+                className="text-slate-400 hover:text-slate-700 p-0.5 rounded hover:bg-slate-200/50"
               >
                 {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
               </button>
@@ -245,19 +258,19 @@ export default function CatalogCuentasPage() {
               <FileText className="text-slate-400" size={18} />
             )}
 
-            <span className="font-mono text-indigo-400 font-semibold text-sm">{node.codigo}</span>
-            <span className="text-sm font-medium text-slate-100">{node.nombre}</span>
+            <span className="font-mono text-indigo-600 font-semibold text-sm">{node.codigo}</span>
+            <span className="text-sm font-medium text-slate-700">{node.nombre}</span>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-300">
+            <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded border ${tipoColor(node.tipo)}`}>
               {node.tipo}
             </span>
             <span
               className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded border ${
                 node.naturaleza === 'DEBITO'
-                  ? 'bg-emerald-950/40 border-emerald-900 text-emerald-400'
-                  : 'bg-indigo-950/40 border-indigo-900 text-indigo-400'
+                  ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
+                  : 'bg-indigo-50 border-indigo-300 text-indigo-700'
               }`}
             >
               {node.naturaleza}
@@ -265,8 +278,8 @@ export default function CatalogCuentasPage() {
             {node.saldoCents !== undefined && node.saldoCents !== 0 && (
               <span className={`font-mono text-[11px] font-bold px-2 py-0.5 rounded ${
                 node.saldoCents > 0
-                  ? 'text-emerald-400 bg-emerald-950/30'
-                  : 'text-red-400 bg-red-950/30'
+                  ? 'text-emerald-700 bg-emerald-50'
+                  : 'text-red-600 bg-red-50'
               }`}>
                 RD$ {(Math.abs(node.saldoCents) / 100).toLocaleString('es-DO', { minimumFractionDigits: 2 })}
               </span>
@@ -278,7 +291,7 @@ export default function CatalogCuentasPage() {
             )}
             <button
               onClick={(e) => { e.stopPropagation(); handleOpenAddSub(node) }}
-              className="opacity-0 group-hover:opacity-100 btn p-1 hover:bg-slate-700/50 rounded transition-opacity"
+              className="opacity-0 group-hover:opacity-100 btn p-1 hover:bg-slate-200/60 rounded transition-opacity"
               title="Añadir Subcuenta"
             >
               <Plus size={14} className="text-indigo-400" />
@@ -375,22 +388,22 @@ export default function CatalogCuentasPage() {
                 <div
                   key={c.id}
                   onClick={() => handleSelectCuenta(c)}
-                  className="flex items-center justify-between py-2.5 px-3 hover:bg-slate-855/60 dark:hover:bg-slate-800/40 rounded-lg border-b border-slate-200 dark:border-slate-800/20 cursor-pointer"
+                  className="flex items-center justify-between py-2.5 px-3 hover:bg-slate-100/60 rounded-lg border-b border-slate-200 cursor-pointer"
                 >
                   <div className="flex items-center gap-2">
                     <FileText className="text-slate-400" size={16} />
-                    <span className="font-mono text-indigo-400 font-semibold text-sm">{c.codigo}</span>
-                    <span className="text-sm font-medium text-slate-100">{c.nombre}</span>
+                    <span className="font-mono text-indigo-600 font-semibold text-sm">{c.codigo}</span>
+                    <span className="text-sm font-medium text-slate-700">{c.nombre}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-300">
+                    <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded border ${tipoColor(c.tipo)}`}>
                       {c.tipo}
                     </span>
                     <span
                       className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded border ${
                         c.naturaleza === 'DEBITO'
-                          ? 'bg-emerald-950/40 border-emerald-900 text-emerald-400'
-                          : 'bg-indigo-950/40 border-indigo-900 text-indigo-400'
+                          ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
+                          : 'bg-indigo-50 border-indigo-300 text-indigo-700'
                       }`}
                     >
                       {c.naturaleza}
