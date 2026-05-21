@@ -21,6 +21,7 @@ type Cuenta = {
   activa: boolean
   padreId: number | null
   subCuentas?: Cuenta[]
+  saldoCents?: number
 }
 
 export default function CatalogCuentasPage() {
@@ -48,6 +49,30 @@ export default function CatalogCuentasPage() {
   const { push } = useToast()
   const { confirm } = useConfirm()
 
+  const [selectedCuenta, setSelectedCuenta] = useState<Cuenta | null>(null)
+  const [movimientos, setMovimientos] = useState<any[]>([])
+  const [loadingMovimientos, setLoadingMovimientos] = useState(false)
+
+  const handleSelectCuenta = async (cuenta: Cuenta) => {
+    setSelectedCuenta(cuenta)
+    try {
+      setLoadingMovimientos(true)
+      setMovimientos([])
+      const res = await fetch(`/api/contabilidad/cuentas?movimientos=true&id=${cuenta.id}`)
+      const data = await res.json()
+      if (data.ok) {
+        setMovimientos(data.movimientos)
+      } else {
+        push('Error al cargar movimientos de la cuenta', 'error')
+      }
+    } catch (err) {
+      console.error(err)
+      push('Error de red al cargar movimientos', 'error')
+    } finally {
+      setLoadingMovimientos(false)
+    }
+  }
+
   const loadCuentas = async () => {
     try {
       setLoading(true)
@@ -71,10 +96,39 @@ export default function CatalogCuentasPage() {
 
   useEffect(() => {
     loadCuentas()
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n') {
+        e.preventDefault()
+        setNewPadreId('')
+        setNewCodigo('')
+        setShowNew(true)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
   const toggleNode = (id: number) => {
     setExpandedNodes((prev) => ({ ...prev, [id]: !prev[id] }))
+  }
+
+  const expandAll = () => {
+    const all: Record<number, boolean> = {}
+    const walk = (nodes: Cuenta[]) => {
+      for (const n of nodes) {
+        if (n.subCuentas && n.subCuentas.length > 0) {
+          all[n.id] = true
+          walk(n.subCuentas)
+        }
+      }
+    }
+    walk(cuentasTree)
+    setExpandedNodes(all)
+  }
+
+  const collapseAll = () => {
+    setExpandedNodes({})
   }
 
   const handleCreate = async () => {
@@ -166,12 +220,13 @@ export default function CatalogCuentasPage() {
       <div key={node.id} className="select-none">
         <div
           style={{ paddingLeft: `${depth * 1.5}rem` }}
-          className="flex items-center justify-between py-2.5 px-3 hover:bg-slate-800/40 rounded-lg transition-colors border-b border-slate-800/20 group"
+          onClick={() => handleSelectCuenta(node)}
+          className="flex items-center justify-between py-2.5 px-3 hover:bg-slate-850/60 dark:hover:bg-slate-800/40 rounded-lg transition-colors border-b border-slate-200 dark:border-slate-800/20 group cursor-pointer"
         >
           <div className="flex items-center gap-2">
             {isParent ? (
               <button
-                onClick={() => toggleNode(node.id)}
+                onClick={(e) => { e.stopPropagation(); toggleNode(node.id) }}
                 className="text-slate-400 hover:text-white p-0.5 rounded hover:bg-slate-700/50"
               >
                 {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
@@ -207,8 +262,22 @@ export default function CatalogCuentasPage() {
             >
               {node.naturaleza}
             </span>
+            {node.saldoCents !== undefined && node.saldoCents !== 0 && (
+              <span className={`font-mono text-[11px] font-bold px-2 py-0.5 rounded ${
+                node.saldoCents > 0
+                  ? 'text-emerald-400 bg-emerald-950/30'
+                  : 'text-red-400 bg-red-950/30'
+              }`}>
+                RD$ {(Math.abs(node.saldoCents) / 100).toLocaleString('es-DO', { minimumFractionDigits: 2 })}
+              </span>
+            )}
+            {node.saldoCents !== undefined && node.saldoCents === 0 && !isParent && (
+              <span className="font-mono text-[11px] font-medium text-slate-600 px-2">
+                RD$ 0.00
+              </span>
+            )}
             <button
-              onClick={() => handleOpenAddSub(node)}
+              onClick={(e) => { e.stopPropagation(); handleOpenAddSub(node) }}
               className="opacity-0 group-hover:opacity-100 btn p-1 hover:bg-slate-700/50 rounded transition-opacity"
               title="Añadir Subcuenta"
             >
@@ -240,6 +309,20 @@ export default function CatalogCuentasPage() {
               onChange={(e) => setQ(e.target.value)}
             />
           </div>
+          <button
+            onClick={expandAll}
+            className="btn p-2 text-xs font-bold border border-slate-700 hover:border-slate-600 text-slate-300 hover:text-white rounded-xl transition-all"
+            title="Expandir Todo"
+          >
+            <ChevronDown size={14} />
+          </button>
+          <button
+            onClick={collapseAll}
+            className="btn p-2 text-xs font-bold border border-slate-700 hover:border-slate-600 text-slate-300 hover:text-white rounded-xl transition-all"
+            title="Colapsar Todo"
+          >
+            <ChevronRight size={14} />
+          </button>
           <button onClick={() => {
             setNewPadreId('')
             setNewCodigo('')
@@ -261,10 +344,22 @@ export default function CatalogCuentasPage() {
           </div>
         </div>
 
-        <div className="glass-panel rounded-2xl p-4 min-h-[500px]">
+        <div className="glass-panel rounded-2xl p-6 min-h-[500px]">
           {loading ? (
-            <div className="flex items-center justify-center min-h-[400px]">
-              <div className="text-sm muted animate-pulse">Cargando catálogo contable…</div>
+            <div className="flex flex-col gap-4 animate-pulse">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800/40">
+                  <div className="flex items-center gap-3 w-1/2">
+                    <div className="w-5 h-5 bg-slate-200 dark:bg-slate-800 rounded" />
+                    <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-16" />
+                    <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-full max-w-[120px]" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-5 bg-slate-200 dark:bg-slate-800 rounded w-12" />
+                    <div className="h-5 bg-slate-200 dark:bg-slate-800 rounded w-16" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : cuentasTree.length === 0 ? (
             <div className="flex flex-col items-center justify-center min-h-[400px]">
@@ -279,7 +374,8 @@ export default function CatalogCuentasPage() {
               {filteredCuentasList.map((c) => (
                 <div
                   key={c.id}
-                  className="flex items-center justify-between py-2.5 px-3 hover:bg-slate-800/40 rounded-lg border-b border-slate-800/20"
+                  onClick={() => handleSelectCuenta(c)}
+                  className="flex items-center justify-between py-2.5 px-3 hover:bg-slate-855/60 dark:hover:bg-slate-800/40 rounded-lg border-b border-slate-200 dark:border-slate-800/20 cursor-pointer"
                 >
                   <div className="flex items-center gap-2">
                     <FileText className="text-slate-400" size={16} />
@@ -438,6 +534,108 @@ export default function CatalogCuentasPage() {
                 <button className="btn btn-primary" onClick={handleCreate}>
                   Crear Cuenta
                 </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      {/* Panel Lateral de Movimientos / Detalle */}
+      <AnimatePresence>
+        {selectedCuenta && (
+          <div className="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm z-40 flex justify-end" onClick={() => setSelectedCuenta(null)}>
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-lg h-full bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 p-6 overflow-y-auto flex flex-col gap-6 shadow-2xl"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+                <div>
+                  <span className="font-mono text-xs text-indigo-600 dark:text-indigo-400 font-bold border border-indigo-200 dark:border-indigo-900/50 px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/30">
+                    {selectedCuenta.codigo}
+                  </span>
+                  <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 mt-1">{selectedCuenta.nombre}</h3>
+                </div>
+                <button
+                  onClick={() => setSelectedCuenta(null)}
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Detalle */}
+              <div className="grid grid-cols-2 gap-4 bg-slate-55 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl">
+                <div>
+                  <span className="text-[10px] text-slate-500 block uppercase font-bold tracking-wider">Tipo</span>
+                  <span className="text-xs text-slate-700 dark:text-slate-300 font-semibold">{selectedCuenta.tipo}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-500 block uppercase font-bold tracking-wider mb-0.5">Naturaleza</span>
+                  <span className={`inline-block text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded border ${
+                    selectedCuenta.naturaleza === 'DEBITO'
+                      ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-250 dark:border-emerald-900 text-emerald-600 dark:text-emerald-400'
+                      : 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-250 dark:border-indigo-900 text-indigo-600 dark:text-indigo-400'
+                  }`}>
+                    {selectedCuenta.naturaleza}
+                  </span>
+                </div>
+                <div className="col-span-2 pt-2 border-t border-slate-200 dark:border-slate-850">
+                  <span className="text-[10px] text-slate-500 block uppercase font-bold tracking-wider">Saldo Computado</span>
+                  <span className={`font-mono text-lg font-black ${
+                    (selectedCuenta.saldoCents || 0) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'
+                  }`}>
+                    RD$ {(Math.abs(selectedCuenta.saldoCents || 0) / 100).toLocaleString('es-DO', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+
+              {/* Transactions List */}
+              <div className="flex-1 flex flex-col min-h-0">
+                <h4 className="text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 font-bold mb-3">Movimientos Recientes (Posteados)</h4>
+                
+                <div className="flex-1 overflow-y-auto pr-1">
+                  {loadingMovimientos ? (
+                    <div className="flex flex-col gap-2 mt-4 animate-pulse">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="h-16 bg-slate-100 dark:bg-slate-800/50 rounded-xl" />
+                      ))}
+                    </div>
+                  ) : movimientos.length === 0 ? (
+                    <div className="text-center py-12 text-xs text-slate-400 dark:text-slate-500 italic bg-slate-50 dark:bg-slate-950/20 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
+                      No hay transacciones registradas para esta cuenta.
+                    </div>
+                  ) : (
+                    <div className="grid gap-2">
+                      {movimientos.map((mov) => (
+                        <div key={mov.id} className="bg-slate-50 dark:bg-slate-950/40 border border-slate-150 dark:border-slate-800/30 p-3.5 rounded-xl hover:border-slate-300 dark:hover:border-slate-800 transition-all flex flex-col gap-1 text-xs">
+                          <div className="flex justify-between items-center text-[10px]">
+                            <span className="font-mono text-indigo-600 dark:text-indigo-400 font-bold">{mov.transaccion.numero}</span>
+                            <span className="text-slate-400 dark:text-slate-500">{new Date(mov.transaccion.fecha).toLocaleDateString()}</span>
+                          </div>
+                          <span className="text-slate-700 dark:text-slate-200 font-semibold">{mov.transaccion.descripcion}</span>
+                          {mov.transaccion.referencia && (
+                            <span className="text-[10px] text-slate-400 dark:text-slate-500">Ref: {mov.transaccion.referencia}</span>
+                          )}
+                          <div className="flex justify-between border-t border-slate-200 dark:border-slate-855 pt-2 mt-1.5 font-mono text-[11px]">
+                            <span className="text-slate-400 dark:text-slate-500">Monto asignado</span>
+                            <div>
+                              {mov.debitoCents > 0 && (
+                                <span className="text-emerald-600 dark:text-emerald-400 font-bold">D: RD$ {(mov.debitoCents / 100).toFixed(2)}</span>
+                              )}
+                              {mov.creditoCents > 0 && (
+                                <span className="text-indigo-600 dark:text-indigo-400 font-bold">C: RD$ {(mov.creditoCents / 100).toFixed(2)}</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </motion.div>
           </div>

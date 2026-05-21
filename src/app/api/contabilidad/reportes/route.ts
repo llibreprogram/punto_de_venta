@@ -97,6 +97,45 @@ export async function GET(request: NextRequest) {
       const utilidadBruta = totalIngresos - totalCostos
       const utilidadNeta = utilidadBruta - totalGastos
 
+      // Calcular Periodo Anterior Equivalente
+      const durationMs = end.getTime() - start.getTime()
+      const prevStart = new Date(start.getTime() - durationMs)
+      const prevEnd = new Date(start.getTime() - 1)
+
+      const prevCuentas = await prisma.cuentaContable.findMany({
+        include: {
+          apuntes: {
+            where: {
+              transaccion: {
+                fecha: {
+                  gte: prevStart,
+                  lte: prevEnd,
+                },
+                estado: 'POSTEADO',
+              },
+            },
+          },
+        },
+      })
+
+      const prevProcesarCuentas = prevCuentas.map((c) => {
+        const totalDebito = c.apuntes.reduce((sum, a) => sum + a.debitoCents, 0)
+        const totalCredito = c.apuntes.reduce((sum, a) => sum + a.creditoCents, 0)
+        const balance = c.naturaleza === 'DEBITO' ? totalDebito - totalCredito : totalCredito - totalDebito
+        return { tipo: c.tipo, padreId: c.padreId, balance }
+      })
+
+      const prevDetalleIngresos = prevProcesarCuentas.filter((c) => c.tipo === 'INGRESO' && c.padreId && c.balance !== 0)
+      const prevDetalleCostos = prevProcesarCuentas.filter((c) => c.tipo === 'COSTO' && c.padreId && c.balance !== 0)
+      const prevDetalleGastos = prevProcesarCuentas.filter((c) => c.tipo === 'GASTO' && c.padreId && c.balance !== 0)
+
+      const prevTotalIngresos = prevDetalleIngresos.reduce((sum, c) => sum + c.balance, 0)
+      const prevTotalCostos = prevDetalleCostos.reduce((sum, c) => sum + c.balance, 0)
+      const prevTotalGastos = prevDetalleGastos.reduce((sum, c) => sum + c.balance, 0)
+
+      const prevUtilidadBruta = prevTotalIngresos - prevTotalCostos
+      const prevUtilidadNeta = prevUtilidadBruta - prevTotalGastos
+
       return NextResponse.json({
         ok: true,
         report: {
@@ -106,6 +145,13 @@ export async function GET(request: NextRequest) {
           utilidadBruta,
           utilidadNeta,
           rango: { inicio: start, fin: end },
+          prevPeriodo: {
+            ingresos: prevTotalIngresos,
+            costos: prevTotalCostos,
+            gastos: prevTotalGastos,
+            utilidadBruta: prevUtilidadBruta,
+            utilidadNeta: prevUtilidadNeta
+          }
         },
       })
     }

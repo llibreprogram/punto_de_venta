@@ -19,6 +19,7 @@ const NAV_ITEMS = [
   { href: '/admin/compras',     label: 'Compras',     icon: '🛒' },
   { href: '/admin/nomina',      label: 'Nómina',      icon: '💰' },
   { href: '/admin/tesoreria',   label: 'Tesorería',   icon: '🏦' },
+  { href: '/admin/contabilidad', label: 'Contabilidad', icon: '📒' },
   { href: '/admin/integraciones', label: 'Integraciones', icon: '🔗' },
   { href: '/reportes',          label: 'Reportes',    icon: '📋' },
   { href: '/ventas',            label: 'Ventas',      icon: '📊' },

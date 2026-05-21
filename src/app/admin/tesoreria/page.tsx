@@ -13,6 +13,7 @@ import {
   DollarSign, Clock, Users, Building, PlusCircle, CreditCard, Paperclip
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, AreaChart, Area } from 'recharts'
 
 type Banco = {
   id: number
@@ -28,6 +29,7 @@ type Banco = {
   }
   activa: boolean
   saldoCents: number
+  movimientos?: Movimiento[]
 }
 
 type Movimiento = {
@@ -86,6 +88,29 @@ type CuentaContable = {
 export default function TesorereriaDashboard() {
   const [activeTab, setActiveTab] = useState<'bancos' | 'cxp' | 'cxc'>('bancos')
   const { push } = useToast()
+
+  const getSparklineData = (banco: Banco) => {
+    const movs = [...(banco.movimientos || [])].reverse()
+    if (movs.length === 0) {
+      return [{ balance: banco.saldoCents / 100 }, { balance: banco.saldoCents / 100 }]
+    }
+    
+    let current = banco.saldoCents / 100
+    const points = [{ balance: current }]
+    
+    for (let i = movs.length - 1; i >= 0; i--) {
+      const m = movs[i]
+      const isIn = ['DEPOSITO', 'TRANSFERENCIA_IN', 'COBRO_CXC'].includes(m.tipo)
+      const amount = m.montoCents / 100
+      if (isIn) {
+        current -= amount
+      } else {
+        current += amount
+      }
+      points.unshift({ balance: current })
+    }
+    return points
+  }
 
   // General accounts & loading
   const [cuentasContables, setCuentasContables] = useState<CuentaContable[]>([])
@@ -232,6 +257,26 @@ export default function TesorereriaDashboard() {
     if (activeTab === 'cxp') loadCxp()
     if (activeTab === 'cxc') loadCxc()
   }, [activeTab, filterCxpProveedor, filterCxpEstado, filterCxcEstado])
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n') {
+        e.preventDefault()
+        if (activeTab === 'bancos') {
+          setNewBanco({ nombre: '', banco: '', tipoCuenta: 'CORRIENTE', numeroCuenta: '', cuentaContableId: '' })
+          setShowAddBancoModal(true)
+        } else if (activeTab === 'cxp') {
+          setNewCxp({ proveedorId: '', categoria: 'OTROS', descripcion: '', ncf: '', monto: '', fechaVencimiento: '', facturaEscaneadaUrl: '' })
+          setShowAddCxpModal(true)
+        } else if (activeTab === 'cxc') {
+          setNewCxc({ clienteNombre: '', clienteRnc: '', clienteTelefono: '', descripcion: '', ncf: '', monto: '', fechaVencimiento: '' })
+          setShowAddCxcModal(true)
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [activeTab])
 
   // Submit Add Banco
   const handleAddBanco = async (e: React.FormEvent) => {
@@ -484,6 +529,61 @@ export default function TesorereriaDashboard() {
             </div>
           </div>
 
+          {/* ANÁLISIS DE DISTRIBUCIÓN DE FONDOS */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-slate-50 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
+            <div className="md:col-span-1 flex flex-col gap-2 justify-center">
+              <h4 className="text-xs font-black text-slate-850 dark:text-slate-100 uppercase tracking-wider">Distribución de Fondos</h4>
+              <p className="text-[11px] text-slate-400">Distribución porcentual de los recursos líquidos de la empresa entre las cuentas de tesorería.</p>
+              
+              <div className="grid gap-1.5 mt-2">
+                {bancos.filter(b => b.saldoCents > 0).map((b, idx) => {
+                  const total = bancos.reduce((s, x) => s + Math.max(0, x.saldoCents), 0)
+                  const pct = total > 0 ? (b.saldoCents / total) * 100 : 0
+                  const colors = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6']
+                  const color = colors[idx % colors.length]
+                  return (
+                    <div key={b.id} className="flex items-center justify-between text-xs font-bold text-slate-650 dark:text-slate-350">
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
+                        {b.nombre}
+                      </span>
+                      <span>{pct.toFixed(1)}%</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+            
+            <div className="md:col-span-2 h-44 flex items-center justify-center">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={bancos.filter(b => b.saldoCents > 0).map((b, idx) => ({
+                      name: b.nombre,
+                      value: b.saldoCents / 100
+                    }))}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={45}
+                    outerRadius={65}
+                    paddingAngle={4}
+                    dataKey="value"
+                  >
+                    {bancos.filter(b => b.saldoCents > 0).map((b, idx) => {
+                      const colors = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6']
+                      return <Cell key={`cell-${idx}`} fill={colors[idx % colors.length]} />
+                    })}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px' }}
+                    itemStyle={{ color: '#fff', fontSize: '11px', fontFamily: 'monospace' }}
+                    formatter={(value: any) => [`RD$ ${parseFloat(value).toLocaleString('es-DO', { minimumFractionDigits: 2 })}`, 'Saldo']}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* CUENTAS LIST */}
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-md flex flex-col gap-4">
@@ -498,7 +598,14 @@ export default function TesorereriaDashboard() {
               </div>
 
               <div className="flex flex-col gap-3">
-                {bancos.map((b) => (
+                {loadingBancos ? (
+                  <div className="flex flex-col gap-2.5 animate-pulse">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="h-16 bg-slate-100 dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-800/20" />
+                    ))}
+                  </div>
+                ) : (
+                  bancos.map((b) => (
                   <div
                     key={b.id}
                     onClick={() => setSelectedBanco(b)}
@@ -508,19 +615,45 @@ export default function TesorereriaDashboard() {
                         : 'border-slate-200 dark:border-slate-800/40 bg-slate-50/50 dark:bg-slate-950/20 hover:border-slate-350 dark:hover:border-slate-700'
                     } ${!b.activa ? 'opacity-60' : ''}`}
                   >
-                    <div>
-                      <h5 className="text-xs font-black text-slate-850 dark:text-slate-100 flex items-center gap-1.5">
+                    <div className="flex-1 min-w-0 pr-2">
+                      <h5 className="text-xs font-black text-slate-850 dark:text-slate-100 flex items-center gap-1.5 truncate">
                         {b.nombre}
                         {!b.activa && (
-                          <span className="px-1.5 py-0.5 text-[8px] bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded font-bold uppercase tracking-wider">
+                          <span className="px-1.5 py-0.5 text-[8px] bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded font-bold uppercase tracking-wider flex-shrink-0">
                             Inactivo
                           </span>
                         )}
                       </h5>
-                      <p className="text-[10px] text-slate-500 font-bold">{b.banco} ({b.tipoCuenta})</p>
-                      {b.numeroCuenta && <p className="text-[10px] text-slate-400">No. {b.numeroCuenta}</p>}
+                      <p className="text-[10px] text-slate-500 font-bold truncate">{b.banco} ({b.tipoCuenta})</p>
+                      {b.numeroCuenta && <p className="text-[10px] text-slate-400 truncate">No. {b.numeroCuenta}</p>}
                     </div>
-                    <div className="text-right flex flex-col items-end gap-1.5">
+
+                    {/* Sparkline mini-gráfico */}
+                    {b.activa && (
+                      <div className="w-20 h-8 flex-shrink-0 hidden sm:block">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={getSparklineData(b)}>
+                            <defs>
+                              <linearGradient id={`colorSpark-${b.id}`} x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor={b.saldoCents >= 0 ? '#10b981' : '#ef4444'} stopOpacity={0.25}/>
+                                <stop offset="95%" stopColor={b.saldoCents >= 0 ? '#10b981' : '#ef4444'} stopOpacity={0}/>
+                              </linearGradient>
+                            </defs>
+                            <Area
+                              type="monotone"
+                              dataKey="balance"
+                              stroke={b.saldoCents >= 0 ? '#10b981' : '#ef4444'}
+                              strokeWidth={1.5}
+                              fillOpacity={1}
+                              fill={`url(#colorSpark-${b.id})`}
+                              dot={false}
+                            />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+
+                    <div className="text-right flex flex-col items-end gap-1.5 flex-shrink-0">
                       <span className={`text-xs font-black ${b.saldoCents >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
                         RD$ {(b.saldoCents / 100).toLocaleString('es-DO', { minimumFractionDigits: 2 })}
                       </span>
@@ -553,8 +686,9 @@ export default function TesorereriaDashboard() {
                       </button>
                     </div>
                   </div>
-                ))}
-                {bancos.length === 0 && (
+                ))
+               )}
+                {!loadingBancos && bancos.length === 0 && (
                   <p className="text-xs text-slate-500 text-center py-4">No hay cuentas bancarias registradas.</p>
                 )}
               </div>
@@ -716,7 +850,23 @@ export default function TesorereriaDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {cxpDocs.map((d) => {
+                  {loadingCxp ? (
+                    [1, 2, 3, 4].map((i) => (
+                      <tr key={i} className="animate-pulse border-b border-slate-100 dark:border-slate-900/60">
+                        <td className="py-4"><div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-24" /></td>
+                        <td className="py-4"><div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-16" /></td>
+                        <td className="py-4"><div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-32" /></td>
+                        <td className="py-4"><div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-12" /></td>
+                        <td className="py-4"><div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-8" /></td>
+                        <td className="py-4"><div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-16" /></td>
+                        <td className="py-4"><div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-16" /></td>
+                        <td className="py-4"><div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-16" /></td>
+                        <td className="py-4"><div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-12" /></td>
+                        <td className="py-4 text-right"><div className="h-6 bg-slate-200 dark:bg-slate-800 rounded w-12 ml-auto" /></td>
+                      </tr>
+                    ))
+                  ) : (
+                    cxpDocs.map((d) => {
                     const restante = d.montoCents - d.pagadoCents
                     return (
                       <tr key={d.id} className="border-b border-slate-100 dark:border-slate-900/60 hover:bg-slate-50 dark:hover:bg-slate-950/20">
@@ -745,8 +895,48 @@ export default function TesorereriaDashboard() {
                             <span className="text-[10px] text-slate-405 italic">Sin escáner</span>
                           )}
                         </td>
-                        <td className="py-3.5 text-[10px] font-bold text-slate-500">
-                          {d.fechaVencimiento ? new Date(d.fechaVencimiento).toLocaleDateString('es-DO') : '-'}
+                        <td className="py-3.5">
+                          {(() => {
+                            if (!d.fechaVencimiento || d.estado === 'PAGADO') {
+                              return <span className="text-[10px] font-bold text-slate-400">{d.fechaVencimiento ? new Date(d.fechaVencimiento).toLocaleDateString('es-DO') : '-'}</span>
+                            }
+                            const hoy = new Date()
+                            const venc = new Date(d.fechaVencimiento)
+                            const diffMs = venc.getTime() - hoy.getTime()
+                            const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+                            
+                            if (diffDays < 0) {
+                              return (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0" />
+                                  <div>
+                                    <span className="text-[10px] font-bold text-red-600 dark:text-red-400 block">{Math.abs(diffDays)}d vencido</span>
+                                    <span className="text-[9px] text-red-400 dark:text-red-500">{venc.toLocaleDateString('es-DO')}</span>
+                                  </div>
+                                </div>
+                              )
+                            } else if (diffDays <= 7) {
+                              return (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0" />
+                                  <div>
+                                    <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 block">{diffDays === 0 ? 'Hoy' : `${diffDays}d restantes`}</span>
+                                    <span className="text-[9px] text-amber-400 dark:text-amber-500">{venc.toLocaleDateString('es-DO')}</span>
+                                  </div>
+                                </div>
+                              )
+                            } else {
+                              return (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
+                                  <div>
+                                    <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 block">{diffDays}d restantes</span>
+                                    <span className="text-[9px] text-slate-400">{venc.toLocaleDateString('es-DO')}</span>
+                                  </div>
+                                </div>
+                              )
+                            }
+                          })()}
                         </td>
                         <td className="py-3.5 font-bold text-slate-850 dark:text-slate-200">
                           RD$ {(d.montoCents / 100).toLocaleString('es-DO', { minimumFractionDigits: 2 })}
@@ -786,10 +976,11 @@ export default function TesorereriaDashboard() {
                         </td>
                       </tr>
                     )
-                  })}
-                  {cxpDocs.length === 0 && (
+                  })
+                 )}
+                  {!loadingCxp && cxpDocs.length === 0 && (
                     <tr>
-                      <td colSpan={9} className="text-center py-6 text-slate-500">No hay cuentas por pagar registradas.</td>
+                      <td colSpan={10} className="text-center py-6 text-slate-500 font-medium">No hay cuentas por pagar registradas.</td>
                     </tr>
                   )}
                 </tbody>
@@ -865,7 +1056,22 @@ export default function TesorereriaDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {cxcDocs.map((d) => {
+                  {loadingCxc ? (
+                    [1, 2, 3, 4].map((i) => (
+                      <tr key={i} className="animate-pulse border-b border-slate-100 dark:border-slate-900/60">
+                        <td className="py-4"><div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-24" /></td>
+                        <td className="py-4"><div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-20" /></td>
+                        <td className="py-4"><div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-32" /></td>
+                        <td className="py-4"><div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-12" /></td>
+                        <td className="py-4"><div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-16" /></td>
+                        <td className="py-4"><div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-16" /></td>
+                        <td className="py-4"><div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-16" /></td>
+                        <td className="py-4"><div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-12" /></td>
+                        <td className="py-4 text-right"><div className="h-6 bg-slate-200 dark:bg-slate-800 rounded w-12 ml-auto" /></td>
+                      </tr>
+                    ))
+                  ) : (
+                    cxcDocs.map((d) => {
                     const restante = d.montoCents - d.cobradoCents
                     return (
                       <tr key={d.id} className="border-b border-slate-100 dark:border-slate-900/60 hover:bg-slate-50 dark:hover:bg-slate-950/20">
@@ -877,8 +1083,59 @@ export default function TesorereriaDashboard() {
                         </td>
                         <td className="py-3.5 text-slate-700 dark:text-slate-350">{d.descripcion}</td>
                         <td className="py-3.5 font-mono text-[10px] text-slate-500 font-bold">{d.ncf || '-'}</td>
-                        <td className="py-3.5 text-[10px] font-bold text-slate-500">
-                          {d.fechaVencimiento ? new Date(d.fechaVencimiento).toLocaleDateString('es-DO') : '-'}
+                        <td className="py-3.5">
+                          {(() => {
+                            if (!d.fechaVencimiento || d.estado === 'COBRADO') {
+                              return <span className="text-[10px] font-bold text-slate-400">{d.fechaVencimiento ? new Date(d.fechaVencimiento).toLocaleDateString('es-DO') : '-'}</span>
+                            }
+                            const hoy = new Date()
+                            const venc = new Date(d.fechaVencimiento)
+                            const diffMs = hoy.getTime() - venc.getTime()
+                            const daysOverdue = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+                            const daysUntil = Math.ceil((venc.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24))
+
+                            let agingLabel = ''
+                            let agingColor = ''
+                            if (daysOverdue > 90) { agingLabel = '+90d'; agingColor = 'bg-red-600 text-white' }
+                            else if (daysOverdue > 60) { agingLabel = '61-90d'; agingColor = 'bg-red-500 text-white' }
+                            else if (daysOverdue > 30) { agingLabel = '31-60d'; agingColor = 'bg-amber-500 text-white' }
+                            else if (daysOverdue > 0) { agingLabel = '1-30d'; agingColor = 'bg-amber-400 text-amber-900' }
+
+                            if (daysUntil < 0) {
+                              return (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0" />
+                                  <div>
+                                    <span className="text-[10px] font-bold text-red-600 dark:text-red-400 block">{Math.abs(daysUntil)}d vencido</span>
+                                    <div className="flex items-center gap-1 mt-0.5">
+                                      <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${agingColor}`}>{agingLabel}</span>
+                                      <span className="text-[9px] text-red-400">{venc.toLocaleDateString('es-DO')}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              )
+                            } else if (daysUntil <= 7) {
+                              return (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0" />
+                                  <div>
+                                    <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 block">{daysUntil === 0 ? 'Hoy' : `${daysUntil}d restantes`}</span>
+                                    <span className="text-[9px] text-amber-400">{venc.toLocaleDateString('es-DO')}</span>
+                                  </div>
+                                </div>
+                              )
+                            } else {
+                              return (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
+                                  <div>
+                                    <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 block">{daysUntil}d restantes</span>
+                                    <span className="text-[9px] text-slate-400">{venc.toLocaleDateString('es-DO')}</span>
+                                  </div>
+                                </div>
+                              )
+                            }
+                          })()}
                         </td>
                         <td className="py-3.5 font-bold text-slate-850 dark:text-slate-200">
                           RD$ {(d.montoCents / 100).toLocaleString('es-DO', { minimumFractionDigits: 2 })}
@@ -918,10 +1175,11 @@ export default function TesorereriaDashboard() {
                         </td>
                       </tr>
                     )
-                  })}
-                  {cxcDocs.length === 0 && (
+                  })
+                 )}
+                  {!loadingCxc && cxcDocs.length === 0 && (
                     <tr>
-                      <td colSpan={9} className="text-center py-6 text-slate-500">No hay cuentas por cobrar registradas.</td>
+                      <td colSpan={9} className="text-center py-6 text-slate-500 font-medium">No hay cuentas por cobrar registradas.</td>
                     </tr>
                   )}
                 </tbody>

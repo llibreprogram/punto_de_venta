@@ -9,7 +9,7 @@
 import { useEffect, useState } from 'react'
 import AdminLayout from '@/components/AdminLayout'
 import { useToast } from '@/components/ui/Providers'
-import { Plus, Trash2, Calendar, FileText, CheckCircle2, AlertCircle, HelpCircle } from 'lucide-react'
+import { Plus, Trash2, Calendar, FileText, CheckCircle2, AlertCircle, HelpCircle, ChevronDown, Search } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 type Cuenta = {
@@ -75,6 +75,14 @@ export default function AsientosContablesPage() {
   const [activeSearchIndex, setActiveSearchIndex] = useState<number | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
 
+  // State para accordion expandible
+  const [expandedAsientos, setExpandedAsientos] = useState<Record<number, boolean>>({})
+
+  // Paginación y búsqueda
+  const [page, setPage] = useState(1)
+  const [searchDesc, setSearchDesc] = useState('')
+  const PAGE_SIZE = 15
+
   const { push } = useToast()
 
   const loadData = async () => {
@@ -106,6 +114,17 @@ export default function AsientosContablesPage() {
   useEffect(() => {
     loadData()
   }, [fechaInicio, fechaFin, filtroOrigen])
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n') {
+        e.preventDefault()
+        setShowNew(true)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   // Cálculos de balance
   const sumDebits = newApuntes.reduce((sum, a) => sum + (parseFloat(a.debito) || 0), 0)
@@ -144,7 +163,6 @@ export default function AsientosContablesPage() {
       })
     )
   }
-
   const handleSelectCuenta = (index: number, c: Cuenta) => {
     setNewApuntes((prev) =>
       prev.map((row, i) =>
@@ -155,6 +173,79 @@ export default function AsientosContablesPage() {
     )
     setActiveSearchIndex(null)
     setSearchQuery('')
+  }
+
+  const applyTemplate = (templateName: string) => {
+    if (templateName === 'venta') {
+      setNewDescripcion('Registro de venta POS acumulada del día')
+      const accCaja = cuentas.find(c => c.codigo.startsWith('1.1.01') || c.nombre.toLowerCase().includes('caja'))
+      const accVenta = cuentas.find(c => c.codigo.startsWith('4.1.01') || c.nombre.toLowerCase().includes('venta'))
+      const accItbis = cuentas.find(c => c.codigo.startsWith('2.1.02') || c.nombre.toLowerCase().includes('itbis'))
+      
+      const newRows = [
+        { cuentaId: accCaja?.id || 0, cuentaCodigo: accCaja?.codigo || '', cuentaNombre: accCaja?.nombre || '', debito: '', credito: '', referencia: 'Ingreso Diario' },
+        { cuentaId: accVenta?.id || 0, cuentaCodigo: accVenta?.codigo || '', cuentaNombre: accVenta?.nombre || '', debito: '', credito: '', referencia: 'Venta' },
+        { cuentaId: accItbis?.id || 0, cuentaCodigo: accItbis?.codigo || '', cuentaNombre: accItbis?.nombre || '', debito: '', credito: '', referencia: 'ITBIS 18%' },
+      ]
+      setNewApuntes(newRows)
+    } else if (templateName === 'alquiler') {
+      setNewDescripcion('Pago de Alquiler del local comercial')
+      const accGasto = cuentas.find(c => c.codigo.startsWith('6.1.02') || c.nombre.toLowerCase().includes('alquiler'))
+      const accBanco = cuentas.find(c => c.codigo.startsWith('1.1.01.02') || c.nombre.toLowerCase().includes('banco') || c.nombre.toLowerCase().includes('popular'))
+      
+      const newRows = [
+        { cuentaId: accGasto?.id || 0, cuentaCodigo: accGasto?.codigo || '', cuentaNombre: accGasto?.nombre || '', debito: '', credito: '', referencia: 'Mes corriente' },
+        { cuentaId: accBanco?.id || 0, cuentaCodigo: accBanco?.codigo || '', cuentaNombre: accBanco?.nombre || '', debito: '', credito: '', referencia: 'Transferencia' },
+      ]
+      setNewApuntes(newRows)
+    } else if (templateName === 'nomina') {
+      setNewDescripcion('Pago de nómina y salarios del personal')
+      const accGasto = cuentas.find(c => c.codigo.startsWith('6.1.01') || c.nombre.toLowerCase().includes('sueldo') || c.nombre.toLowerCase().includes('nomina'))
+      const accBanco = cuentas.find(c => c.codigo.startsWith('1.1.01.02') || c.nombre.toLowerCase().includes('banco') || c.nombre.toLowerCase().includes('popular'))
+      
+      const newRows = [
+        { cuentaId: accGasto?.id || 0, cuentaCodigo: accGasto?.codigo || '', cuentaNombre: accGasto?.nombre || '', debito: '', credito: '', referencia: 'Quincena' },
+        { cuentaId: accBanco?.id || 0, cuentaCodigo: accBanco?.codigo || '', cuentaNombre: accBanco?.nombre || '', debito: '', credito: '', referencia: 'Transferencia' },
+      ]
+      setNewApuntes(newRows)
+    }
+  }
+
+  const handleAutoBalance = () => {
+    if (Math.abs(difference) < 0.01) {
+      push('El asiento ya está balanceado.', 'info')
+      return
+    }
+
+    const valueStr = Math.abs(difference).toFixed(2)
+    const isCreditNeeded = difference > 0
+
+    setNewApuntes(prev => {
+      const copy = [...prev]
+      const lastIdx = copy.length - 1
+      const lastRow = copy[lastIdx]
+
+      // Si la última línea no tiene montos, la usamos
+      if (!lastRow.debito && !lastRow.credito) {
+        copy[lastIdx] = {
+          ...lastRow,
+          debito: isCreditNeeded ? '' : valueStr,
+          credito: isCreditNeeded ? valueStr : '',
+        }
+      } else {
+        // De lo contrario agregamos una nueva
+        copy.push({
+          cuentaId: 0,
+          cuentaCodigo: '',
+          cuentaNombre: '',
+          debito: isCreditNeeded ? '' : valueStr,
+          credito: isCreditNeeded ? valueStr : '',
+          referencia: 'Ajuste cuadre'
+        })
+      }
+      return copy
+    })
+    push('Partida autobalanceada exitosamente.', 'success')
   }
 
   const handlePost = async () => {
@@ -264,98 +355,192 @@ export default function AsientosContablesPage() {
     >
       <div className="grid gap-4">
         {loading ? (
-          <div className="flex items-center justify-center min-h-[400px]">
-            <div className="text-sm muted animate-pulse">Cargando libro diario…</div>
+          <div className="grid gap-3 animate-pulse mt-2">
+            <div className="h-10 bg-slate-100 dark:bg-slate-800/50 rounded-xl" />
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="h-16 bg-slate-100 dark:bg-slate-800/30 rounded-2xl border border-slate-200/40 dark:border-slate-800/10" />
+            ))}
           </div>
         ) : asientos.length === 0 ? (
           <div className="glass-panel rounded-2xl p-10 text-center muted text-sm">
             No se encontraron asientos contables en el rango seleccionado.
           </div>
         ) : (
-          <div className="grid gap-3">
-            {asientos.map((a) => {
+          <div className="grid gap-2">
+            {/* Summary stats bar */}
+            <div className="flex items-center justify-between text-xs px-3 py-2.5 mb-1 bg-slate-100 dark:bg-slate-950/30 rounded-xl border border-slate-200 dark:border-slate-800/30">
+              <div className="flex items-center gap-3">
+                <span className="text-slate-500 dark:text-slate-400 font-medium">
+                  {asientos.length} asientos encontrados
+                </span>
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1.5 text-slate-400 dark:text-slate-500" size={12} />
+                  <input
+                    className="bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-slate-700/50 rounded-lg pl-7 pr-3 py-1 text-[11px] text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 w-48 outline-none focus:border-indigo-500/50 transition-colors"
+                    placeholder="Buscar por descripción…"
+                    value={searchDesc}
+                    onChange={(e) => { setSearchDesc(e.target.value); setPage(1) }}
+                  />
+                </div>
+              </div>
+              <span className="text-slate-700 dark:text-slate-300 font-bold font-mono">
+                Total movimientos: RD$ {(asientos.reduce((s, a) => s + a.apuntes.reduce((sum, ap) => sum + ap.debitoCents, 0), 0) / 100).toLocaleString('es-DO', { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+
+            {(() => {
+              const filtered = searchDesc.trim()
+                ? asientos.filter(a =>
+                    a.descripcion.toLowerCase().includes(searchDesc.toLowerCase()) ||
+                    a.numero.toLowerCase().includes(searchDesc.toLowerCase()) ||
+                    (a.referencia || '').toLowerCase().includes(searchDesc.toLowerCase())
+                  )
+                : asientos
+              const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+              const start = (page - 1) * PAGE_SIZE
+              const paginated = filtered.slice(start, start + PAGE_SIZE)
+
+              return (
+                <>
+                  {paginated.length === 0 && searchDesc.trim() ? (
+                    <div className="text-center py-8 text-xs text-slate-500">
+                      No se encontraron asientos que coincidan con &quot;{searchDesc}&quot;.
+                    </div>
+                  ) : null}
+
+                  {paginated.map((a) => {
               const debTotal = a.apuntes.reduce((sum, item) => sum + item.debitoCents, 0)
+              const origenStyles: Record<string, string> = {
+                POS: 'bg-emerald-100 dark:bg-emerald-900/40 border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400',
+                MANUAL: 'bg-indigo-100 dark:bg-indigo-900/40 border-indigo-300 dark:border-indigo-800 text-indigo-700 dark:text-indigo-400',
+                COMPRAS: 'bg-amber-100 dark:bg-amber-900/40 border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-400',
+                NOMINA: 'bg-purple-100 dark:bg-purple-900/40 border-purple-300 dark:border-purple-800 text-purple-700 dark:text-purple-400',
+                TEST: 'bg-slate-100 dark:bg-slate-800/40 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400',
+              }
+              const origenKey = a.origen || 'MANUAL'
+              const isExpanded = expandedAsientos[a.id]
+
               return (
                 <div
                   key={a.id}
-                  className="glass-panel rounded-2xl border border-slate-800/40 p-4 hover:border-slate-700/50 transition-colors"
+                  className={`bg-white dark:bg-slate-900/60 rounded-2xl border transition-all duration-200 overflow-hidden ${
+                    isExpanded
+                      ? 'border-indigo-300 dark:border-indigo-800/50 shadow-md shadow-indigo-100 dark:shadow-indigo-900/10'
+                      : 'border-slate-200 dark:border-slate-800/40 hover:border-slate-300 dark:hover:border-slate-700/50'
+                  }`}
                 >
-                  {/* Encabezado del Asiento */}
-                  <div className="flex flex-wrap items-center justify-between border-b border-slate-800/40 pb-3 mb-3 gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs bg-indigo-950 text-indigo-400 font-bold border border-indigo-900 px-2 py-0.5 rounded">
+                  {/* Clickable Header */}
+                  <button
+                    onClick={() => setExpandedAsientos(prev => ({ ...prev, [a.id]: !prev[a.id] }))}
+                    className="w-full flex flex-wrap items-center justify-between p-4 gap-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors"
+                  >
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <ChevronDown size={14} className={`text-slate-400 transition-transform duration-200 flex-shrink-0 ${isExpanded ? 'rotate-0' : '-rotate-90'}`} />
+                      <span className="font-mono text-xs bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-bold border border-indigo-200 dark:border-indigo-900 px-2 py-0.5 rounded flex-shrink-0">
                         {a.numero}
                       </span>
-                      <span className="text-sm font-semibold text-slate-100">{a.descripcion}</span>
+                      <span className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">{a.descripcion}</span>
                     </div>
 
-                    <div className="flex items-center gap-3 text-xs">
+                    <div className="flex items-center gap-3 text-xs flex-shrink-0">
                       {a.referencia && (
-                        <span className="text-slate-400">
-                          Ref: <strong className="text-slate-300">{a.referencia}</strong>
+                        <span className="text-slate-500 dark:text-slate-400 hidden sm:inline">
+                          Ref: <strong className="text-slate-700 dark:text-slate-300">{a.referencia}</strong>
                         </span>
                       )}
-                      <span className="bg-slate-900 border border-slate-800 px-2.5 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider text-slate-300">
-                        {a.origen || 'MANUAL'}
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider border ${origenStyles[origenKey] || origenStyles.MANUAL}`}>
+                        {origenKey}
                       </span>
-                      <span className="text-slate-400">
+                      <span className="text-slate-500 dark:text-slate-400">
                         {new Date(a.fecha).toLocaleDateString(undefined, {
                           year: 'numeric',
                           month: 'short',
                           day: 'numeric'
                         })}
                       </span>
+                      <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+                        RD$ {(debTotal / 100).toLocaleString('es-DO', { minimumFractionDigits: 2 })}
+                      </span>
                     </div>
-                  </div>
+                  </button>
 
-                  {/* Detalle (Líneas / Apuntes) */}
-                  <div className="grid text-xs gap-1.5 font-mono">
-                    <div className="grid grid-cols-12 font-semibold text-slate-400 border-b border-slate-800/20 pb-1 mb-1">
-                      <div className="col-span-2">Código</div>
-                      <div className="col-span-4">Cuenta</div>
-                      <div className="col-span-3">Detalle</div>
-                      <div className="col-span-1.5 text-right pr-4 col-start-10">Débito (RD$)</div>
-                      <div className="col-span-1.5 text-right col-start-12">Crédito (RD$)</div>
-                    </div>
+                  {/* Expandable Detail */}
+                  {isExpanded && (
+                    <div className="px-4 pb-4 border-t border-slate-200 dark:border-slate-800/40">
+                      <div className="grid text-xs gap-1.5 font-mono mt-3">
+                        <div className="grid grid-cols-12 font-semibold text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800/20 pb-1 mb-1">
+                          <div className="col-span-2">Código</div>
+                          <div className="col-span-4">Cuenta</div>
+                          <div className="col-span-3">Detalle</div>
+                          <div className="col-span-1.5 text-right pr-4 col-start-10">Débito (RD$)</div>
+                          <div className="col-span-1.5 text-right col-start-12">Crédito (RD$)</div>
+                        </div>
 
-                    {a.apuntes.map((line) => (
-                      <div
-                        key={line.id}
-                        className="grid grid-cols-12 py-1 border-b border-slate-800/10 last:border-0"
-                      >
-                        <div className="col-span-2 text-indigo-400">{line.cuenta.codigo}</div>
-                        <div className="col-span-4 text-slate-200">
-                          {/* Indentación visual si es crédito */}
-                          <span className={line.creditoCents > 0 ? 'pl-4' : ''}>
-                            {line.cuenta.nombre}
-                          </span>
-                        </div>
-                        <div className="col-span-3 text-slate-400 italic">
-                          {line.referencia || '—'}
-                        </div>
-                        <div className="col-span-1.5 text-right pr-4 text-emerald-400 col-start-10">
-                          {line.debitoCents > 0 ? (line.debitoCents / 100).toFixed(2) : ''}
-                        </div>
-                        <div className="col-span-1.5 text-right text-indigo-400 col-start-12">
-                          {line.creditoCents > 0 ? (line.creditoCents / 100).toFixed(2) : ''}
+                        {a.apuntes.map((line) => (
+                          <div
+                            key={line.id}
+                            className="grid grid-cols-12 py-1 border-b border-slate-100 dark:border-slate-800/10 last:border-0"
+                          >
+                            <div className="col-span-2 text-indigo-600 dark:text-indigo-400">{line.cuenta.codigo}</div>
+                            <div className="col-span-4 text-slate-700 dark:text-slate-200">
+                              <span className={line.creditoCents > 0 ? 'pl-4' : ''}>
+                                {line.cuenta.nombre}
+                              </span>
+                            </div>
+                            <div className="col-span-3 text-slate-500 dark:text-slate-400 italic">
+                              {line.referencia || '—'}
+                            </div>
+                            <div className="col-span-1.5 text-right pr-4 text-emerald-600 dark:text-emerald-400 col-start-10">
+                              {line.debitoCents > 0 ? (line.debitoCents / 100).toFixed(2) : ''}
+                            </div>
+                            <div className="col-span-1.5 text-right text-indigo-600 dark:text-indigo-400 col-start-12">
+                              {line.creditoCents > 0 ? (line.creditoCents / 100).toFixed(2) : ''}
+                            </div>
+                          </div>
+                        ))}
+
+                        {/* Total de Control */}
+                        <div className="grid grid-cols-12 font-bold border-t border-slate-200 dark:border-slate-800/40 pt-2 mt-1">
+                          <div className="col-span-6 text-slate-500 dark:text-slate-400 text-left">TOTAL DE CONTROL</div>
+                          <div className="col-span-1.5 text-right pr-4 text-emerald-600 dark:text-emerald-400 col-start-10">
+                            RD$ {(debTotal / 100).toFixed(2)}
+                          </div>
+                          <div className="col-span-1.5 text-right text-indigo-600 dark:text-indigo-400 col-start-12">
+                            RD$ {(debTotal / 100).toFixed(2)}
+                          </div>
                         </div>
                       </div>
-                    ))}
-
-                    {/* Total de Control */}
-                    <div className="grid grid-cols-12 font-bold border-t border-slate-800/40 pt-2 mt-1">
-                      <div className="col-span-6 text-slate-400 text-left">TOTAL DE CONTROL</div>
-                      <div className="col-span-1.5 text-right pr-4 text-emerald-400 col-start-10">
-                        RD$ {(debTotal / 100).toFixed(2)}
-                      </div>
-                      <div className="col-span-1.5 text-right text-indigo-400 col-start-12">
-                        RD$ {(debTotal / 100).toFixed(2)}
-                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               )
             })}
+
+                  {/* Pagination controls */}
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-center gap-3 pt-3">
+                      <button
+                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                        disabled={page <= 1}
+                        className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-900 border border-slate-700 text-slate-300 hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      >
+                        ← Anterior
+                      </button>
+                      <span className="text-[11px] font-mono text-slate-400">
+                        Página {page} de {totalPages}
+                      </span>
+                      <button
+                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                        disabled={page >= totalPages}
+                        className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-900 border border-slate-700 text-slate-300 hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      >
+                        Siguiente →
+                      </button>
+                    </div>
+                  )}
+                </>
+              )
+            })()}
           </div>
         )}
       </div>
@@ -412,6 +597,23 @@ export default function AsientosContablesPage() {
                     value={newReferencia}
                     onChange={(e) => setNewReferencia(e.target.value)}
                   />
+                </label>
+
+                <label className="grid gap-1">
+                  <span className="text-xs text-slate-300">Cargar Plantilla Común</span>
+                  <select
+                    className="input bg-slate-900 border border-slate-700 text-slate-200"
+                    onChange={(e) => {
+                      applyTemplate(e.target.value)
+                      e.target.value = ''
+                    }}
+                    defaultValue=""
+                  >
+                    <option value="" disabled>Seleccione una plantilla…</option>
+                    <option value="venta">Venta POS del Día (Ingreso/Venta/ITBIS)</option>
+                    <option value="alquiler">Pago de Alquiler (Gasto/Banco)</option>
+                    <option value="nomina">Pago de Nómina (Gasto/Banco)</option>
+                  </select>
                 </label>
               </div>
 
@@ -522,9 +724,16 @@ export default function AsientosContablesPage() {
                   </div>
                 ))}
 
-                <div>
+                <div className="flex justify-between items-center w-full">
                   <button onClick={addApunteRow} className="btn text-indigo-400 hover:bg-slate-800/40">
                     + Añadir Línea
+                  </button>
+                  <button
+                    onClick={handleAutoBalance}
+                    disabled={Math.abs(difference) < 0.01}
+                    className="btn border border-indigo-500/30 text-indigo-400 hover:bg-indigo-950/20 disabled:opacity-30 disabled:cursor-not-allowed text-xs font-bold px-3 py-1.5 rounded-xl transition-all"
+                  >
+                    ⚖️ Autobalancear Diferencia
                   </button>
                 </div>
               </div>

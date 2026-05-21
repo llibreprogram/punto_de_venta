@@ -13,21 +13,63 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const tree = searchParams.get('tree') === 'true'
+    const movimientos = searchParams.get('movimientos') === 'true'
+    const idParam = searchParams.get('id')
+
+    if (movimientos && idParam) {
+      const cuentaId = parseInt(idParam, 10)
+      const apuntes = await prisma.apunteContable.findMany({
+        where: {
+          cuentaId,
+          transaccion: {
+            estado: 'POSTEADO'
+          }
+        },
+        include: {
+          transaccion: {
+            select: {
+              numero: true,
+              descripcion: true,
+              fecha: true,
+              referencia: true
+            }
+          }
+        },
+        orderBy: {
+          transaccion: {
+            fecha: 'desc'
+          }
+        }
+      })
+      return NextResponse.json({ ok: true, movimientos: apuntes })
+    }
 
     const cuentas = await prisma.cuentaContable.findMany({
       orderBy: { codigo: 'asc' },
+      include: tree ? {
+        apuntes: {
+          where: { transaccion: { estado: 'POSTEADO' } },
+          select: { debitoCents: true, creditoCents: true },
+        },
+      } : undefined,
     })
 
     if (!tree) {
       return NextResponse.json({ ok: true, cuentas })
     }
 
-    // Convertir a estructura de árbol jerárquico
+    // Convertir a estructura de árbol jerárquico con saldos
     const mapaCuentas: Record<number, any> = {}
     const raices: any[] = []
 
     cuentas.forEach((c) => {
-      mapaCuentas[c.id] = { ...c, subCuentas: [] }
+      const apuntes = (c as any).apuntes || []
+      const totalDebito = apuntes.reduce((s: number, a: any) => s + a.debitoCents, 0)
+      const totalCredito = apuntes.reduce((s: number, a: any) => s + a.creditoCents, 0)
+      const saldo = c.naturaleza === 'DEBITO' ? totalDebito - totalCredito : totalCredito - totalDebito
+
+      const { apuntes: _, ...cuentaSin } = c as any
+      mapaCuentas[c.id] = { ...cuentaSin, subCuentas: [], saldoCents: saldo }
     })
 
     cuentas.forEach((c) => {
