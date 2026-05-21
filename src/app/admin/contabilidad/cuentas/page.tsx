@@ -432,10 +432,10 @@ export default function CatalogCuentasPage() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="glass-panel border border-slate-700/60 rounded-3xl p-6 w-full max-w-md grid gap-4 shadow-2xl bg-slate-900/95"
+              className="bg-white border border-slate-200 rounded-3xl p-6 w-full max-w-md grid gap-4 shadow-2xl"
             >
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-slate-100">
+                <h3 className="text-lg font-bold text-slate-800">
                   {newPadreId ? 'Crear Subcuenta / Auxiliar' : 'Crear Cuenta Principal'}
                 </h3>
                 <button
@@ -444,7 +444,7 @@ export default function CatalogCuentasPage() {
                     setNewPadreId('')
                     setNewCodigo('')
                   }}
-                  className="text-slate-400 hover:text-white p-1 rounded-full hover:bg-slate-800"
+                  className="text-slate-400 hover:text-slate-700 p-1 rounded-full hover:bg-slate-100"
                 >
                   ✕
                 </button>
@@ -452,15 +452,15 @@ export default function CatalogCuentasPage() {
 
               {/* Si tiene padre seleccionado, mostrarlo */}
               {newPadreId && (
-                <div className="bg-indigo-950/30 border border-indigo-900/50 p-3 rounded-xl text-xs flex justify-between items-center text-slate-300">
+                <div className="bg-indigo-50 border border-indigo-200 p-3 rounded-xl text-xs flex justify-between items-center text-slate-700">
                   <div>
                     <span className="muted">Padre:</span>{' '}
-                    <span className="font-mono text-indigo-400 font-semibold">
+                    <span className="font-mono text-indigo-600 font-semibold">
                       {cuentasList.find((c) => c.id === parseInt(newPadreId))?.codigo}
                     </span>{' '}
                     - {cuentasList.find((c) => c.id === parseInt(newPadreId))?.nombre}
                   </div>
-                  <span className="text-[9px] font-bold bg-indigo-900/60 text-indigo-300 px-2 py-0.5 rounded uppercase">
+                  <span className="text-[9px] font-bold bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded uppercase">
                     Heredado
                   </span>
                 </div>
@@ -468,7 +468,7 @@ export default function CatalogCuentasPage() {
 
               <div className="grid gap-3">
                 <label className="grid gap-1">
-                  <span className="text-xs font-semibold text-slate-300">Código Contable</span>
+                  <span className="text-xs font-semibold text-slate-600">Código Contable</span>
                   <input
                     className="input font-mono"
                     placeholder="Ej: 1.1.01.03"
@@ -478,7 +478,7 @@ export default function CatalogCuentasPage() {
                 </label>
 
                 <label className="grid gap-1">
-                  <span className="text-xs font-semibold text-slate-300">Nombre de la Cuenta</span>
+                  <span className="text-xs font-semibold text-slate-600">Nombre de la Cuenta</span>
                   <input
                     className="input"
                     placeholder="Ej: Banco BHD León"
@@ -490,7 +490,7 @@ export default function CatalogCuentasPage() {
                 {!newPadreId && (
                   <>
                     <label className="grid gap-1">
-                      <span className="text-xs font-semibold text-slate-300">Tipo de Cuenta</span>
+                      <span className="text-xs font-semibold text-slate-600">Tipo de Cuenta</span>
                       <select
                         className="input"
                         value={newTipo}
@@ -506,7 +506,7 @@ export default function CatalogCuentasPage() {
                     </label>
 
                     <label className="grid gap-1">
-                      <span className="text-xs font-semibold text-slate-300">Naturaleza</span>
+                      <span className="text-xs font-semibold text-slate-600">Naturaleza</span>
                       <select
                         className="input"
                         value={newNaturaleza}
@@ -521,13 +521,13 @@ export default function CatalogCuentasPage() {
 
                 {newPadreId && (
                   <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
                       <span className="muted block">Tipo</span>
-                      <span className="font-semibold text-slate-200">{newTipo}</span>
+                      <span className="font-semibold text-slate-700">{newTipo}</span>
                     </div>
-                    <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
                       <span className="muted block">Naturaleza</span>
-                      <span className="font-semibold text-slate-200">{newNaturaleza}</span>
+                      <span className="font-semibold text-slate-700">{newNaturaleza}</span>
                     </div>
                   </div>
                 )}
