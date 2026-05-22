@@ -132,6 +132,20 @@ export default function TicketClient({
           ) : null}
           <div className="flex justify-between font-bold"><span>Total</span><span>{toCurrency(pedido.totalCents, locale, currency)}</span></div>
         </div>
+        
+        {pedido.pagos && pedido.pagos.length > 0 && (
+          <div className="text-[11px] text-gray-600 mt-2 border-t border-dashed pt-2 grid gap-1">
+            {pedido.pagos.map((p) => (
+              <div key={p.id} className="flex justify-between">
+                <span>Método de Pago: <span className="font-semibold">{p.metodo}</span></span>
+                {p.referencia && (
+                  <span className="font-mono">Conf: <span className="font-bold">{p.referencia}</span></span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
          <hr className="my-3" />
         <div className="text-xs text-gray-600 text-center">{footer}</div>
         

@@ -6,7 +6,7 @@
  */
 "use client"
 import { useEffect, useState } from 'react'
-import { useToast, useConfirm } from '@/components/ui/Providers'
+import { useToast } from '@/components/ui/Providers'
 import { usePosStore, Producto, Linea, MetodoPago } from '@/store/posStore'
 import { PosHeader } from '@/components/pos/PosHeader'
 import { ProductGrid } from '@/components/pos/ProductGrid'
@@ -31,7 +31,6 @@ export default function POSPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const { push } = useToast()
-  const { confirm } = useConfirm()
   
   const { 
     tipo, mesaId, subCuenta, nombreCuenta, setSubCuenta, setNombreCuenta, setTipo, setMesaId, 
@@ -135,10 +134,10 @@ export default function POSPage() {
         })
         const nums = Array.from(cuentasMap.keys()).sort((a,b)=>a-b)
         const arr = nums.map(n => ({ subCuenta: n, nombreCuenta: cuentasMap.get(n) }))
-        if (!nums.includes(subCuenta)) {
-           arr.push({ subCuenta })
-           arr.sort((a,b) => a.subCuenta - b.subCuenta)
-        }
+         if (!nums.includes(subCuenta)) {
+            arr.push({ subCuenta, nombreCuenta: null })
+            arr.sort((a,b) => a.subCuenta - b.subCuenta)
+         }
         setSubCuentasDisponibles(arr.length ? arr : [{ subCuenta: 1 }])
       }).catch(()=>{})
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -154,7 +153,8 @@ export default function POSPage() {
     printPrecuenta?: boolean,
     ncfTipo?: string,
     rncCedula?: string,
-    nombreCliente?: string
+    nombreCliente?: string,
+    referencia?: string
   ) => {
     const carritoActual = overrideCarrito || carrito
     const descActual = descuentoForce ?? descuentoPendiente
@@ -228,7 +228,7 @@ export default function POSPage() {
     }
 
     if (esCobro && metodoPago) {
-      body.pago = { metodo: metodoPago, montoCents: finalTotal }
+      body.pago = { metodo: metodoPago, montoCents: finalTotal, referencia }
     }
 
     const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
@@ -333,7 +333,7 @@ export default function POSPage() {
                   return
                 }
                 if (Object.keys(carrito).length > 0 && subCuenta !== sc.subCuenta) {
-                  if (!confirm('Tienes productos sin guardar en esta cuenta. ¿Seguro que quieres cambiar de cuenta y perderlos?')) return
+                  if (!window.confirm('Tienes productos sin guardar en esta cuenta. ¿Seguro que quieres cambiar de cuenta y perderlos?')) return
                 }
                 cargarMesaCuenta(mesaId, sc.subCuenta)
               }}
@@ -350,7 +350,7 @@ export default function POSPage() {
           <button
             onClick={() => {
               if (Object.keys(carrito).length > 0) {
-                if (!confirm('Tienes productos sin guardar. ¿Seguro que quieres abrir una nueva cuenta y perderlos?')) return
+                if (!window.confirm('Tienes productos sin guardar. ¿Seguro que quieres abrir una nueva cuenta y perderlos?')) return
               }
               const newName = prompt('Nombre para la nueva cuenta (opcional):')
               if (newName === null) return
@@ -404,9 +404,9 @@ export default function POSPage() {
           totalCents={getTotales(ajustes?.taxPct || 0, ajustes?.propinaPct || 0, descuentoPendiente).total}
           ajustes={ajustes}
           onClose={() => setCobrando(false)}
-          onConfirm={(metodo, entregado, ncfTipo, rnc, nombre) => {
+          onConfirm={(metodo, entregado, ncfTipo, rnc, nombre, referencia) => {
             setCobrando(false)
-            procesarOrden(true, metodo, entregado, undefined, undefined, false, ncfTipo, rnc, nombre)
+            procesarOrden(true, metodo, entregado, undefined, undefined, false, ncfTipo, rnc, nombre, referencia)
           }}
         />
       )}
@@ -434,7 +434,7 @@ export default function POSPage() {
           })()}
           ajustes={ajustes}
           onClose={() => setCobrandoSel(false)}
-          onConfirm={(metodo, entregado, ncfTipo, rnc, nombre) => {
+          onConfirm={(metodo, entregado, ncfTipo, rnc, nombre, referencia) => {
             setCobrandoSel(false)
             const overrideCarrito: Record<number, Linea> = {}
             for (const [id, qty] of Object.entries(selPendiente)) {
@@ -442,7 +442,7 @@ export default function POSPage() {
                 overrideCarrito[Number(id)] = { ...carrito[Number(id)], cantidad: qty }
               }
             }
-            procesarOrden(true, metodo, entregado, overrideCarrito, undefined, false, ncfTipo, rnc, nombre)
+            procesarOrden(true, metodo, entregado, overrideCarrito, undefined, false, ncfTipo, rnc, nombre, referencia)
           }}
         />
       )}

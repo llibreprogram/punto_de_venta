@@ -21,7 +21,8 @@ interface PaymentModalProps {
     entregadoCents: number,
     ncfTipo: string,
     rncCedula?: string,
-    nombreCliente?: string
+    nombreCliente?: string,
+    referencia?: string
   ) => void
 }
 
@@ -39,6 +40,7 @@ export function PaymentModal({ totalCents, ajustes, onClose, onConfirm }: Paymen
   const [nombreCliente, setNombreCliente] = useState('')
   const [loadingRnc, setLoadingRnc] = useState(false)
   const [rncError, setRncError] = useState('')
+  const [referencia, setReferencia] = useState('')
 
   const docStatus = useMemo(() => {
     if (!rncCedula) return { valido: false, tipo: 'DESCONOCIDO', mensaje: '' }
@@ -123,7 +125,8 @@ export function PaymentModal({ totalCents, ajustes, onClose, onConfirm }: Paymen
       metodo === 'EFECTIVO' ? entregadoCents : totalCents,
       ncfTipo,
       ncfTipo === 'B01' ? rncCedula : undefined,
-      ncfTipo === 'B01' ? nombreCliente : undefined
+      ncfTipo === 'B01' ? nombreCliente : undefined,
+      (metodo === 'TARJETA' || metodo === 'TRANSFERENCIA') ? referencia.trim() : undefined
     )
   }
 
@@ -266,6 +269,28 @@ export function PaymentModal({ totalCents, ajustes, onClose, onConfirm }: Paymen
                     value={nombreCliente}
                     onChange={(e) => setNombreCliente(e.target.value)}
                     placeholder="Ej: Dominicana Corp SRL"
+                    className="w-full text-sm font-bold p-2.5 border border-slate-200 bg-white rounded-lg focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none"
+                  />
+                </div>
+              </motion.div>
+            )}
+
+            {/* Campos de confirmación de tarjeta/transferencia */}
+            {(metodo === 'TARJETA' || metodo === 'TRANSFERENCIA') && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                className="grid gap-3.5 p-4 bg-slate-50 border border-slate-200/60 rounded-xl overflow-hidden"
+              >
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">
+                    {metodo === 'TARJETA' ? 'Nº Confirmación / Aprobación Tarjeta' : 'Nº de Referencia de Transferencia'}
+                  </label>
+                  <input
+                    type="text"
+                    value={referencia}
+                    onChange={(e) => setReferencia(e.target.value)}
+                    placeholder={metodo === 'TARJETA' ? "Ej: 123456" : "Ej: REF-987654"}
                     className="w-full text-sm font-bold p-2.5 border border-slate-200 bg-white rounded-lg focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none"
                   />
                 </div>
