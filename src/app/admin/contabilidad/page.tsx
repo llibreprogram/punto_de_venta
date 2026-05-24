@@ -16,10 +16,15 @@ import {
   Calendar, Layers, CheckCircle2, Ban, Plus, Settings, Eye, Sliders,
   LayoutDashboard, DollarSign, TrendingDown, PieChart, Bell,
   ArrowRight, BookOpen, FileText, Landmark, ArrowUpRight, ArrowDownRight, Clock,
-  Printer
+  Printer, Activity, ShieldAlert, Sparkles, Wrench,
+  TrendingUp, Coins, CreditCard, Shield, PackageOpen, Scale, Zap
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
+import { 
+  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, 
+  CartesianGrid, Tooltip as ReChartsTooltip, Cell
+} from 'recharts'
 
 type Secuencia = {
   id: number
@@ -65,7 +70,7 @@ type DashboardData = {
 }
 
 export default function ContabilidadDashboard() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'financials' | 'dgii' | 'ncf' | 'cierre'>('dashboard')
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'financials' | 'dgii' | 'ncf' | 'cierre' | 'diagnostico'>('dashboard')
   const [periodo, setPeriodo] = useState(() => {
     const d = new Date()
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
@@ -191,6 +196,58 @@ export default function ContabilidadDashboard() {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
   })
 
+  // Estados de diagnóstico contable
+  const [diagnosticoData, setDiagnosticoData] = useState<any>(null)
+  const [loadingDiagnostico, setLoadingDiagnostico] = useState(false)
+  const [fixingDiagnostico, setFixingDiagnostico] = useState(false)
+  const [expandedFinding, setExpandedFinding] = useState<string | null>(null)
+
+  const loadDiagnostico = async () => {
+    try {
+      setLoadingDiagnostico(true)
+      const res = await fetch('/api/contabilidad/diagnostico')
+      const data = await res.json()
+      if (data.ok) {
+        setDiagnosticoData(data)
+      } else {
+        push(data.error || 'Error al cargar diagnóstico', 'error')
+      }
+    } catch (e) {
+      console.error(e)
+      push('Error de red al cargar diagnóstico', 'error')
+    } finally {
+      setLoadingDiagnostico(false)
+    }
+  }
+
+  const handleAutofix = async () => {
+    if (!confirm('¿Está seguro de que desea ejecutar la corrección automática? Esto asignará folios NCF correspondientes y generará asientos contables para todas las ventas del POS que estén descuadradas fiscalmente.')) {
+      return
+    }
+    try {
+      setFixingDiagnostico(true)
+      const res = await fetch('/api/contabilidad/diagnostico/autofix', {
+        method: 'POST',
+      })
+      const data = await res.json()
+      if (data.ok) {
+        if (data.totalFixed > 0) {
+          push(`Se han corregido ${data.totalFixed} ventas con éxito.`, 'success')
+        } else {
+          push('No se encontraron ventas para corregir o ninguna requirió reparación.', 'info')
+        }
+        await loadDiagnostico()
+      } else {
+        push(data.error || 'Error al ejecutar autofix', 'error')
+      }
+    } catch (e) {
+      console.error(e)
+      push('Error de red al ejecutar autofix', 'error')
+    } finally {
+      setFixingDiagnostico(false)
+    }
+  }
+
   const loadCierreData = async () => {
     try {
       setLoadingCierre(true)
@@ -256,6 +313,8 @@ export default function ContabilidadDashboard() {
       loadNcfData()
     } else if (activeTab === 'cierre') {
       loadCierreData()
+    } else if (activeTab === 'diagnostico') {
+      loadDiagnostico()
     }
   }, [activeTab, reportType, fechaInicio, fechaFin, periodo])
 
@@ -393,6 +452,7 @@ export default function ContabilidadDashboard() {
       actions={
         <div className="flex bg-slate-100 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-2xl p-1 gap-1 shadow-inner shadow-black/10 dark:shadow-black/40 overflow-x-auto">
           {tabBtn('dashboard', <LayoutDashboard size={14} />, 'Panel')}
+          {tabBtn('diagnostico', <Activity size={14} />, 'Diagnóstico')}
           {tabBtn('financials', <BarChart3 size={14} />, 'Reportes')}
           {tabBtn('dgii', <FileSpreadsheet size={14} />, 'DGII')}
           {tabBtn('ncf', <Settings size={14} />, 'NCF')}
@@ -1351,6 +1411,437 @@ export default function ContabilidadDashboard() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* 5. SECCIÓN: AUDITORÍA Y DIAGNÓSTICO */}
+      {activeTab === 'diagnostico' && (
+        <div className="grid gap-6">
+          {loadingDiagnostico ? (
+            <div className="flex items-center justify-center min-h-[400px]">
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-10 h-10 border-[3px] border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+                <p className="text-xs font-semibold text-slate-450 animate-pulse">Analizando base de datos financiera...</p>
+              </div>
+            </div>
+          ) : diagnosticoData ? (
+            <>
+              {/* Top Row: Score & Severity KPIs */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Score Card */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5 }}
+                  className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/50 rounded-3xl p-6 shadow-xl flex items-center gap-6"
+                >
+                  {/* Radial progress circle */}
+                  <div className="relative w-28 h-28 flex-shrink-0 flex items-center justify-center">
+                    <svg className="w-full h-full transform -rotate-90">
+                      <circle
+                        cx="56"
+                        cy="56"
+                        r="48"
+                        className="stroke-slate-100 dark:stroke-slate-800"
+                        strokeWidth="8"
+                        fill="transparent"
+                      />
+                      <motion.circle
+                        cx="56"
+                        cy="56"
+                        r="48"
+                        className={
+                          diagnosticoData.healthScore >= 90 ? 'stroke-indigo-500' :
+                          diagnosticoData.healthScore >= 75 ? 'stroke-emerald-500' :
+                          diagnosticoData.healthScore >= 50 ? 'stroke-amber-500' : 'stroke-rose-500'
+                        }
+                        strokeWidth="8"
+                        fill="transparent"
+                        strokeDasharray={2 * Math.PI * 48}
+                        initial={{ strokeDashoffset: 2 * Math.PI * 48 }}
+                        animate={{ strokeDashoffset: 2 * Math.PI * 48 * (1 - diagnosticoData.healthScore / 100) }}
+                        transition={{ duration: 1.2, ease: "easeOut" }}
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                    <span className="absolute text-2xl font-black text-slate-850 dark:text-white font-mono">
+                      {diagnosticoData.healthScore}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className={`text-[10px] font-extrabold tracking-wider px-2 py-0.5 rounded-full border ${
+                      diagnosticoData.healthLevel === 'OPTIMA' || diagnosticoData.healthLevel === 'EXCELENTE'
+                        ? 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-400 dark:border-indigo-800' :
+                      diagnosticoData.healthLevel === 'BUENA'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800' :
+                      diagnosticoData.healthLevel === 'MODERADA'
+                        ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800' :
+                        'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-800'
+                    }`}>
+                      Salud: {
+                        diagnosticoData.healthLevel === 'OPTIMA' || diagnosticoData.healthLevel === 'EXCELENTE' ? 'Óptima' :
+                        diagnosticoData.healthLevel === 'BUENA' ? 'Buena' :
+                        diagnosticoData.healthLevel === 'MODERADA' ? 'Riesgo Moderado' : 'Alerta Crítica'
+                      }
+                    </span>
+                    <h3 className="text-base font-black text-slate-800 dark:text-white mt-2">Salud Financiera</h3>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 leading-relaxed">
+                      {diagnosticoData.healthScore >= 90
+                        ? 'Su contabilidad e inventario se encuentran en un estado excelente. Continúe así.'
+                        : 'Se detectaron algunas inconsistencias que requieren su atención para asegurar la salud contable.'}
+                    </p>
+                  </div>
+                </motion.div>
+
+                {/* Findings Summary Stats */}
+                <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="bg-rose-50/40 dark:bg-rose-950/10 border border-rose-100 dark:border-rose-900/40 rounded-3xl p-5 shadow-sm flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
+                        <ShieldAlert size={18} />
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider">Gravedad Alta</span>
+                      </div>
+                      <p className="text-2xl font-black text-rose-700 dark:text-rose-450 mt-3">
+                        {diagnosticoData.findings.filter((f: any) => f.severity === 'ALTA').length}
+                      </p>
+                    </div>
+                    <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-2">Hallazgos críticos que comprometen la exactitud contable o fiscal.</p>
+                  </div>
+
+                  <div className="bg-amber-50/40 dark:bg-amber-950/10 border border-amber-100 dark:border-amber-900/40 rounded-3xl p-5 shadow-sm flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                        <AlertTriangle size={18} />
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider">Gravedad Media</span>
+                      </div>
+                      <p className="text-2xl font-black text-amber-700 dark:text-amber-455 mt-3">
+                        {diagnosticoData.findings.filter((f: any) => f.severity === 'MEDIA').length}
+                      </p>
+                    </div>
+                    <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-2">Alertas operativas que afectan el inventario o rentabilidad.</p>
+                  </div>
+
+                  <div className="bg-indigo-50/40 dark:bg-indigo-950/10 border border-indigo-100 dark:border-indigo-900/40 rounded-3xl p-5 shadow-sm flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
+                        <Activity size={18} />
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider">Optimización</span>
+                      </div>
+                      <p className="text-2xl font-black text-indigo-700 dark:text-indigo-450 mt-3">
+                        {diagnosticoData.findings.filter((f: any) => f.severity === 'BAJA').length}
+                      </p>
+                    </div>
+                    <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-2">Sugerencias para mejorar la liquidez y control de cobros/insumos.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Second Row: Bar Chart of Categories & Recommendations */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Recharts Bar Chart */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.1 }}
+                  className="lg:col-span-2 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/50 rounded-3xl p-6 shadow-sm"
+                >
+                  <h4 className="text-sm font-black text-slate-800 dark:text-white tracking-tight mb-4 flex items-center gap-2">
+                    <BarChart3 size={16} className="text-indigo-500" /> Evaluación de Áreas Financieras
+                  </h4>
+                  <div className="h-[250px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={diagnosticoData.categories} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-slate-200)" opacity={0.3} />
+                        <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'var(--color-slate-400)' }} tickLine={false} axisLine={false} />
+                        <YAxis tick={{ fontSize: 10, fill: 'var(--color-slate-400)' }} tickLine={false} axisLine={false} domain={[0, 100]} />
+                        <ReChartsTooltip
+                          cursor={{ fill: 'rgba(99,102,241,0.05)' }}
+                          content={({ active, payload }: any) => {
+                            if (!active || !payload?.length) return null
+                            const p = payload[0].payload
+                            return (
+                              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl p-3 text-xs">
+                                <p className="font-bold text-slate-800 dark:text-white">{p.name}</p>
+                                <p className="text-slate-400 mt-1">Calificación: <span className="font-bold text-indigo-500">{p.score}/100</span></p>
+                                <p className="text-[10px] text-slate-400">Peso en Salud: {p.weight}</p>
+                              </div>
+                            )
+                          }}
+                        />
+                        <Bar dataKey="score" radius={[8, 8, 0, 0]} barSize={40}>
+                          {diagnosticoData.categories.map((entry: any, index: number) => {
+                            let fill = '#6366f1' // indigo
+                            if (entry.score < 50) fill = '#f43f5e' // rose
+                            else if (entry.score < 75) fill = '#f59e0b' // amber
+                            else if (entry.score < 90) fill = '#10b981' // emerald
+                            return <Cell key={`cell-${index}`} fill={fill} />
+                          })}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </motion.div>
+
+                {/* Recommendations */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                  className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/50 rounded-3xl p-6 shadow-sm flex flex-col justify-between"
+                >
+                  <div>
+                    <h4 className="text-sm font-black text-slate-800 dark:text-white tracking-tight mb-4 flex items-center gap-2">
+                      <Sparkles size={16} className="text-indigo-500" /> Diagnósticos y Recomendaciones
+                    </h4>
+                    <div className="grid gap-3.5 max-h-[220px] overflow-y-auto pr-1">
+                      {diagnosticoData.recommendations.map((rec: string, i: number) => (
+                        <div key={i} className="flex gap-2.5 items-start text-xs text-slate-655 dark:text-slate-300">
+                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1.5 flex-shrink-0" />
+                          <p className="leading-normal">{rec}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {diagnosticoData.findings.some((f: any) => f.id === 'ventas_sin_registro_fiscal') && (
+                    <div className="border-t border-slate-200 dark:border-slate-800/60 pt-4 mt-4">
+                      <button
+                        onClick={handleAutofix}
+                        disabled={fixingDiagnostico}
+                        className="btn btn-primary w-full text-xs py-2.5 rounded-xl shadow-lg transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50"
+                      >
+                        {fixingDiagnostico ? (
+                          <>
+                            <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            Reparando registros...
+                          </>
+                        ) : (
+                          <>
+                            <Wrench size={14} />
+                            Ejecutar Autofix Fiscal
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </motion.div>
+              </div>
+
+              {/* Plan de Eficiencia de Negocio */}
+              {diagnosticoData.efficiencyPlan && diagnosticoData.efficiencyPlan.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.25 }}
+                  className="grid gap-4"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-sm font-black text-slate-800 dark:text-white tracking-tight flex items-center gap-2">
+                        <Zap size={16} className="text-amber-500 fill-amber-500/20" /> Plan de Eficiencia y Optimización Comercial
+                      </h4>
+                      <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
+                        Propuestas estratégicas personalizadas según las métricas operativas y balances del restaurante.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {diagnosticoData.efficiencyPlan.map((item: any) => {
+                      // Map icon string to React component
+                      const getIcon = (iconName: string) => {
+                        switch (iconName) {
+                          case 'trending-up': return <TrendingUp size={18} className="text-emerald-500" />
+                          case 'coins': return <Coins size={18} className="text-amber-500" />
+                          case 'credit-card': return <CreditCard size={18} className="text-indigo-500" />
+                          case 'shield': return <Shield size={18} className="text-blue-500" />
+                          case 'package': return <PackageOpen size={18} className="text-rose-500" />
+                          case 'scale': return <Scale size={18} className="text-purple-500" />
+                          default: return <Sparkles size={18} className="text-slate-500" />
+                        }
+                      }
+
+                      const getBgColor = (iconName: string) => {
+                        switch (iconName) {
+                          case 'trending-up': return 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/30'
+                          case 'coins': return 'bg-amber-50 dark:bg-amber-950/20 border-amber-100 dark:border-amber-900/30'
+                          case 'credit-card': return 'bg-indigo-50 dark:bg-indigo-950/20 border-indigo-100 dark:border-indigo-900/30'
+                          case 'shield': return 'bg-blue-50 dark:bg-blue-950/20 border-blue-100 dark:border-blue-900/30'
+                          case 'package': return 'bg-rose-50 dark:bg-rose-950/20 border-rose-100 dark:border-rose-900/30'
+                          case 'scale': return 'bg-purple-50 dark:bg-purple-950/20 border-purple-100 dark:border-purple-900/30'
+                          default: return 'bg-slate-50 dark:bg-slate-900/20 border-slate-100 dark:border-slate-800'
+                        }
+                      }
+
+                      return (
+                        <div
+                          key={item.id}
+                          className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/50 rounded-3xl p-5 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between"
+                        >
+                          <div>
+                            <div className="flex items-center justify-between gap-2 mb-3.5">
+                              <div className={`p-2.5 rounded-2xl border ${getBgColor(item.icon)}`}>
+                                {getIcon(item.icon)}
+                              </div>
+                              <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                                {item.impact}
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-extrabold tracking-wider text-slate-400 uppercase">
+                              {item.category}
+                            </span>
+                            <h5 className="text-xs font-black text-slate-800 dark:text-white mt-1 leading-snug">
+                              {item.title}
+                            </h5>
+                            <p className="text-[11px] text-slate-450 dark:text-slate-400 mt-2 leading-relaxed">
+                              {item.description}
+                            </p>
+                          </div>
+
+                          <div className="mt-4 p-3 rounded-2xl bg-slate-50/50 dark:bg-slate-950/45 border border-slate-105 dark:border-slate-800/40">
+                            <p className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-1 flex items-center gap-1">
+                              <Sparkles size={10} /> Plan de Acción
+                            </p>
+                            <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                              {item.advice}
+                            </p>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Bottom: Detailed Findings List */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+                className="grid gap-4"
+              >
+                <h4 className="text-sm font-black text-slate-800 dark:text-white tracking-tight mb-1 flex items-center gap-2">
+                  <ShieldAlert size={16} className="text-slate-600 dark:text-slate-400" /> Detalle de Hallazgos Detectados
+                </h4>
+
+                {diagnosticoData.findings.length === 0 ? (
+                  <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/50 rounded-3xl p-10 text-center text-xs text-slate-400">
+                    No se han detectado inconsistencias ni anomalías en la base de datos contable o de inventario.
+                  </div>
+                ) : (
+                  <div className="grid gap-3">
+                    {diagnosticoData.findings.map((f: any) => {
+                      const isExpanded = expandedFinding === f.id
+                      const severityColors = {
+                        ALTA: 'border-rose-200 dark:border-rose-900/40 bg-rose-50/20 dark:bg-rose-950/5 text-rose-600 dark:text-rose-450',
+                        MEDIA: 'border-amber-200 dark:border-amber-900/40 bg-amber-50/20 dark:bg-amber-950/5 text-amber-600 dark:text-amber-450',
+                        BAJA: 'border-indigo-200 dark:border-indigo-900/40 bg-indigo-50/20 dark:bg-indigo-950/5 text-indigo-600 dark:text-indigo-400',
+                      }
+                      
+                      return (
+                        <div
+                          key={f.id}
+                          className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/50 rounded-2xl overflow-hidden shadow-sm transition-all duration-300"
+                        >
+                          {/* Finding Header */}
+                          <div
+                            onClick={() => setExpandedFinding(isExpanded ? null : f.id)}
+                            className="p-5 flex items-center justify-between gap-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors"
+                          >
+                            <div className="flex items-center gap-3">
+                              <span className={`text-[9px] font-extrabold px-2.5 py-1 rounded-lg border ${severityColors[f.severity as 'ALTA'|'MEDIA'|'BAJA']}`}>
+                                {f.severity}
+                              </span>
+                              <div>
+                                <h5 className="text-xs font-black text-slate-800 dark:text-white">{f.title}</h5>
+                                <p className="text-[10px] text-slate-400 mt-0.5">{f.category} • {f.count} registros afectados</p>
+                              </div>
+                            </div>
+
+                            <button className="text-slate-400 p-1">
+                              {isExpanded ? '▲' : '▼'}
+                            </button>
+                          </div>
+
+                          {/* Expanded detail */}
+                          <AnimatePresence>
+                            {isExpanded && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.3 }}
+                                className="border-t border-slate-100 dark:border-slate-800 px-5 pb-5 pt-4 grid gap-4 bg-slate-50/40 dark:bg-slate-950/10 text-xs"
+                              >
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div>
+                                    <p className="font-bold text-slate-400 uppercase tracking-wider text-[9px]">Descripción</p>
+                                    <p className="text-slate-600 dark:text-slate-350 mt-1 leading-relaxed">{f.description}</p>
+                                  </div>
+                                  <div>
+                                    <p className="font-bold text-slate-400 uppercase tracking-wider text-[9px]">Impacto del Riesgo</p>
+                                    <p className="text-slate-600 dark:text-slate-350 mt-1 leading-relaxed">{f.impact}</p>
+                                  </div>
+                                </div>
+
+                                <div className="grid gap-1.5">
+                                  <p className="font-bold text-slate-400 uppercase tracking-wider text-[9px] mb-1">Registros Afectados</p>
+                                  <div className="max-h-56 overflow-y-auto border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-950/60 p-2.5">
+                                    <table className="w-full text-left border-collapse text-[11px]">
+                                      <thead>
+                                        <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-450 font-bold uppercase text-[9px]">
+                                          <th className="py-1 pb-2">Nombre/Identificador</th>
+                                          <th className="py-1 pb-2">Categoría/Detalle</th>
+                                          <th className="py-1 pb-2 text-right">Monto/Valor</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {f.items.map((item: any, idx: number) => (
+                                          <tr key={idx} className="border-b border-slate-100 dark:border-slate-800/40 text-slate-800 dark:text-slate-200">
+                                            <td className="py-2 pr-2 font-semibold">{item.label}</td>
+                                            <td className="py-2 pr-2 text-slate-500">{item.detail}</td>
+                                            <td className="py-2 text-right font-mono font-bold">{item.value}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+
+                                <div className="flex justify-end gap-2.5 border-t border-slate-200 dark:border-slate-800/60 pt-3 mt-1">
+                                  {f.actionType === 'autofix' ? (
+                                    <button
+                                      onClick={handleAutofix}
+                                      disabled={fixingDiagnostico}
+                                      className="btn btn-primary py-2 px-4 rounded-xl text-[11px] font-bold flex items-center gap-1.5"
+                                    >
+                                      <Wrench size={12} /> {f.actionLabel}
+                                    </button>
+                                  ) : (
+                                    <Link
+                                      href={f.actionHref}
+                                      className="btn border border-slate-200 dark:border-slate-800 hover:border-indigo-500/50 py-2 px-4 rounded-xl text-[11px] font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5"
+                                    >
+                                      {f.actionLabel} &rarr;
+                                    </Link>
+                                  )}
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </motion.div>
+            </>
+          ) : (
+            <div className="text-center py-10 text-sm text-slate-400">
+              No se pudo cargar la información de diagnóstico.
+            </div>
+          )}
         </div>
       )}
 
