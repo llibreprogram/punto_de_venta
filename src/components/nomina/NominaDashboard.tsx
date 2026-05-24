@@ -9,6 +9,7 @@ import NominaHistorial from './NominaHistorial'
 import PrestacionesCalc from './PrestacionesCalc'
 import ConfigNominaPanel from './ConfigNominaPanel'
 import VolantePago from './VolantePago'
+import EmpleadoDetailModal from './EmpleadoDetailModal'
 
 type Tab = 'empleados' | 'procesar' | 'historial' | 'prestaciones' | 'config'
 
@@ -55,6 +56,7 @@ export default function NominaDashboard() {
   const [showForm, setShowForm] = useState(false)
   const [editingEmpleado, setEditingEmpleado] = useState<EmpleadoData | null>(null)
   const [selectedNomina, setSelectedNomina] = useState<NominaData | null>(null)
+  const [viewingEmpleadoId, setViewingEmpleadoId] = useState<number | null>(null)
 
   const loadEmpleados = useCallback(async () => {
     setLoading(true)
@@ -115,6 +117,7 @@ export default function NominaDashboard() {
           
           {tab === 'empleados' && (
             <EmpleadoTable empleados={empleados} loading={loading} onEdit={handleEdit}
+              onView={(id) => setViewingEmpleadoId(id)}
               onNew={handleNew} onRefresh={loadEmpleados} />
           )}
           {tab === 'procesar' && (
@@ -142,6 +145,20 @@ export default function NominaDashboard() {
       <AnimatePresence>
         {selectedNomina && (
           <VolantePago nomina={selectedNomina} onClose={() => setSelectedNomina(null)} />
+        )}
+      </AnimatePresence>
+
+      {/* Employee Detail Modal */}
+      <AnimatePresence>
+        {viewingEmpleadoId !== null && (
+          <EmpleadoDetailModal 
+            empleadoId={viewingEmpleadoId} 
+            onClose={() => setViewingEmpleadoId(null)}
+            onViewVolante={(n) => {
+              setViewingEmpleadoId(null)
+              setSelectedNomina(n)
+            }}
+          />
         )}
       </AnimatePresence>
     </div>

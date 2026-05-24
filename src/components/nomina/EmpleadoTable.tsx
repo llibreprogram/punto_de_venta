@@ -23,9 +23,9 @@ const CONTRATO_ICONS: Record<string, string> = {
   INDEFINIDO: '📋', TEMPORAL: '⏳', PRUEBA: '🔍',
 }
 
-export default function EmpleadoTable({ empleados, loading, onEdit, onNew, onRefresh }: {
+export default function EmpleadoTable({ empleados, loading, onEdit, onView, onNew, onRefresh }: {
   empleados: Empleado[]; loading: boolean
-  onEdit: (e: Empleado) => void; onNew: () => void; onRefresh: () => void
+  onEdit: (e: Empleado) => void; onView: (id: number) => void; onNew: () => void; onRefresh: () => void
 }) {
   const [search, setSearch] = useState('')
   const [filterDept, setFilterDept] = useState('')
@@ -147,6 +147,7 @@ export default function EmpleadoTable({ empleados, loading, onEdit, onNew, onRef
                   </td>
                   <td className="px-4 py-3 text-center">
                     <div className="flex justify-center gap-1">
+                      <button onClick={() => onView(emp.id)} className="btn text-xs px-2 py-1 hover:bg-slate-100 hover:border-slate-200" title="Ver Ficha">👁️</button>
                       <button onClick={() => onEdit(emp)} className="btn text-xs px-2 py-1" title="Editar">✏️</button>
                       {emp.activo && (
                         <button onClick={() => handleDeactivate(emp.id)} className="btn text-xs px-2 py-1 hover:bg-red-50 hover:border-red-200" title="Desactivar">🚫</button>
