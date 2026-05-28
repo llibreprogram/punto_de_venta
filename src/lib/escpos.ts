@@ -75,7 +75,7 @@ export function escposTicket(opts: {
   }
   out += escposSeparator()
   out += escposLine('Subtotal', subtotal)
-  if (itebis) out += escposLine('ITEBIS', itebis)
+  if (itebis) out += escposLine('ITBIS', itebis)
   if (propina) out += escposLine('Propina', propina)
   if (!itebis && !propina && impuesto) out += escposLine('Impuesto', impuesto)
   if (descuento) out += escposLine('Descuento', '-'+descuento)

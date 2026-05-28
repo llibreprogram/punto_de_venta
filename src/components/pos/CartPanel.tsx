@@ -291,7 +291,7 @@ export function CartPanel({ ajustes, ivaPct, propinaPct, onCobrar, onCobrarSel, 
 
           {ivaPct > 0 && (
             <div className="flex justify-between text-slate-500 font-medium">
-              <span>ITEBIS ({ivaPct}%)</span>
+              <span>ITBIS ({ivaPct}%)</span>
               <span>{fmtCurrency(storeTotales.itebis)}</span>
             </div>
           )}

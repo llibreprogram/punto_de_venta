@@ -151,17 +151,54 @@ export default function ConfiguracionPage() {
           Vista previa: <strong>{toCurrency(12345, a.locale || LOCALE, a.currency || CURRENCY)}</strong>
         </div>
         <label className="grid gap-1">
-          <span className="text-sm text-gray-600">ITEBIS (%)</span>
+          <span className="text-sm text-gray-600">ITBIS (%)</span>
           <input type="number" min={0} className="input" value={a.taxPct} onChange={e=>setA({...a, taxPct: Number(e.target.value)})} />
         </label>
         <label className="grid gap-1">
           <span className="text-sm text-gray-600">Propina (%)</span>
           <input type="number" min={0} className="input" value={a.propinaPct ?? 0} onChange={e=>setA({...a, propinaPct: Number(e.target.value)})} />
         </label>
-        <label className="grid gap-1 sm:col-span-2">
-          <span className="text-sm text-gray-600">Logo (URL)</span>
-          <input className="input" value={a.logoUrl} onChange={e=>setA({...a, logoUrl: e.target.value})} />
-        </label>
+        <div className="grid gap-1 sm:col-span-2">
+          <span className="text-sm text-gray-600">Logo del Negocio</span>
+          <div className="flex gap-2 items-center">
+            <input className="input flex-1" placeholder="Ej. /uploads/logo.png o URL" value={a.logoUrl} onChange={e=>setA({...a, logoUrl: e.target.value})} />
+            <label className="btn cursor-pointer shrink-0 text-sm flex items-center justify-center gap-1.5 py-2 px-3 border rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors">
+              <span>Subir Local</span>
+              <input 
+                type="file" 
+                accept="image/*" 
+                className="hidden" 
+                onChange={async (e) => {
+                  const file = e.target.files?.[0]
+                  if (!file) return
+                  const formData = new FormData()
+                  formData.append('file', file)
+                  try {
+                    const res = await fetch('/api/upload', {
+                      method: 'POST',
+                      body: formData
+                    })
+                    if (res.ok) {
+                      const data = await res.json()
+                      setA({ ...a, logoUrl: data.url })
+                    } else {
+                      alert('Error al subir el archivo')
+                    }
+                  } catch (err) {
+                    alert('Error de red al subir archivo')
+                  }
+                }} 
+              />
+            </label>
+          </div>
+          {a.logoUrl && (
+            <div className="mt-2 flex items-center gap-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={a.logoUrl} alt="Logo preview" className="h-12 w-auto object-contain border rounded p-1 bg-white" />
+              <button type="button" onClick={() => setA({...a, logoUrl: ''})} className="text-xs text-red-600 hover:underline">Eliminar logo</button>
+            </div>
+          )}
+        </div>
         <label className="grid gap-1 sm:col-span-2">
           <span className="text-sm text-gray-600">Pie del ticket</span>
           <textarea className="input" rows={3} value={a.ticketFooter} onChange={e=>setA({...a, ticketFooter: e.target.value})} />

@@ -119,7 +119,7 @@ export default function TicketClient({
         <div className="text-sm grid gap-1">
           <div className="flex justify-between"><span>Subtotal</span><span>{toCurrency(pedido.subtotalCents, locale, currency)}</span></div>
           {pedido.itebisCents > 0 && (
-            <div className="flex justify-between"><span>ITEBIS</span><span>{toCurrency(pedido.itebisCents, locale, currency)}</span></div>
+            <div className="flex justify-between"><span>ITBIS</span><span>{toCurrency(pedido.itebisCents, locale, currency)}</span></div>
           )}
           {pedido.propinaCents > 0 && (
             <div className="flex justify-between"><span>Propina</span><span>{toCurrency(pedido.propinaCents, locale, currency)}</span></div>
