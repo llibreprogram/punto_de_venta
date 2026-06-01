@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { X, Loader2, Receipt, Printer } from 'lucide-react'
 import { toCurrency, LOCALE, CURRENCY } from '@/lib/money'
+import { printTicketUrl } from '@/lib/printTicket'
 
 export function OpenOrdersSidebar({ isOpen, onClose, onSelectOrder, ajustes }: { isOpen: boolean, onClose: () => void, onSelectOrder: (id: number) => void, ajustes: any }) {
   const [tab, setTab] = useState<'ABIERTO' | 'PAGADO'>('ABIERTO')
@@ -28,12 +29,12 @@ export function OpenOrdersSidebar({ isOpen, onClose, onSelectOrder, ajustes }: {
       const linkRes = await fetch(`/api/tickets/signed-link/${pedidoId}`)
       if (linkRes.ok) {
         const j = await linkRes.json()
-        window.open(j.url + (j.url.includes('?') ? '&' : '?') + 'print=1', '_blank')
+        printTicketUrl(j.url + (j.url.includes('?') ? '&' : '?') + 'print=1')
       } else {
-        window.open(`/ticket/${pedidoId}?print=1`, '_blank')
+        printTicketUrl(`/ticket/${pedidoId}?print=1`)
       }
     } catch {
-      window.open(`/ticket/${pedidoId}?print=1`, '_blank')
+      printTicketUrl(`/ticket/${pedidoId}?print=1`)
     }
   }
 

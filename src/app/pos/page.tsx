@@ -5,6 +5,7 @@
  * Protegido por Ley 65-00 (Rep. Dominicana).
  */
 "use client"
+import { printTicketUrl } from '@/lib/printTicket'
 import { useEffect, useState } from 'react'
 import { useToast } from '@/components/ui/Providers'
 import { usePosStore, Producto, Linea, MetodoPago } from '@/store/posStore'
@@ -218,7 +219,7 @@ export default function POSPage() {
       descuentoCents: descActual,
       ncfTipo: ncfTipo || 'B02',
       notas: ncfTipo === 'B01' && rncCedula ? `RNC: ${rncCedula}\nNombre: ${nombreCliente || ''}` : undefined,
-      ...(nombreCuenta !== null && { nombreCuenta })
+      nombreCuenta: nombreCuenta || null
     }
 
     if (!pedidoIdForUpdate || overrideCarrito) {
@@ -256,12 +257,12 @@ export default function POSPage() {
             const linkRes = await fetch(`/api/tickets/signed-link/${data.pedidoId}`)
             if (linkRes.ok) {
               const j = await linkRes.json()
-              window.open(j.url + (j.url.includes('?')?'&':'?') + 'print=1', '_blank')
+              printTicketUrl(j.url + (j.url.includes('?')?'&':'?') + 'print=1')
             } else {
-              window.open(`/ticket/${data.pedidoId}?print=1`, '_blank')
+              printTicketUrl(`/ticket/${data.pedidoId}?print=1`)
             }
             if (data?.autoKitchen) fetch(`/api/print/kitchen/${data.pedidoId}`).catch(()=>{})
-          } catch { window.open(`/ticket/${data.pedidoId}?print=1`, '_blank') }
+          } catch { printTicketUrl(`/ticket/${data.pedidoId}?print=1`) }
         }
 
         // Limpiar el carrito después de cobro exitoso
@@ -297,11 +298,11 @@ export default function POSPage() {
             const linkRes = await fetch(`/api/tickets/signed-link/${data.pedidoId}`)
             if (linkRes.ok) {
               const j = await linkRes.json()
-              window.open(j.url + (j.url.includes('?')?'&':'?') + 'print=1', '_blank')
+              printTicketUrl(j.url + (j.url.includes('?')?'&':'?') + 'print=1')
             } else {
-              window.open(`/ticket/${data.pedidoId}?print=1`, '_blank')
+              printTicketUrl(`/ticket/${data.pedidoId}?print=1`)
             }
-          } catch { window.open(`/ticket/${data.pedidoId}?print=1`, '_blank') }
+          } catch { printTicketUrl(`/ticket/${data.pedidoId}?print=1`) }
         }
         limpiarTodo()
         if (data?.autoKitchen) fetch(`/api/print/kitchen/${data.pedidoId}`).catch(()=>{})

@@ -17,6 +17,7 @@ type Body = {
   tipo: 'Mostrador' | 'Mesa' | 'Delivery'
   mesaId?: number
   subCuenta?: number
+  nombreCuenta?: string | null
   items: Item[]
   impuestoCents: number
   itebisCents?: number
@@ -71,6 +72,7 @@ export async function POST(req: Request) {
           estado: data.pago ? 'PAGADO' : 'ABIERTO',
           mesaId: data.tipo === 'Mesa' && data.mesaId ? data.mesaId : null,
           subCuenta,
+          nombreCuenta: data.nombreCuenta || null,
           subtotalCents: subtotal,
           impuestoCents: impuesto,
           itebisCents,
