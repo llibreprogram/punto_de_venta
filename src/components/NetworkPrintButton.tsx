@@ -23,20 +23,10 @@ export default function NetworkPrintButton({ payloadUrl, defaultIp, defaultPort 
     if (!ip) { setMsg('Ingresa IP de la impresora'); return }
     setBusy(true)
     try {
-      const res = await fetch(payloadUrl, { cache: 'no-store' })
-      if (!res.ok) throw new Error('No se pudo obtener el ticket')
-      const arrayBuffer = await res.arrayBuffer()
-      const uint8 = new Uint8Array(arrayBuffer)
-      let binaryStr = ''
-      for (let i = 0; i < uint8.length; i++) {
-        binaryStr += String.fromCharCode(uint8[i])
-      }
-      const base64Payload = 'base64:' + btoa(binaryStr)
-
       const send = await fetch('/api/print/network', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ip, port, payload: base64Payload })
+        body: JSON.stringify({ ip, port, test: true })
       })
       if (!send.ok) throw new Error((await send.json()).error || 'Error de impresión')
   try { localStorage.setItem('pos.printerIp', ip); localStorage.setItem('pos.printerPort', String(port)) } catch {}
