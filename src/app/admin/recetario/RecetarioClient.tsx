@@ -168,6 +168,11 @@ export default function RecetarioClient({ productosRaw, insumosRaw }: { producto
 
   const totalCost = receta.reduce((acc, r) => acc + (r.cantidadRequerida * (r.insumo?.costoCents || 0)), 0)
 
+  const tieneInsumosSinCosto = receta.some(r => {
+    const insumo = r.insumo || insumos.find(i => i.id === r.insumoId)
+    return (insumo?.costoCents ?? 0) === 0
+  })
+
   // Lista de compra: insumos de la receta que no tienen stock suficiente
   const faltantes = receta.filter(r => {
     const insumo = r.insumo || insumos.find(i => i.id === r.insumoId)
@@ -301,13 +306,19 @@ export default function RecetarioClient({ productosRaw, insumosRaw }: { producto
               </div>
 
               {/* Panel de Costos */}
-              <div className="mb-8 p-5 bg-gradient-to-r from-slate-800 to-slate-900 rounded-2xl text-white shadow-xl shadow-slate-900/20 flex flex-col sm:flex-row justify-between items-center gap-4">
-                <div>
+              <div className="mb-8 p-5 bg-gradient-to-r from-slate-800 to-slate-900 rounded-2xl text-white shadow-xl shadow-slate-900/20 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div className="space-y-1.5 flex-1">
                   <h3 className="text-slate-400 text-sm font-bold uppercase tracking-wider mb-1">Costo Real de Preparación</h3>
                   <div className="text-3xl font-black">${(totalCost / 100).toFixed(2)}</div>
-                  <div className="text-xs text-slate-400 mt-1">Costo actual del producto: ${( (seleccionado.costoCents || 0) / 100 ).toFixed(2)}</div>
+                  <div className="text-xs text-slate-400">Costo actual del producto: ${( (seleccionado.costoCents || 0) / 100 ).toFixed(2)}</div>
+                  {tieneInsumosSinCosto && (
+                    <div className="flex items-center gap-2 mt-2 text-xs text-amber-400 bg-amber-400/10 border border-amber-400/20 px-3 py-2 rounded-xl font-semibold">
+                      <AlertTriangle className="w-4 h-4 shrink-0 text-amber-400" />
+                      <span>Atención: Hay insumos nuevos o sin costo registrado en el inventario. El costo calculado puede estar subestimado.</span>
+                    </div>
+                  )}
                 </div>
-                <button onClick={updateProductCost} className="w-full sm:w-auto px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl font-bold transition-all border border-white/10 flex items-center justify-center gap-2">
+                <button onClick={updateProductCost} className="w-full sm:w-auto px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl font-bold transition-all border border-white/10 flex items-center justify-center gap-2 shrink-0 self-center sm:self-auto">
                   <Save className="w-4 h-4" /> Sincronizar Costo
                 </button>
               </div>
