@@ -19,9 +19,10 @@ export async function getLogoEscposBuffer(logoUrl: string | null | undefined): P
       imageBuffer = await fs.readFile(localPath)
     }
 
-    // Procesar la imagen con sharp: redimensionar a 200px de ancho y pasar a escala de grises
+    // Procesar la imagen con sharp: redimensionar a 200px de ancho, aplanar fondo transparente a blanco y pasar a escala de grises
     const { data, info } = await sharp(imageBuffer)
       .resize({ width: 200 })
+      .flatten({ background: { r: 255, g: 255, b: 255 } })
       .greyscale()
       .raw()
       .toBuffer({ resolveWithObject: true })
