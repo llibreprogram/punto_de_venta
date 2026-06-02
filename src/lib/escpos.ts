@@ -6,39 +6,51 @@ import path from 'path'
 // Nota: El envío a la impresora depende del entorno (USB/Ethernet/Serial). Aquí solo generamos el payload.
 
 export async function getLogoEscposBuffer(logoUrl: string | null | undefined): Promise<Buffer | null> {
-  // Si no hay logoUrl configurado, devolver el comando para el logo NV de la impresora (posición 1)
-  if (!logoUrl) {
-    return Buffer.from([0x1B, 0x61, 0x01, 0x1C, 0x70, 0x01, 0x00, 0x0A, 0x1B, 0x61, 0x00])
-  }
+  const fsSync = require('fs')
+  const debugPath = path.join(process.cwd(), 'public', 'print_debug.log')
+  let logContent = `--- Print Debug (${new Date().toISOString()}) ---\n`
+  logContent += `Input logoUrl: "${logoUrl}"\n`
+
   try {
+    if (!logoUrl) {
+      logContent += `Result: No logoUrl provided. Returning NV logo fallback buffer.\n`
+      fsSync.writeFileSync(debugPath, logContent)
+      return Buffer.from([0x1B, 0x61, 0x01, 0x1C, 0x70, 0x01, 0x00, 0x0A, 0x1B, 0x61, 0x00])
+    }
+
     let imageBuffer: Buffer
     if (logoUrl.startsWith('http://') || logoUrl.startsWith('https://')) {
-      // Si contiene /uploads/ lo leemos localmente para evitar problemas de red local
       if (logoUrl.includes('/uploads/')) {
         const parts = logoUrl.split('/uploads/')
         const filename = parts[parts.length - 1]
         const localPath = path.join(process.cwd(), 'public', 'uploads', filename)
+        logContent += `Detected local upload via URL. Reading from: "${localPath}"\n`
         imageBuffer = await fs.readFile(localPath)
       } else {
+        logContent += `Fetching logo from URL: "${logoUrl}"\n`
         const res = await fetch(logoUrl)
         if (!res.ok) throw new Error(`HTTP error ${res.status}`)
         imageBuffer = Buffer.from(await res.arrayBuffer())
       }
     } else {
       const cleanPath = logoUrl.startsWith('/') ? logoUrl.substring(1) : logoUrl
-      // Compatibilidad con rutas de Windows/Linux reemplazando / con el separador de plataforma
       const platformPath = cleanPath.split('/').join(path.sep)
       const localPath = path.join(process.cwd(), 'public', platformPath)
+      logContent += `Reading logo from local path: "${localPath}"\n`
       imageBuffer = await fs.readFile(localPath)
     }
 
-    // Procesar la imagen con sharp: redimensionar a 200px de ancho, aplanar fondo transparente a blanco y pasar a escala de grises
+    logContent += `Successfully read image file. Buffer size: ${imageBuffer.length} bytes.\n`
+
+    // Procesar la imagen con sharp
     const { data, info } = await sharp(imageBuffer)
       .resize({ width: 200 })
       .flatten({ background: { r: 255, g: 255, b: 255 } })
       .greyscale()
       .raw()
       .toBuffer({ resolveWithObject: true })
+
+    logContent += `Sharp processed image: width=${info.width}, height=${info.height}\n`
 
     const bytesWidth = Math.ceil(info.width / 8)
     const totalBytes = bytesWidth * info.height
@@ -47,7 +59,6 @@ export async function getLogoEscposBuffer(logoUrl: string | null | undefined): P
     for (let y = 0; y < info.height; y++) {
       for (let x = 0; x < info.width; x++) {
         const grayscaleValue = data[y * info.width + x]
-        // Umbral de 128 (valores inferiores a 128 se consideran negro)
         if (grayscaleValue < 128) {
           const byteIndex = y * bytesWidth + Math.floor(x / 8)
           const bitIndex = 7 - (x % 8)
@@ -56,29 +67,24 @@ export async function getLogoEscposBuffer(logoUrl: string | null | undefined): P
       }
     }
 
-    // Comando ESC/POS para imprimir imagen en modo rastro (GS v 0)
     const header = Buffer.from([
       0x1D, 0x76, 0x30, 0,
       bytesWidth % 256, Math.floor(bytesWidth / 256),
       info.height % 256, Math.floor(info.height / 256)
     ])
 
-    // Alinear al centro (ESC a 1), imprimir imagen, salto de línea, restablecer a izquierda (ESC a 0)
     const alignCenter = Buffer.from([0x1B, 0x61, 0x01])
     const alignLeft = Buffer.from([0x1B, 0x61, 0x00])
     const lineFeeds = Buffer.from("\n\n")
 
-    return Buffer.concat([alignCenter, header, escposData, lineFeeds, alignLeft])
+    const finalBuffer = Buffer.concat([alignCenter, header, escposData, lineFeeds, alignLeft])
+    logContent += `Result: Success. Dynamic ESC/POS raster image generated. Total buffer size: ${finalBuffer.length} bytes.\n`
+    fsSync.writeFileSync(debugPath, logContent)
+
+    return finalBuffer
   } catch (e: any) {
-    console.error("Error al procesar logo dinámico con sharp (usando fallback de logo NV):", e)
-    try {
-      const fsSync = require('fs')
-      const errorLogPath = path.join(process.cwd(), 'public', 'print_error.log')
-      fsSync.writeFileSync(errorLogPath, `Error: ${e.message}\nStack: ${e.stack}\nLogoUrl: ${logoUrl}`)
-    } catch (writeErr) {
-      console.error("No se pudo escribir el log de error:", writeErr)
-    }
-    // En caso de fallo al leer/procesar la imagen, retornamos el comando del logo NV en memoria 1
+    logContent += `Result: Error caught. Message: "${e.message}"\nStack: ${e.stack}\nReturning NV logo fallback buffer.\n`
+    fsSync.writeFileSync(debugPath, logContent)
     return Buffer.from([0x1B, 0x61, 0x01, 0x1C, 0x70, 0x01, 0x00, 0x0A, 0x1B, 0x61, 0x00])
   }
 }
