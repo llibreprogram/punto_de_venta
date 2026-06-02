@@ -49,3 +49,43 @@ export function printTicketUrl(url: string) {
 
   document.body.appendChild(iframe)
 }
+
+export async function printReceipt(pedidoId: number, ajustes: any) {
+  if (ajustes?.printerIp) {
+    try {
+      const payloadRes = await fetch(`/api/print/ticket/${pedidoId}`, { cache: 'no-store' })
+      if (payloadRes.ok) {
+        const payload = await payloadRes.text()
+        const sendRes = await fetch('/api/print/network', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ip: ajustes.printerIp,
+            port: ajustes.printerPort || 9100,
+            payload
+          })
+        })
+        if (sendRes.ok) {
+          return true // Direct network print successful
+        }
+        console.error('Error de impresión de red:', await sendRes.json().catch(() => ({})))
+      }
+    } catch (e) {
+      console.error('Error de red al intentar imprimir:', e)
+    }
+  }
+
+  // Fallback to browser print using iframe
+  try {
+    const linkRes = await fetch(`/api/tickets/signed-link/${pedidoId}`)
+    if (linkRes.ok) {
+      const j = await linkRes.json()
+      printTicketUrl(j.url + (j.url.includes('?') ? '&' : '?') + 'print=1')
+    } else {
+      printTicketUrl(`/ticket/${pedidoId}?print=1`)
+    }
+  } catch {
+    printTicketUrl(`/ticket/${pedidoId}?print=1`)
+  }
+  return false
+}

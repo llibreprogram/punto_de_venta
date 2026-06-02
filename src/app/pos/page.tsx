@@ -5,7 +5,7 @@
  * Protegido por Ley 65-00 (Rep. Dominicana).
  */
 "use client"
-import { printTicketUrl } from '@/lib/printTicket'
+import { printReceipt } from '@/lib/printTicket'
 import { useEffect, useState } from 'react'
 import { useToast } from '@/components/ui/Providers'
 import { usePosStore, Producto, Linea, MetodoPago } from '@/store/posStore'
@@ -253,16 +253,8 @@ export default function POSPage() {
 
         if (data?.pedidoId) {
           // Imprimir Ticket e ir al KDS
-          try {
-            const linkRes = await fetch(`/api/tickets/signed-link/${data.pedidoId}`)
-            if (linkRes.ok) {
-              const j = await linkRes.json()
-              printTicketUrl(j.url + (j.url.includes('?')?'&':'?') + 'print=1')
-            } else {
-              printTicketUrl(`/ticket/${data.pedidoId}?print=1`)
-            }
-            if (data?.autoKitchen) fetch(`/api/print/kitchen/${data.pedidoId}`).catch(()=>{})
-          } catch { printTicketUrl(`/ticket/${data.pedidoId}?print=1`) }
+          await printReceipt(data.pedidoId, ajustes)
+          if (data?.autoKitchen) fetch(`/api/print/kitchen/${data.pedidoId}`).catch(()=>{})
         }
 
         // Limpiar el carrito después de cobro exitoso
@@ -294,15 +286,7 @@ export default function POSPage() {
       } else {
         if (printPrecuenta && data?.pedidoId) {
           // Imprimir Pre-cuenta
-          try {
-            const linkRes = await fetch(`/api/tickets/signed-link/${data.pedidoId}`)
-            if (linkRes.ok) {
-              const j = await linkRes.json()
-              printTicketUrl(j.url + (j.url.includes('?')?'&':'?') + 'print=1')
-            } else {
-              printTicketUrl(`/ticket/${data.pedidoId}?print=1`)
-            }
-          } catch { printTicketUrl(`/ticket/${data.pedidoId}?print=1`) }
+          await printReceipt(data.pedidoId, ajustes)
         }
         limpiarTodo()
         if (data?.autoKitchen) fetch(`/api/print/kitchen/${data.pedidoId}`).catch(()=>{})
