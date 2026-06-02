@@ -69,8 +69,15 @@ export async function getLogoEscposBuffer(logoUrl: string | null | undefined): P
     const lineFeeds = Buffer.from("\n\n")
 
     return Buffer.concat([alignCenter, header, escposData, lineFeeds, alignLeft])
-  } catch (e) {
+  } catch (e: any) {
     console.error("Error al procesar logo dinámico con sharp (usando fallback de logo NV):", e)
+    try {
+      const fsSync = require('fs')
+      const errorLogPath = path.join(process.cwd(), 'public', 'print_error.log')
+      fsSync.writeFileSync(errorLogPath, `Error: ${e.message}\nStack: ${e.stack}\nLogoUrl: ${logoUrl}`)
+    } catch (writeErr) {
+      console.error("No se pudo escribir el log de error:", writeErr)
+    }
     // En caso de fallo al leer/procesar la imagen, retornamos el comando del logo NV en memoria 1
     return Buffer.from([0x1B, 0x61, 0x01, 0x1C, 0x70, 0x01, 0x00, 0x0A, 0x1B, 0x61, 0x00])
   }
