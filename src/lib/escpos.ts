@@ -6,16 +6,29 @@ import path from 'path'
 // Nota: El envío a la impresora depende del entorno (USB/Ethernet/Serial). Aquí solo generamos el payload.
 
 export async function getLogoEscposBuffer(logoUrl: string | null | undefined): Promise<Buffer | null> {
-  if (!logoUrl) return null
+  // Si no hay logoUrl configurado, devolver el comando para el logo NV de la impresora (posición 1)
+  if (!logoUrl) {
+    return Buffer.from([0x1B, 0x61, 0x01, 0x1C, 0x70, 0x01, 0x00, 0x0A, 0x1B, 0x61, 0x00])
+  }
   try {
     let imageBuffer: Buffer
     if (logoUrl.startsWith('http://') || logoUrl.startsWith('https://')) {
-      const res = await fetch(logoUrl)
-      if (!res.ok) return null
-      imageBuffer = Buffer.from(await res.arrayBuffer())
+      // Si contiene /uploads/ lo leemos localmente para evitar problemas de red local
+      if (logoUrl.includes('/uploads/')) {
+        const parts = logoUrl.split('/uploads/')
+        const filename = parts[parts.length - 1]
+        const localPath = path.join(process.cwd(), 'public', 'uploads', filename)
+        imageBuffer = await fs.readFile(localPath)
+      } else {
+        const res = await fetch(logoUrl)
+        if (!res.ok) throw new Error(`HTTP error ${res.status}`)
+        imageBuffer = Buffer.from(await res.arrayBuffer())
+      }
     } else {
       const cleanPath = logoUrl.startsWith('/') ? logoUrl.substring(1) : logoUrl
-      const localPath = path.join(process.cwd(), 'public', cleanPath)
+      // Compatibilidad con rutas de Windows/Linux reemplazando / con el separador de plataforma
+      const platformPath = cleanPath.split('/').join(path.sep)
+      const localPath = path.join(process.cwd(), 'public', platformPath)
       imageBuffer = await fs.readFile(localPath)
     }
 
@@ -57,8 +70,9 @@ export async function getLogoEscposBuffer(logoUrl: string | null | undefined): P
 
     return Buffer.concat([alignCenter, header, escposData, lineFeeds, alignLeft])
   } catch (e) {
-    console.error("Error al procesar logo con sharp:", e)
-    return null
+    console.error("Error al procesar logo dinámico con sharp (usando fallback de logo NV):", e)
+    // En caso de fallo al leer/procesar la imagen, retornamos el comando del logo NV en memoria 1
+    return Buffer.from([0x1B, 0x61, 0x01, 0x1C, 0x70, 0x01, 0x00, 0x0A, 0x1B, 0x61, 0x00])
   }
 }
 
