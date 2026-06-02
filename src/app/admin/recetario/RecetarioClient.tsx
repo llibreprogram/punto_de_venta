@@ -189,9 +189,9 @@ export default function RecetarioClient({ productosRaw, insumosRaw }: { producto
   })
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 min-h-[75vh]">
+    <div className="flex flex-col lg:flex-row gap-6 min-h-[75vh] h-auto lg:h-[calc(100vh-12rem)] lg:max-h-[850px]">
       {/* Sidebar Productos */}
-      <div className="w-full lg:w-1/3 bg-white/70 backdrop-blur-xl rounded-3xl shadow-sm border border-slate-200/60 overflow-hidden flex flex-col">
+      <div className="w-full lg:w-1/3 bg-white/70 backdrop-blur-xl rounded-3xl shadow-sm border border-slate-200/60 overflow-hidden flex flex-col h-[500px] lg:h-full">
         <div className="p-5 border-b border-slate-100 bg-white/50">
           <div className="relative group">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5 group-focus-within:text-indigo-500 transition-colors" />
@@ -239,7 +239,7 @@ export default function RecetarioClient({ productosRaw, insumosRaw }: { producto
       </div>
 
       {/* Main Receta */}
-      <div className="w-full lg:w-2/3 bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl shadow-slate-200/40 border border-slate-200/60 p-6 sm:p-8 flex flex-col relative overflow-hidden">
+      <div className="w-full lg:w-2/3 bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl shadow-slate-200/40 border border-slate-200/60 p-6 sm:p-8 flex flex-col relative overflow-hidden h-[600px] lg:h-full">
         {/* Decorative background element */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
 
@@ -250,7 +250,7 @@ export default function RecetarioClient({ productosRaw, insumosRaw }: { producto
               <p className="text-slate-400 font-medium animate-pulse">Cargando receta...</p>
             </div>
           ) : (
-            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="flex-1 flex flex-col h-full relative z-10">
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="flex-1 flex flex-col h-full relative z-10 overflow-hidden">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-100 pb-5 mb-6 gap-4">
                 <div>
                   <h2 className="text-3xl font-black text-slate-800 bg-clip-text text-transparent bg-gradient-to-r from-slate-800 to-slate-600">{seleccionado.nombre}</h2>
@@ -262,6 +262,9 @@ export default function RecetarioClient({ productosRaw, insumosRaw }: { producto
                   <Save className="w-5 h-5" /> Guardar Cambios
                 </button>
               </div>
+
+              {/* Scroll container for form fields */}
+              <div className="flex-1 overflow-y-auto pr-2 space-y-6 custom-scrollbar pb-6">
 
               {/* Ajuste de Estrategia */}
               <div className="mb-8">
@@ -368,8 +371,8 @@ export default function RecetarioClient({ productosRaw, insumosRaw }: { producto
               )}
 
               {/* Lista Receta */}
-              <div className="flex-1 flex flex-col min-h-[300px]">
-                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Ingredientes de la Receta</h3>
+              <div className="space-y-4 pt-2">
+                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Ingredientes de la Receta</h3>
                 
                 {/* Selector: Existente o Nuevo */}
                 <div className="mb-6">
@@ -454,7 +457,7 @@ export default function RecetarioClient({ productosRaw, insumosRaw }: { producto
                   )}
                 </div>
 
-                <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                <div className="pr-1">
                   {receta.length === 0 ? (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-full flex flex-col items-center justify-center p-8 text-center bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-200">
                       <div className="bg-white p-6 rounded-full shadow-sm mb-4">
@@ -503,8 +506,9 @@ export default function RecetarioClient({ productosRaw, insumosRaw }: { producto
                     </div>
                   )}
                 </div>
-              </div>
-            </motion.div>
+              </div> {/* Closes Lista Receta */}
+            </div> {/* Closes Scroll Container */}
+          </motion.div>
           )
         ) : (
           <div className="h-full flex flex-col items-center justify-center text-slate-400 p-8 text-center bg-slate-50/50 rounded-3xl">

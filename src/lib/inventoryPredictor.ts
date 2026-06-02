@@ -17,12 +17,35 @@ export type SugerenciaCompra = {
 }
 
 export async function generarSugerenciasCompra(): Promise<SugerenciaCompra[]> {
-  // 1. Obtener insumos que están por debajo o igual al stock mínimo y que tienen proveedor asignado
+  // 1. Obtener todos los insumos activos
   const todos = await prisma.insumo.findMany({
     where: { activo: true },
     include: { proveedor: true }
   })
-  const insumos = todos.filter(i => i.stockActual <= i.stockMinimo)
+
+  // Obtener todas las recetas de productos activos
+  const recetaItems = await prisma.recetaItem.findMany({
+    where: {
+      producto: { activo: true },
+      insumo: { activo: true }
+    }
+  })
+
+  // Calcular el máximo requerido en receta por cada insumo
+  const maxRequeridoPorInsumo: Record<number, number> = {}
+  for (const item of recetaItems) {
+    maxRequeridoPorInsumo[item.insumoId] = Math.max(
+      maxRequeridoPorInsumo[item.insumoId] || 0,
+      item.cantidadRequerida
+    )
+  }
+
+  // Filtrar insumos que están por debajo de su stock mínimo efectivo
+  const insumos = todos.filter(i => {
+    const maxReceta = maxRequeridoPorInsumo[i.id] || 0
+    const effectiveMin = Math.max(i.stockMinimo, maxReceta)
+    return i.stockActual <= effectiveMin
+  })
 
   const sugerencias: SugerenciaCompra[] = []
   
@@ -31,6 +54,9 @@ export async function generarSugerenciasCompra(): Promise<SugerenciaCompra[]> {
   hace30Dias.setDate(hace30Dias.getDate() - 30)
 
   for (const insumo of insumos) {
+    const maxReceta = maxRequeridoPorInsumo[insumo.id] || 0
+    const effectiveMin = Math.max(insumo.stockMinimo, maxReceta)
+
     // 2. Calcular velocidad de consumo (Burn Rate)
     // Buscamos todas las "SALIDAS" en los últimos 30 días
     const salidas = await prisma.movimientoInventario.aggregate({
@@ -51,12 +77,14 @@ export async function generarSugerenciasCompra(): Promise<SugerenciaCompra[]> {
     let razonSugerencia = ''
 
     if (consumoDiarioPromedio === 0) {
-      cantidadSugerida = (insumo.stockMinimo * 1.2) - insumo.stockActual
-      razonSugerencia = 'Sin historial de consumo. Sugerencia basada en Stock Mínimo.'
+      cantidadSugerida = (effectiveMin * 1.2) - insumo.stockActual
+      razonSugerencia = maxReceta > insumo.stockMinimo
+        ? 'Requerido en receta activa sin historial de consumo.'
+        : 'Sin historial de consumo. Sugerencia basada en Stock Mínimo.'
     } else {
       // 3. Cálculo JIT: Meta de cobertura de 7 días (1 semana)
       const diasCoberturaMeta = 7
-      let metaInventario = Math.max(consumoDiarioPromedio * diasCoberturaMeta, insumo.stockMinimo * 1.2)
+      let metaInventario = Math.max(consumoDiarioPromedio * diasCoberturaMeta, effectiveMin * 1.2)
 
       // 4. Restricción estricta de caducidad (Vida Útil)
       // Nunca comprar más de lo que se consume en el 80% de su vida útil.
@@ -64,7 +92,7 @@ export async function generarSugerenciasCompra(): Promise<SugerenciaCompra[]> {
       const limiteCaducidad = consumoDiarioPromedio * (insumo.diasVidaUtil * 0.8)
 
       if (metaInventario > limiteCaducidad) {
-        metaInventario = Math.max(limiteCaducidad, insumo.stockMinimo)
+        metaInventario = Math.max(limiteCaducidad, effectiveMin)
         razonSugerencia = `Limitado por caducidad (${insumo.diasVidaUtil} días). Evita merma.`
       } else {
         razonSugerencia = `Basado en ritmo de consumo: ${consumoDiarioPromedio.toFixed(2)} ${insumo.unidadMedida}/día.`
@@ -82,7 +110,7 @@ export async function generarSugerenciasCompra(): Promise<SugerenciaCompra[]> {
         nombre: insumo.nombre,
         unidadMedida: insumo.unidadMedida,
         stockActual: insumo.stockActual,
-        stockMinimo: insumo.stockMinimo,
+        stockMinimo: effectiveMin,
         proveedorId: insumo.proveedorId,
         proveedorNombre: insumo.proveedor?.nombre || 'Sin Proveedor Asignado',
         costoCents: insumo.costoCents,
