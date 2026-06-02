@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import prisma from '@/lib/db'
 import { cookies } from 'next/headers'
 import { getSession } from '@/lib/auth'
-import { escposTicket } from '@/lib/escpos'
+import { escposTicket, getLogoEscposBuffer } from '@/lib/escpos'
 import { toCurrency, LOCALE, CURRENCY } from '@/lib/money'
 
 export async function GET(_req: NextRequest, context: { params: Promise<{ id: string }> }) {
@@ -43,7 +43,7 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
     }
   }
 
-  const payload = escposTicket({
+  const ticketText = escposTicket({
     business,
     address: ajustes?.businessAddress,
     rnc: ajustes?.businessRnc,
@@ -66,5 +66,18 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
   total: toCurrency(pedido.totalCents, locale, currency),
     footer: ajustes?.ticketFooter
   })
-  return new NextResponse(payload, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } })
+
+  const logoBuffer = await getLogoEscposBuffer(ajustes?.logoUrl)
+  const ticketBuffer = Buffer.from(ticketText, 'binary')
+
+  let finalBuffer: Buffer
+  if (logoBuffer) {
+    const drawerKick = ticketBuffer.subarray(0, 10)
+    const rest = ticketBuffer.subarray(10)
+    finalBuffer = Buffer.concat([drawerKick, logoBuffer, rest])
+  } else {
+    finalBuffer = ticketBuffer
+  }
+
+  return new NextResponse(finalBuffer as any, { headers: { 'Content-Type': 'application/octet-stream' } })
 }

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { getSession } from '@/lib/auth'
 import prisma from '@/lib/db'
-import { escposTicket } from '@/lib/escpos'
+import { escposTicket, getLogoEscposBuffer } from '@/lib/escpos'
 import { toCurrency, LOCALE, CURRENCY } from '@/lib/money'
 
 export async function GET() {
@@ -24,7 +24,7 @@ export async function GET() {
   const subtotal = 1999 + 1000
   const impuesto = Math.round(subtotal * (Number(ajustes?.taxPct || 0) / 100))
   const total = subtotal + impuesto
-  const payload = escposTicket({
+  const ticketText = escposTicket({
     business,
     numero: 0,
     fecha,
@@ -34,5 +34,18 @@ export async function GET() {
     total: toCurrency(total, locale, currency),
     footer: ajustes?.ticketFooter
   })
-  return new NextResponse(payload, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } })
+
+  const logoBuffer = await getLogoEscposBuffer(ajustes?.logoUrl)
+  const ticketBuffer = Buffer.from(ticketText, 'binary')
+
+  let finalBuffer: Buffer
+  if (logoBuffer) {
+    const drawerKick = ticketBuffer.subarray(0, 10)
+    const rest = ticketBuffer.subarray(10)
+    finalBuffer = Buffer.concat([drawerKick, logoBuffer, rest])
+  } else {
+    finalBuffer = ticketBuffer
+  }
+
+  return new NextResponse(finalBuffer as any, { headers: { 'Content-Type': 'application/octet-stream' } })
 }

@@ -55,14 +55,21 @@ export async function printReceipt(pedidoId: number, ajustes: any) {
     try {
       const payloadRes = await fetch(`/api/print/ticket/${pedidoId}`, { cache: 'no-store' })
       if (payloadRes.ok) {
-        const payload = await payloadRes.text()
+        const arrayBuffer = await payloadRes.arrayBuffer()
+        const uint8 = new Uint8Array(arrayBuffer)
+        let binaryStr = ''
+        for (let i = 0; i < uint8.length; i++) {
+          binaryStr += String.fromCharCode(uint8[i])
+        }
+        const base64Payload = 'base64:' + btoa(binaryStr)
+
         const sendRes = await fetch('/api/print/network', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             ip: ajustes.printerIp,
             port: ajustes.printerPort || 9100,
-            payload
+            payload: base64Payload
           })
         })
         if (sendRes.ok) {
