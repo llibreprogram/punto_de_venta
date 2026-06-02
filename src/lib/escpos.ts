@@ -52,6 +52,14 @@ export function escposTicket(opts: {
 }) {
   const { business, address, rnc, phone, numero, fecha, mesa, subCuenta, nombreCuenta, ncf, ncfTipo, clienteRnc, clienteNombre, items, subtotal, itebis, propina, impuesto, descuento, total, footer } = opts
   let out = ''
+
+  // Comando ESC/POS para abrir el cajón de dinero (Pin 2 y Pin 5)
+  out += "\x1B\x70\x00\x1E\x78"
+  out += "\x1B\x70\x01\x1E\x78"
+
+  // Comando ESC/POS para imprimir el logo en memoria NV (Posición 1, modo normal)
+  out += "\x1C\x70\x01\x00"
+
   out += escposHeader(business)
   if (rnc) out += `RNC: ${rnc}\n`
   if (address) out += `${address}\n`
