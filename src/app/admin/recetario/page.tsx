@@ -19,7 +19,7 @@ export default async function RecetarioPage() {
   
   const insumos = await prisma.insumo.findMany({
     orderBy: { nombre: 'asc' },
-    select: { id: true, nombre: true, unidadMedida: true, costoCents: true }
+    select: { id: true, nombre: true, unidadMedida: true, costoCents: true, stockActual: true }
   })
 
   return (
