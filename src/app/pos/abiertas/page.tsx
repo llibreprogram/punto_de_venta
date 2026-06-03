@@ -5,7 +5,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { useToast } from '@/components/ui/Providers'
 import { toCurrency, LOCALE, CURRENCY } from '@/lib/money'
 
-type Row = { id:number; numero:number; subCuenta?:number; createdAt:string; subtotalCents:number; impuestoCents:number; descuentoCents:number; totalCents:number; mesa?:{nombre:string}|null }
+type Row = { id:number; numero:number; subCuenta?:number; nombreCuenta?:string|null; createdAt:string; subtotalCents:number; impuestoCents:number; descuentoCents:number; totalCents:number; mesa?:{nombre:string}|null }
 
 export default function AbiertasPage() {
   const [rows, setRows] = useState<Row[]>([])

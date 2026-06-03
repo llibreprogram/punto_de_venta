@@ -104,7 +104,10 @@ export function OpenOrdersSidebar({ isOpen, onClose, onSelectOrder, ajustes }: {
                       {r.mesa?.nombre ? (
                         <span>{r.mesa.nombre} <span className="font-semibold text-amber-600">{r.nombreCuenta ? ` • ${r.nombreCuenta}` : ` • C${r.subCuenta || 1}`}</span></span>
                       ) : (
-                        <span>Para Llevar / Mostrador</span>
+                        <span>
+                          {r.tipo === 'Delivery' ? '🚗 Delivery' : '🛍️ Mostrador'}
+                          {r.nombreCuenta && <span className="font-semibold text-amber-600"> • {r.nombreCuenta}</span>}
+                        </span>
                       )}
                       <span className="text-[10px] text-slate-400 mt-1">{new Date(r.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                     </div>

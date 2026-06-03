@@ -21,7 +21,7 @@ interface CartPanelProps {
 }
 
 export function CartPanel({ ajustes, ivaPct, propinaPct, onCobrar, onCobrarSel, guardarAbierta }: CartPanelProps) {
-  const { carrito, tipo, mesaId, editingPedidoId, vaciarCarrito, actualizarLinea, quitarProducto, agregarProducto, eliminarProducto } = usePosStore()
+  const { carrito, tipo, mesaId, nombreCuenta, setNombreCuenta, editingPedidoId, vaciarCarrito, actualizarLinea, quitarProducto, agregarProducto, eliminarProducto } = usePosStore()
   
   const [customOpen, setCustomOpen] = useState<Record<number, boolean>>({})
   const [sel, setSel] = useState<Record<number, number>>({})
@@ -105,6 +105,20 @@ export function CartPanel({ ajustes, ivaPct, propinaPct, onCobrar, onCobrarSel, 
         <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">
           {totalItems} {totalItems === 1 ? 'ítem' : 'ítems'}
         </span>
+      </div>
+      
+      {/* Input Nombre de Cuenta */}
+      <div className="px-3.5 py-2.5 bg-slate-50/80 border-b border-slate-200/45 flex items-center gap-2">
+        <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">
+          Cliente:
+        </label>
+        <input
+          type="text"
+          value={nombreCuenta || ''}
+          onChange={(e) => setNombreCuenta(e.target.value || null)}
+          placeholder={tipo === 'Mostrador' ? 'Nombre para llamar' : (tipo === 'Delivery' ? 'Nombre cliente' : 'Nombre de la cuenta')}
+          className="flex-1 min-w-0 bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 focus:border-amber-500 placeholder:text-slate-450 font-semibold text-slate-700 shadow-sm"
+        />
       </div>
 
       {/* Items list */}

@@ -4,7 +4,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { LOCALE, CURRENCY, toCurrency } from '@/lib/money'
 import { Fragment, useEffect, useMemo, useState } from 'react'
 
-type PedidoRow = { id:number; numero:number; createdAt:string; totalCents:number; estado:string; subCuenta?: number | null; mesa?: { nombre: string } | null }
+type PedidoRow = { id:number; numero:number; createdAt:string; totalCents:number; estado:string; subCuenta?: number | null; nombreCuenta?: string | null; mesa?: { nombre: string } | null }
 type PedidoDetalle = { id:number; numero:number; items: Array<{ id:number; cantidad:number; precioCents:number; totalCents:number; producto:{nombre:string}; extras?: string[]|null; removidos?: string[]|null; notas?: string|null }> }
 
 export default function VentasPage() {
