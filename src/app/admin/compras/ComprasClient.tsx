@@ -10,10 +10,12 @@ type OrdenCompra = {
   id: number
   estado: string
   totalCents: number
-  proveedor: { nombre: string }
+  proveedor: { nombre: string; rnc: string | null }
   fechaEsperada: string | null
   createdAt: string
   items: any[]
+  ncf: string | null
+  ncfTipo: string | null
 }
 
 export default function ComprasClient() {
@@ -25,6 +27,17 @@ export default function ComprasClient() {
   const [recepcionOrden, setRecepcionOrden] = useState<OrdenCompra | null>(null)
   const [recepcionCantidades, setRecepcionCantidades] = useState<Record<number, number>>({})
   const { push } = useToast()
+
+  // Estados impositivos (606)
+  const [registrarFiscal, setRegistrarFiscal] = useState(false)
+  const [fiscalRnc, setFiscalRnc] = useState('')
+  const [fiscalNcf, setFiscalNcf] = useState('')
+  const [fiscalTipoGasto, setFiscalTipoGasto] = useState('02')
+  const [fiscalItebis, setFiscalItebis] = useState('0')
+  const [fiscalMetodoPago, setFiscalMetodoPago] = useState('TRANSFERENCIA')
+  
+  // Retroactivo
+  const [retroactivoOrden, setRetroactivoOrden] = useState<OrdenCompra | null>(null)
 
   const load = async () => {
     setCargando(true)
@@ -94,22 +107,97 @@ export default function ComprasClient() {
     const cants: Record<number, number> = {}
     o.items.forEach(i => cants[i.id] = i.cantidadPedida)
     setRecepcionCantidades(cants)
+    // Pre-populate fiscal
+    setRegistrarFiscal(false)
+    setFiscalRnc(o.proveedor?.rnc || '')
+    setFiscalNcf('')
+    setFiscalTipoGasto('02')
+    setFiscalItebis('0')
+    setFiscalMetodoPago('TRANSFERENCIA')
   }
 
   const confirmarRecepcion = async () => {
     if (!recepcionOrden) return
+    
+    if (registrarFiscal && !fiscalNcf.trim()) {
+      push('El número NCF es obligatorio para el registro fiscal.', 'error')
+      return
+    }
+    if (registrarFiscal && !fiscalRnc.trim()) {
+      push('El RNC del proveedor es obligatorio.', 'error')
+      return
+    }
+
+    const payload: any = {
+      itemsRecibidos: Object.entries(recepcionCantidades).map(([id, qty]) => ({ id: Number(id), cantidadRecibida: Number(qty) }))
+    }
+
+    if (registrarFiscal) {
+      payload.fiscal = {
+        rncProveedor: fiscalRnc,
+        ncf: fiscalNcf,
+        tipoGasto: fiscalTipoGasto,
+        itebisFacturadoCents: Math.round(parseFloat(fiscalItebis) * 100) || 0,
+        metodoPago: fiscalMetodoPago
+      }
+    }
+
     const res = await fetch(`/api/compras/${recepcionOrden.id}/recibir`, { 
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        itemsRecibidos: Object.entries(recepcionCantidades).map(([id, qty]) => ({ id: Number(id), cantidadRecibida: Number(qty) }))
-      })
+      body: JSON.stringify(payload)
     })
+    
     if (res.ok) {
       push('Mercancía recibida e inventario actualizado', 'success')
       setRecepcionOrden(null)
       load()
-    } else push('Error al recibir mercancía', 'error')
+    } else {
+      const data = await res.json()
+      push(data.error || 'Error al recibir mercancía', 'error')
+    }
+  }
+
+  const abrirRetroactivo = (o: OrdenCompra) => {
+    setRetroactivoOrden(o)
+    setFiscalRnc(o.proveedor?.rnc || '')
+    setFiscalNcf('')
+    setFiscalTipoGasto('02')
+    setFiscalItebis('0')
+    setFiscalMetodoPago('TRANSFERENCIA')
+  }
+
+  const confirmarRetroactivo = async () => {
+    if (!retroactivoOrden) return
+    if (!fiscalNcf.trim()) {
+      push('El número NCF es obligatorio.', 'error')
+      return
+    }
+    if (!fiscalRnc.trim()) {
+      push('El RNC del proveedor es obligatorio.', 'error')
+      return
+    }
+
+    const res = await fetch(`/api/compras/${retroactivoOrden.id}/registrar-fiscal`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        rncProveedor: fiscalRnc,
+        ncf: fiscalNcf,
+        tipoGasto: fiscalTipoGasto,
+        itebisFacturadoCents: Math.round(parseFloat(fiscalItebis) * 100) || 0,
+        metodoPago: fiscalMetodoPago
+      })
+    })
+
+    if (res.ok) {
+      push('Registro fiscal y asiento contable creados con éxito', 'success')
+      setRetroactivoOrden(null)
+      load()
+    } else {
+      const data = await res.json()
+      push(data.error || 'Error al guardar registro fiscal', 'error')
+    }
   }
 
   const imprimirOrden = (o: OrdenCompra) => {
@@ -218,6 +306,11 @@ export default function ComprasClient() {
                               <div className="font-bold text-slate-800 flex items-center gap-2">
                                 <Building2 className="w-4 h-4 text-slate-400" /> {o.proveedor.nombre}
                               </div>
+                              {o.ncf && (
+                                <div className="text-[10px] font-mono font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/50 rounded px-1.5 py-0.5 mt-1.5 w-max">
+                                  NCF: {o.ncf}
+                                </div>
+                              )}
                             </td>
                             <td className="p-5">
                               <div className="flex items-center gap-2 text-slate-600 font-medium">
@@ -251,6 +344,11 @@ export default function ComprasClient() {
                               {o.estado === 'ENVIADA' && (
                                 <button onClick={()=>abrirRecepcion(o)} className="flex items-center gap-2 text-sm bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-xl hover:opacity-90 font-bold shadow-md shadow-emerald-500/20 hover:-translate-y-0.5 transition-all">
                                   <PackageCheck className="w-4 h-4" /> Recibir Stock
+                                </button>
+                              )}
+                              {o.estado === 'RECIBIDA' && o.ncf === null && (
+                                <button onClick={()=>abrirRetroactivo(o)} className="flex items-center gap-2 text-sm bg-gradient-to-r from-indigo-500 to-indigo-600 text-white px-4 py-2 rounded-xl hover:opacity-90 font-bold shadow-md shadow-indigo-500/20 hover:-translate-y-0.5 transition-all">
+                                  <Receipt className="w-4 h-4" /> Registrar Fiscal
                                 </button>
                               )}
                               {o.estado === 'BORRADOR' && (
@@ -435,11 +533,216 @@ export default function ComprasClient() {
                     </div>
                   </div>
                 ))}
+
+                {/* Formulario Fiscal (606) */}
+                <div className="mt-6 pt-6 border-t border-slate-200">
+                  <label className="flex items-center gap-3 cursor-pointer bg-slate-50 p-4 rounded-2xl border border-slate-200/65 hover:bg-slate-100/50 transition-colors">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                      checked={registrarFiscal}
+                      onChange={(e) => setRegistrarFiscal(e.target.checked)}
+                    />
+                    <div>
+                      <div className="font-bold text-slate-800 text-sm">Registrar Datos Fiscales (606)</div>
+                      <div className="text-[11px] text-slate-500 font-medium">Asociar NCF de compra y generar asiento contable en el Libro Diario.</div>
+                    </div>
+                  </label>
+
+                  {registrarFiscal && (
+                    <div className="mt-4 p-5 bg-slate-50 rounded-2xl border border-slate-200/60 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] uppercase font-extrabold text-slate-500">NCF de Compra *</label>
+                        <input
+                          type="text"
+                          placeholder="Ej: B0100000001"
+                          maxLength={19}
+                          className="input py-2 px-3 text-sm font-semibold border-slate-200 focus:border-indigo-500"
+                          value={fiscalNcf}
+                          onChange={(e) => setFiscalNcf(e.target.value.toUpperCase())}
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] uppercase font-extrabold text-slate-500">RNC/Cédula Proveedor *</label>
+                        <input
+                          type="text"
+                          placeholder="9 u 11 dígitos"
+                          className="input py-2 px-3 text-sm font-semibold border-slate-200 focus:border-indigo-500"
+                          value={fiscalRnc}
+                          onChange={(e) => setFiscalRnc(e.target.value.replace(/[^0-9]/g, ''))}
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-1 sm:col-span-2">
+                        <label className="text-[10px] uppercase font-extrabold text-slate-500">Tipo de Gasto (DGII)</label>
+                        <select
+                          className="input py-2 px-3 text-sm font-semibold border-slate-200 focus:border-indigo-500"
+                          value={fiscalTipoGasto}
+                          onChange={(e) => setFiscalTipoGasto(e.target.value)}
+                        >
+                          <option value="01">01 - Gastos de Personal</option>
+                          <option value="02">02 - Gastos por Trabajos, Suministros y Servicios</option>
+                          <option value="03">03 - Arrendamientos</option>
+                          <option value="04">04 - Gastos de Activos Fijos</option>
+                          <option value="05">05 - Gastos de Representación</option>
+                          <option value="06">06 - Gastos Financieros</option>
+                          <option value="07">07 - Gastos de Seguros</option>
+                          <option value="08">08 - Gastos de Conservación y Reparación</option>
+                          <option value="09">09 - Adquisición de Activos Fijos</option>
+                          <option value="10">10 - Gastos de Seguros y Fianzas</option>
+                          <option value="11">11 - Gastos de Representación y Relaciones Públicas</option>
+                        </select>
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] uppercase font-extrabold text-slate-500">ITBIS Facturado (Impuesto)</label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">$</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            placeholder="0.00"
+                            className="input py-2 pl-7 pr-3 text-sm font-semibold border-slate-200 focus:border-indigo-500 text-right"
+                            value={fiscalItebis}
+                            onChange={(e) => setFiscalItebis(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] uppercase font-extrabold text-slate-500">Método de Pago</label>
+                        <select
+                          className="input py-2 px-3 text-sm font-semibold border-slate-200 focus:border-indigo-500"
+                          value={fiscalMetodoPago}
+                          onChange={(e) => setFiscalMetodoPago(e.target.value)}
+                        >
+                          <option value="TRANSFERENCIA">Transferencia / Banco</option>
+                          <option value="EFECTIVO">Efectivo</option>
+                          <option value="CREDITO">Crédito (CXP)</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
                 <button onClick={()=>setRecepcionOrden(null)} className="px-5 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-200 transition-colors">Cancelar</button>
                 <button onClick={confirmarRecepcion} className="px-6 py-3 rounded-xl font-black text-white bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/30 transition-all flex items-center gap-2">
                   <CheckCircle className="w-5 h-5" /> Confirmar e Ingresar
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal de Registro Fiscal Retroactivo (606) */}
+      <AnimatePresence>
+        {retroactivoOrden && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex justify-center items-center p-4">
+            <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }} className="bg-white rounded-3xl shadow-2xl overflow-hidden w-full max-w-xl flex flex-col max-h-[90vh]">
+              <div className="p-6 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-black text-slate-800">Registrar Fiscal (606) — OC-{retroactivoOrden.id.toString().padStart(4,'0')}</h3>
+                  <p className="text-sm text-slate-500 font-medium">Asigna el NCF y datos impositivos para reportar esta compra en el 606.</p>
+                </div>
+                <button onClick={()=>setRetroactivoOrden(null)} className="p-2 bg-white rounded-xl shadow-sm hover:bg-slate-100 text-slate-400 transition-colors">
+                  <XCircle className="w-6 h-6" />
+                </button>
+              </div>
+              <div className="p-6 overflow-y-auto flex-1 space-y-4">
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/60 mb-2">
+                  <div className="flex justify-between text-xs py-1 text-slate-600">
+                    <span>Proveedor:</span>
+                    <span className="font-bold text-slate-800">{retroactivoOrden.proveedor.nombre}</span>
+                  </div>
+                  <div className="flex justify-between text-xs py-1 text-slate-600">
+                    <span>Monto Total:</span>
+                    <span className="font-bold text-slate-800">{toCurrency(retroactivoOrden.totalCents)}</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] uppercase font-extrabold text-slate-500">NCF de Compra *</label>
+                    <input
+                      type="text"
+                      placeholder="Ej: B0100000001"
+                      maxLength={19}
+                      className="input py-2 px-3 text-sm font-semibold border-slate-200 focus:border-indigo-500"
+                      value={fiscalNcf}
+                      onChange={(e) => setFiscalNcf(e.target.value.toUpperCase())}
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] uppercase font-extrabold text-slate-500">RNC/Cédula Proveedor *</label>
+                    <input
+                      type="text"
+                      placeholder="9 u 11 dígitos"
+                      className="input py-2 px-3 text-sm font-semibold border-slate-200 focus:border-indigo-500"
+                      value={fiscalRnc}
+                      onChange={(e) => setFiscalRnc(e.target.value.replace(/[^0-9]/g, ''))}
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1 sm:col-span-2">
+                    <label className="text-[10px] uppercase font-extrabold text-slate-500">Tipo de Gasto (DGII)</label>
+                    <select
+                      className="input py-2 px-3 text-sm font-semibold border-slate-200 focus:border-indigo-500"
+                      value={fiscalTipoGasto}
+                      onChange={(e) => setFiscalTipoGasto(e.target.value)}
+                    >
+                      <option value="01">01 - Gastos de Personal</option>
+                      <option value="02">02 - Gastos por Trabajos, Suministros y Servicios</option>
+                      <option value="03">03 - Arrendamientos</option>
+                      <option value="04">04 - Gastos de Activos Fijos</option>
+                      <option value="05">05 - Gastos de Representación</option>
+                      <option value="06">06 - Gastos Financieros</option>
+                      <option value="07">07 - Gastos de Seguros</option>
+                      <option value="08">08 - Gastos de Conservación y Reparación</option>
+                      <option value="09">09 - Adquisición de Activos Fijos</option>
+                      <option value="10">10 - Gastos de Seguros y Fianzas</option>
+                      <option value="11">11 - Gastos de Representación y Relaciones Públicas</option>
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] uppercase font-extrabold text-slate-500">ITBIS Facturado (Impuesto)</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        className="input py-2 pl-7 pr-3 text-sm font-semibold border-slate-200 focus:border-indigo-500 text-right"
+                        value={fiscalItebis}
+                        onChange={(e) => setFiscalItebis(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] uppercase font-extrabold text-slate-500">Método de Pago</label>
+                    <select
+                      className="input py-2 px-3 text-sm font-semibold border-slate-200 focus:border-indigo-500"
+                      value={fiscalMetodoPago}
+                      onChange={(e) => setFiscalMetodoPago(e.target.value)}
+                    >
+                      <option value="TRANSFERENCIA">Transferencia / Banco</option>
+                      <option value="EFECTIVO">Efectivo</option>
+                      <option value="CREDITO">Crédito (CXP)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+                <button onClick={()=>setRetroactivoOrden(null)} className="px-5 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-200 transition-colors">Cancelar</button>
+                <button onClick={confirmarRetroactivo} className="px-6 py-3 rounded-xl font-black text-white bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-650/30 transition-all flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5" /> Registrar Fiscal
                 </button>
               </div>
             </motion.div>

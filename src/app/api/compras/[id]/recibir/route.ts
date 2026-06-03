@@ -2,6 +2,7 @@ import prisma from '@/lib/db'
 import { NextResponse, type NextRequest } from 'next/server'
 import { cookies } from 'next/headers'
 import { getSession } from '@/lib/auth'
+import { registrarCompraContabilidad } from '@/lib/accounting'
 
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const cookieStore = await cookies()
@@ -13,6 +14,10 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
   const ordenId = Number(id)
 
   try {
+    const body = await req.json()
+    const itemsRecibidos: { id: number, cantidadRecibida: number }[] = body?.itemsRecibidos || []
+    const recibidosMap = new Map(itemsRecibidos.map(i => [i.id, i.cantidadRecibida]))
+
     const result = await prisma.$transaction(async (tx) => {
       const orden = await tx.ordenCompra.findUnique({
         where: { id: ordenId },
@@ -22,10 +27,6 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       if (!orden || orden.estado === 'RECIBIDA') {
         throw new Error('Orden no válida o ya recibida')
       }
-
-      const body = await req.json()
-      const itemsRecibidos: { id: number, cantidadRecibida: number }[] = body?.itemsRecibidos || []
-      const recibidosMap = new Map(itemsRecibidos.map(i => [i.id, i.cantidadRecibida]))
 
       let nuevoTotalCents = 0
 
@@ -78,10 +79,23 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
 
       return { ok: true }
     })
+
+    if (body?.fiscal) {
+      const { rncProveedor, ncf, tipoGasto, itebisFacturadoCents, metodoPago } = body.fiscal
+      if (rncProveedor && ncf && tipoGasto && metodoPago) {
+        await registrarCompraContabilidad(ordenId, {
+          rncProveedor: rncProveedor.trim(),
+          ncf: ncf.trim(),
+          tipoGasto,
+          itebisFacturadoCents: parseInt(itebisFacturadoCents) || 0,
+          metodoPago
+        })
+      }
+    }
     
     return NextResponse.json(result)
-  } catch (error) {
+  } catch (error: any) {
     console.error(error)
-    return NextResponse.json({ error: 'Error al recibir la orden' }, { status: 500 })
+    return NextResponse.json({ error: error.message || 'Error al recibir la orden' }, { status: 500 })
   }
 }

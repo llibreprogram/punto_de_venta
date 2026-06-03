@@ -7,6 +7,12 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { exec } from 'child_process'
+import { promisify } from 'util'
+import fs from 'fs/promises'
+import path from 'path'
+
+const execPromise = promisify(exec)
 
 // Helper para formatear fechas a AAAAMMDD
 function formatDateToAAAAMMDD(date: Date | null | undefined): string {
@@ -23,13 +29,34 @@ function formatCentsToDecimal(cents: number): string {
   return (cents / 100).toFixed(2)
 }
 
+// Helper para rellenar plantillas Excel con python
+async function generateXls(tipo: string, rnc: string, period: string, records: any[]): Promise<Buffer> {
+  const tempJsonPath = path.join(process.cwd(), `templates/temp_${tipo}_${Date.now()}.json`)
+  const tempOutPath = path.join(process.cwd(), `templates/out_${tipo}_${Date.now()}.xls`)
+  
+  try {
+    await fs.writeFile(tempJsonPath, JSON.stringify(records, null, 2), 'utf-8')
+    const pythonScript = path.join(process.cwd(), 'scripts/fill_dgii_excel.py')
+    
+    // Ejecutar script
+    await execPromise(`python3 "${pythonScript}" "${tipo}" "${period}" "${rnc}" "${tempJsonPath}" "${tempOutPath}"`)
+    
+    const buffer = await fs.readFile(tempOutPath)
+    return buffer
+  } finally {
+    // Limpieza
+    await fs.unlink(tempJsonPath).catch(() => {})
+    await fs.unlink(tempOutPath).catch(() => {})
+  }
+}
+
 // GET /api/dgii/formatos
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const tipo = searchParams.get('tipo') // "606", "607", "608", "it1"
     const periodo = searchParams.get('periodo') // Formato: "YYYY-MM" (ej: "2026-05")
-    const format = searchParams.get('format') // "txt" o "json"
+    const format = searchParams.get('format') // "txt", "csv", "xls", "json"
 
     if (!tipo || !periodo) {
       return NextResponse.json({ ok: false, error: 'Los parámetros tipo y periodo son obligatorios.' }, { status: 400 })
@@ -61,42 +88,99 @@ export async function GET(request: NextRequest) {
         orderBy: { fechaComprobante: 'asc' },
       })
 
+      const mapped = compras.map((c) => {
+        const rncProveedor = c.rncCedula || ''
+        const tipoId = c.tipoId || 1
+        const tipoGasto = c.tipoGasto || '11'
+        const ncf = c.ncf
+        const ncfModificado = c.ncfModificado || ''
+        const fechaComprobante = formatDateToAAAAMMDD(c.fechaComprobante)
+        const fechaPago = formatDateToAAAAMMDD(c.fechaPago)
+        const montoFacturado = formatCentsToDecimal(c.montoFacturadoCents)
+        const itebisFacturado = formatCentsToDecimal(c.itebisFacturadoCents)
+        const itebisRetenido = formatCentsToDecimal(c.itebisRetenidoCents)
+        const itebisSujetoProp = formatCentsToDecimal(c.itebisSujetoProporcionalidadCents)
+        const itebisLlevadoCosto = formatCentsToDecimal(c.itebisLlevadoCostoCents)
+        const itebisAdelantar = formatCentsToDecimal(c.itebisPorAdelantarCents)
+        const itebisPercibido = formatCentsToDecimal(c.itebisPercibidoCents)
+        const tipoRetIsr = c.tipoRetencionIsr || ''
+        const montoRetIsr = formatCentsToDecimal(c.isrRetenidoCents)
+        const isc = formatCentsToDecimal(c.impuestoSelectivoConsumoCents)
+        const otrosImp = formatCentsToDecimal(c.otrosImpuestosCents)
+        const propina = formatCentsToDecimal(c.propinaLegalCents)
+        
+        let formaPago = '02' // Transferencia por defecto
+        if (c.montoEfectivoCents > 0) formaPago = '01'
+        else if (c.montoTarjetaCents > 0) formaPago = '03'
+        else if (c.montoCreditoCents > 0) formaPago = '04'
+
+        const isBien = ['04', '09', '10'].includes(tipoGasto)
+        const montoServicios = isBien ? '0.00' : montoFacturado
+        const montoBienes = isBien ? montoFacturado : '0.00'
+        const totalMonto = montoFacturado
+        const isrPercibido = '0.00'
+
+        return {
+          rncProveedor,
+          tipoId,
+          tipoGasto,
+          ncf,
+          ncfModificado,
+          fechaComprobante,
+          fechaPago,
+          montoServicios,
+          montoBienes,
+          totalMonto,
+          itebisFacturado,
+          itebisRetenido,
+          itebisSujetoProp,
+          itebisLlevadoCosto,
+          itebisAdelantar,
+          itebisPercibido,
+          tipoRetIsr,
+          montoRetIsr,
+          isrPercibido,
+          isc,
+          otrosImp,
+          propina,
+          formaPago
+        }
+      })
+
       if (format === 'txt') {
-        // Generar encabezado: RNC|Periodo|CantidadRegistros
-        let txt = `${businessRnc}|${periodString}|${compras.length}\n`
-
-        compras.forEach((c) => {
-          const rncProveedor = c.rncCedula
-          const tipoId = c.tipoId
-          const tipoGasto = c.tipoGasto || '11'
-          const ncf = c.ncf
-          const ncfModificado = c.ncfModificado || ''
-          const fechaComprobante = formatDateToAAAAMMDD(c.fechaComprobante)
-          const fechaPago = formatDateToAAAAMMDD(c.fechaPago)
-          const montoFacturado = formatCentsToDecimal(c.montoFacturadoCents)
-          const itebisFacturado = formatCentsToDecimal(c.itebisFacturadoCents)
-          const itebisRetenido = formatCentsToDecimal(c.itebisRetenidoCents)
-          const itebisSujetoProp = formatCentsToDecimal(c.itebisSujetoProporcionalidadCents)
-          const itebisLlevadoCosto = formatCentsToDecimal(c.itebisLlevadoCostoCents)
-          const itebisAdelantar = formatCentsToDecimal(c.itebisPorAdelantarCents)
-          const itebisPercibido = formatCentsToDecimal(c.itebisPercibidoCents)
-          const tipoRetIsr = c.tipoRetencionIsr || ''
-          const montoRetIsr = formatCentsToDecimal(c.isrRetenidoCents)
-          const isc = formatCentsToDecimal(c.impuestoSelectivoConsumoCents)
-          const otrosImp = formatCentsToDecimal(c.otrosImpuestosCents)
-          const propina = formatCentsToDecimal(c.propinaLegalCents)
-          
-          let formaPago = '02' // Transferencia por defecto
-          if (c.montoEfectivoCents > 0) formaPago = '01'
-          else if (c.montoCreditoCents > 0) formaPago = '04'
-
-          txt += `${rncProveedor}|${tipoId}|${tipoGasto}|${ncf}|${ncfModificado}|${fechaComprobante}|${fechaPago}|${montoFacturado}|${itebisFacturado}|${itebisRetenido}|${itebisSujetoProp}|${itebisLlevadoCosto}|${itebisAdelantar}|${itebisPercibido}|${tipoRetIsr}|${montoRetIsr}|${isc}|${otrosImp}|${propina}|${formaPago}\n`
+        let txt = `${businessRnc}|${periodString}|${mapped.length}\n`
+        mapped.forEach((m) => {
+          txt += `${m.rncProveedor}|${m.tipoId}|${m.tipoGasto}|${m.ncf}|${m.ncfModificado}|${m.fechaComprobante}|${m.fechaPago}|${m.montoServicios}|${m.montoBienes}|${m.totalMonto}|${m.itebisFacturado}|${m.itebisRetenido}|${m.itebisSujetoProp}|${m.itebisLlevadoCosto}|${m.itebisAdelantar}|${m.itebisPercibido}|${m.tipoRetIsr}|${m.montoRetIsr}|${m.isrPercibido}|${m.isc}|${m.otrosImp}|${m.propina}|${m.formaPago}\n`
         })
 
         return new NextResponse(txt, {
           headers: {
             'Content-Type': 'text/plain; charset=utf-8',
             'Content-Disposition': `attachment; filename=DGII_606_${periodString}.txt`,
+          },
+        })
+      }
+
+      if (format === 'csv') {
+        let csv = `RNC o Cédula;Tipo Identificación;Tipo de Bienes y Servicios Comprados;NCF;NCF Modificado;Fecha Comprobante;Fecha Pago;Monto Facturado en Servicios;Monto Facturado en Bienes;Total Monto Facturado;ITBIS Facturado;ITBIS Retenido;ITBIS Sujeto a Proporcionalidad;ITBIS llevado al Costo;ITBIS por Adelantar;ITBIS Percibido en Compras;Tipo de Retención en ISR;Monto Retención Renta;ISR Percibido en Compras;Impuesto Selectivo al Consumo;Otros Impuestos/Tasas;Monto Propina Legal;Forma de Pago\n`
+        mapped.forEach((m) => {
+          csv += `${m.rncProveedor};${m.tipoId};${m.tipoGasto};${m.ncf};${m.ncfModificado};${m.fechaComprobante};${m.fechaPago};${m.montoServicios};${m.montoBienes};${m.totalMonto};${m.itebisFacturado};${m.itebisRetenido};${m.itebisSujetoProp};${m.itebisLlevadoCosto};${m.itebisAdelantar};${m.itebisPercibido};${m.tipoRetIsr};${m.montoRetIsr};${m.isrPercibido};${m.isc};${m.otrosImp};${m.propina};${m.formaPago}\n`
+        })
+
+        return new NextResponse(csv, {
+          headers: {
+            'Content-Type': 'text/csv; charset=utf-8',
+            'Content-Disposition': `attachment; filename=DGII_606_${periodString}.csv`,
+          },
+        })
+      }
+
+      if (format === 'xls' || format === 'excel') {
+        const buffer = await generateXls('606', businessRnc, periodString, mapped)
+        return new NextResponse(buffer, {
+          headers: {
+            'Content-Type': 'application/vnd.ms-excel',
+            'Content-Disposition': `attachment; filename=DGII_606_${periodString}.xls`,
           },
         })
       }
@@ -118,42 +202,96 @@ export async function GET(request: NextRequest) {
         orderBy: { fechaComprobante: 'asc' },
       })
 
+      const mapped = ventas.map((v) => {
+        const rncCliente = v.rncCedula || ''
+        const tipoId = v.rncCedula ? v.tipoId : ''
+        const ncf = v.ncf
+        const ncfModificado = v.ncfModificado || ''
+        const tipoIngreso = '01'
+        const fechaComprobante = formatDateToAAAAMMDD(v.fechaComprobante)
+        
+        const hasRetencion = v.itebisRetenidoCents > 0 || v.isrRetenidoCents > 0
+        const fechaRetencion = hasRetencion ? formatDateToAAAAMMDD(v.fechaPago || v.fechaComprobante) : ''
+
+        const montoFacturado = formatCentsToDecimal(v.montoFacturadoCents)
+        const itebisFacturado = formatCentsToDecimal(v.itebisFacturadoCents)
+        const itebisRetenido = formatCentsToDecimal(v.itebisRetenidoCents)
+        const itebisPercibido = formatCentsToDecimal(v.itebisPercibidoCents)
+        const retencionRenta = formatCentsToDecimal(v.isrRetenidoCents)
+        const isrPercibido = '0.00'
+        const isc = formatCentsToDecimal(v.impuestoSelectivoConsumoCents)
+        const otrosImp = formatCentsToDecimal(v.otrosImpuestosCents)
+        const propina = formatCentsToDecimal(v.propinaLegalCents)
+        
+        const efec = formatCentsToDecimal(v.montoEfectivoCents)
+        const trans = formatCentsToDecimal(v.montoTransferenciaCents)
+        const tarj = formatCentsToDecimal(v.montoTarjetaCents)
+        const cred = formatCentsToDecimal(v.montoCreditoCents)
+        const bonos = '0.00'
+        const permuta = '0.00'
+        const otras = formatCentsToDecimal(v.otrasFormasPagoCents)
+
+        return {
+          rncCliente,
+          tipoId,
+          ncf,
+          ncfModificado,
+          tipoIngreso,
+          fechaComprobante,
+          fechaRetencion,
+          montoFacturado,
+          itebisFacturado,
+          itebisRetenido,
+          itebisPercibido,
+          retencionRenta,
+          isrPercibido,
+          isc,
+          otrosImp,
+          propina,
+          efec,
+          trans,
+          tarj,
+          cred,
+          bonos,
+          permuta,
+          otras
+        }
+      })
+
       if (format === 'txt') {
-        // Generar encabezado: RNC|Periodo|CantidadRegistros
-        let txt = `${businessRnc}|${periodString}|${ventas.length}\n`
-
-        ventas.forEach((v) => {
-          const rncCliente = v.rncCedula
-          const tipoId = v.rncCedula ? v.tipoId : 3
-          const ncf = v.ncf
-          const ncfModificado = v.ncfModificado || ''
-          const tipoIngreso = '01' // Ingresos por Operaciones
-          const fechaComprobante = formatDateToAAAAMMDD(v.fechaComprobante)
-          const fechaRetencion = formatDateToAAAAMMDD(v.fechaPago) // Opcional
-          const montoFacturado = formatCentsToDecimal(v.montoFacturadoCents)
-          const itebisFacturado = formatCentsToDecimal(v.itebisFacturadoCents)
-          const itebisRetenido = formatCentsToDecimal(v.itebisRetenidoCents)
-          const itebisPercibido = formatCentsToDecimal(v.itebisPercibidoCents)
-          const retencionRenta = formatCentsToDecimal(v.isrRetenidoCents)
-          const isrPercibido = '0.00'
-          const isc = formatCentsToDecimal(v.impuestoSelectivoConsumoCents)
-          const otrosImp = formatCentsToDecimal(v.otrosImpuestosCents)
-          const propina = formatCentsToDecimal(v.propinaLegalCents)
-          
-          const efec = formatCentsToDecimal(v.montoEfectivoCents)
-          const tarj = formatCentsToDecimal(v.montoTarjetaCents)
-          const cred = formatCentsToDecimal(v.montoCreditoCents)
-          const bonos = '0.00'
-          const permuta = '0.00'
-          const trans = formatCentsToDecimal(v.montoTransferenciaCents + v.otrasFormasPagoCents)
-
-          txt += `${rncCliente}|${tipoId}|${ncf}|${ncfModificado}|${tipoIngreso}|${fechaComprobante}|${fechaRetencion}|${montoFacturado}|${itebisFacturado}|${itebisRetenido}|${itebisPercibido}|${retencionRenta}|${isrPercibido}|${isc}|${otrosImp}|${propina}|${efec}|${tarj}|${cred}|${bonos}|${permuta}|${trans}\n`
+        let txt = `${businessRnc}|${periodString}|${mapped.length}\n`
+        mapped.forEach((m) => {
+          txt += `${m.rncCliente}|${m.tipoId}|${m.ncf}|${m.ncfModificado}|${m.tipoIngreso}|${m.fechaComprobante}|${m.fechaRetencion}|${m.montoFacturado}|${m.itebisFacturado}|${m.itebisRetenido}|${m.itebisPercibido}|${m.retencionRenta}|${m.isrPercibido}|${m.isc}|${m.otrosImp}|${m.propina}|${m.efec}|${m.trans}|${m.tarj}|${m.cred}|${m.bonos}|${m.permuta}|${m.otras}\n`
         })
 
         return new NextResponse(txt, {
           headers: {
             'Content-Type': 'text/plain; charset=utf-8',
             'Content-Disposition': `attachment; filename=DGII_607_${periodString}.txt`,
+          },
+        })
+      }
+
+      if (format === 'csv') {
+        let csv = `RNC o Cédula;Tipo Identificación;NCF;NCF Modificado;Tipo de Ingreso;Fecha Comprobante;Fecha Retención;Monto Facturado;ITBIS Facturado;ITBIS Retenido por Terceros;ITBIS Percibido en Ventas;Retención Renta por Terceros;ISR Percibido en Ventas;Impuesto Selectivo al Consumo;Otros Impuestos/Tasas;Monto Propina Legal;Efectivo;Cheque/Transferencia/Depósito;Tarjeta Débito/Crédito;Venta a Crédito;Bonos o Certificados de Regalo;Permuta;Otras Formas de Ventas\n`
+        mapped.forEach((m) => {
+          csv += `${m.rncCliente};${m.tipoId};${m.ncf};${m.ncfModificado};${m.tipoIngreso};${m.fechaComprobante};${m.fechaRetencion};${m.montoFacturado};${m.itebisFacturado};${m.itebisRetenido};${m.itebisPercibido};${m.retencionRenta};${m.isrPercibido};${m.isc};${m.otrosImp};${m.propina};${m.efec};${m.trans};${m.tarj};${m.cred};${m.bonos};${m.permuta};${m.otras}\n`
+        })
+
+        return new NextResponse(csv, {
+          headers: {
+            'Content-Type': 'text/csv; charset=utf-8',
+            'Content-Disposition': `attachment; filename=DGII_607_${periodString}.csv`,
+          },
+        })
+      }
+
+      if (format === 'xls' || format === 'excel') {
+        const buffer = await generateXls('607', businessRnc, periodString, mapped)
+        return new NextResponse(buffer, {
+          headers: {
+            'Content-Type': 'application/vnd.ms-excel',
+            'Content-Disposition': `attachment; filename=DGII_607_${periodString}.xls`,
           },
         })
       }
@@ -173,22 +311,52 @@ export async function GET(request: NextRequest) {
         orderBy: { fechaAnulacion: 'asc' },
       })
 
-      if (format === 'txt') {
-        // Generar encabezado: RNC|Periodo|CantidadRegistros
-        let txt = `${businessRnc}|${periodString}|${anulados.length}\n`
+      const mapped = anulados.map((a) => {
+        const ncf = a.ncf
+        const fechaComprobante = formatDateToAAAAMMDD(a.fechaComprobante)
+        const tipoAnulacion = a.tipoAnulacion // Código DGII (01-10)
 
-        anulados.forEach((a) => {
-          const ncf = a.ncf
-          const fechaComprobante = formatDateToAAAAMMDD(a.fechaComprobante)
-          const tipoAnulacion = a.tipoAnulacion // Código DGII (01-10)
-          
-          txt += `${ncf}|${fechaComprobante}|${tipoAnulacion}\n`
+        return {
+          ncf,
+          fechaComprobante,
+          tipoAnulacion
+        }
+      })
+
+      if (format === 'txt') {
+        let txt = `${businessRnc}|${periodString}|${mapped.length}\n`
+        mapped.forEach((m) => {
+          txt += `${m.ncf}|${m.fechaComprobante}|${m.tipoAnulacion}\n`
         })
 
         return new NextResponse(txt, {
           headers: {
             'Content-Type': 'text/plain; charset=utf-8',
             'Content-Disposition': `attachment; filename=DGII_608_${periodString}.txt`,
+          },
+        })
+      }
+
+      if (format === 'csv') {
+        let csv = `NCF;Fecha Comprobante;Tipo Anulación\n`
+        mapped.forEach((m) => {
+          csv += `${m.ncf};${m.fechaComprobante};${m.tipoAnulacion}\n`
+        })
+
+        return new NextResponse(csv, {
+          headers: {
+            'Content-Type': 'text/csv; charset=utf-8',
+            'Content-Disposition': `attachment; filename=DGII_608_${periodString}.csv`,
+          },
+        })
+      }
+
+      if (format === 'xls' || format === 'excel') {
+        const buffer = await generateXls('608', businessRnc, periodString, mapped)
+        return new NextResponse(buffer, {
+          headers: {
+            'Content-Type': 'application/vnd.ms-excel',
+            'Content-Disposition': `attachment; filename=DGII_608_${periodString}.xls`,
           },
         })
       }

@@ -318,10 +318,42 @@ export default function ContabilidadDashboard() {
     }
   }, [activeTab, reportType, fechaInicio, fechaFin, periodo])
 
-  const handleDownloadTxt = (tipo: string) => {
-    window.open(`/api/dgii/formatos?tipo=${tipo}&periodo=${periodo}&format=txt`, '_blank')
-    push(`Archivo TXT del reporte ${tipo} descargado`, 'success')
+  const [downloadingFormato, setDownloadingFormato] = useState<string | null>(null)
+
+  const handleDownloadFile = async (tipo: string, format: 'txt' | 'xls') => {
+    const key = `${tipo}-${format}`
+    setDownloadingFormato(key)
+    push(`Generando ${format === 'xls' ? 'Excel' : 'TXT'} del formato ${tipo}… Espere un momento.`, 'info')
+    try {
+      const res = await fetch(`/api/dgii/formatos?tipo=${tipo}&periodo=${periodo}&format=${format}`)
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Error desconocido' }))
+        push(err.error || `Error al generar formato ${tipo}`, 'error')
+        return
+      }
+      const blob = await res.blob()
+      const ext = format === 'xls' ? 'xls' : 'txt'
+      const [yearStr, monthStr] = periodo.split('-')
+      const filename = `DGII_${tipo}_${yearStr}${monthStr}.${ext}`
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+      push(`${format === 'xls' ? 'Plantilla Excel' : 'Archivo TXT'} del formato ${tipo} descargado correctamente`, 'success')
+    } catch (e) {
+      console.error(e)
+      push(`Error de red al descargar formato ${tipo}`, 'error')
+    } finally {
+      setDownloadingFormato(null)
+    }
   }
+
+  const handleDownloadTxt = (tipo: string) => handleDownloadFile(tipo, 'txt')
+  const handleDownloadCsv = (tipo: string) => handleDownloadFile(tipo, 'xls')
 
   const handleAnularNcf = async () => {
     if (!anulacionNcf.trim()) {
@@ -1054,13 +1086,24 @@ export default function ContabilidadDashboard() {
                     <span className="w-2 h-2 rounded-full bg-indigo-500" />
                     {recordsCount.compras} registros
                   </span>
-                  <button
-                    onClick={() => handleDownloadTxt('606')}
-                    disabled={recordsCount.compras === 0}
-                    className="btn btn-primary py-2 px-4 flex items-center gap-1.5 text-xs rounded-xl disabled:opacity-30 disabled:pointer-events-none"
-                  >
-                    <Download size={14} /> Descargar TXT
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleDownloadTxt('606')}
+                      disabled={recordsCount.compras === 0 || downloadingFormato === '606-txt'}
+                      className="btn border border-indigo-200 dark:border-indigo-900/60 text-indigo-650 dark:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-900/60 py-2 px-3 flex items-center gap-1 text-[11px] rounded-xl disabled:opacity-30 disabled:pointer-events-none"
+                      title="Descargar TXT para Oficina Virtual DGII"
+                    >
+                      {downloadingFormato === '606-txt' ? <div className="w-3 h-3 border-2 border-indigo-300 border-t-indigo-600 rounded-full animate-spin" /> : <Download size={12} />} TXT
+                    </button>
+                    <button
+                      onClick={() => handleDownloadCsv('606')}
+                      disabled={recordsCount.compras === 0 || downloadingFormato === '606-xls'}
+                      className="btn btn-primary py-2 px-3 flex items-center gap-1 text-[11px] rounded-xl disabled:opacity-30 disabled:pointer-events-none"
+                      title="Descargar Plantilla Oficial Excel DGII"
+                    >
+                      {downloadingFormato === '606-xls' ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <FileSpreadsheet size={12} />} Excel
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -1080,13 +1123,24 @@ export default function ContabilidadDashboard() {
                     <span className="w-2 h-2 rounded-full bg-emerald-500" />
                     {recordsCount.ventas} registros
                   </span>
-                  <button
-                    onClick={() => handleDownloadTxt('607')}
-                    disabled={recordsCount.ventas === 0}
-                    className="btn btn-primary py-2 px-4 flex items-center gap-1.5 text-xs rounded-xl disabled:opacity-30 disabled:pointer-events-none"
-                  >
-                    <Download size={14} /> Descargar TXT
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleDownloadTxt('607')}
+                      disabled={recordsCount.ventas === 0 || downloadingFormato === '607-txt'}
+                      className="btn border border-emerald-200 dark:border-emerald-900/60 text-emerald-650 dark:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-900/60 py-2 px-3 flex items-center gap-1 text-[11px] rounded-xl disabled:opacity-30 disabled:pointer-events-none"
+                      title="Descargar TXT para Oficina Virtual DGII"
+                    >
+                      {downloadingFormato === '607-txt' ? <div className="w-3 h-3 border-2 border-emerald-300 border-t-emerald-600 rounded-full animate-spin" /> : <Download size={12} />} TXT
+                    </button>
+                    <button
+                      onClick={() => handleDownloadCsv('607')}
+                      disabled={recordsCount.ventas === 0 || downloadingFormato === '607-xls'}
+                      className="btn btn-primary py-2 px-3 flex items-center gap-1 text-[11px] rounded-xl disabled:opacity-30 disabled:pointer-events-none"
+                      title="Descargar Plantilla Oficial Excel DGII"
+                    >
+                      {downloadingFormato === '607-xls' ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <FileSpreadsheet size={12} />} Excel
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -1106,13 +1160,24 @@ export default function ContabilidadDashboard() {
                     <span className="w-2 h-2 rounded-full bg-red-500" />
                     {recordsCount.anulaciones} registros
                   </span>
-                  <button
-                    onClick={() => handleDownloadTxt('608')}
-                    disabled={recordsCount.anulaciones === 0}
-                    className="btn btn-primary py-2 px-4 flex items-center gap-1.5 text-xs rounded-xl disabled:opacity-30 disabled:pointer-events-none"
-                  >
-                    <Download size={14} /> Descargar TXT
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleDownloadTxt('608')}
+                      disabled={recordsCount.anulaciones === 0 || downloadingFormato === '608-txt'}
+                      className="btn border border-red-200 dark:border-red-900/60 text-red-650 dark:text-red-400 hover:bg-slate-100 dark:hover:bg-slate-900/60 py-2 px-3 flex items-center gap-1 text-[11px] rounded-xl disabled:opacity-30 disabled:pointer-events-none"
+                      title="Descargar TXT para Oficina Virtual DGII"
+                    >
+                      {downloadingFormato === '608-txt' ? <div className="w-3 h-3 border-2 border-red-300 border-t-red-600 rounded-full animate-spin" /> : <Download size={12} />} TXT
+                    </button>
+                    <button
+                      onClick={() => handleDownloadCsv('608')}
+                      disabled={recordsCount.anulaciones === 0 || downloadingFormato === '608-xls'}
+                      className="btn btn-primary py-2 px-3 flex items-center gap-1 text-[11px] rounded-xl disabled:opacity-30 disabled:pointer-events-none"
+                      title="Descargar Plantilla Oficial Excel DGII"
+                    >
+                      {downloadingFormato === '608-xls' ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <FileSpreadsheet size={12} />} Excel
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
