@@ -6,7 +6,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
+    "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "prisma:generate": "prisma generate",
@@ -30,6 +30,7 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "recharts": "^3.8.1",
+    "sharp": "^0.34.5",
     "zustand": "^5.0.12"
   },
   "devDependencies": {
