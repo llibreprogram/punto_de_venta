@@ -72,7 +72,14 @@ export default function TicketClient({
           {ajustes?.businessRnc && <div className="text-xs text-gray-700">RNC: {ajustes.businessRnc}</div>}
           {ajustes?.businessAddress && <div className="text-xs text-gray-700">{ajustes.businessAddress}</div>}
           {ajustes?.businessPhone && <div className="text-xs text-gray-700">Tel: {ajustes.businessPhone}</div>}
-          <div className="text-xs text-gray-600 mt-1">Ticket #{pedido.numero}{pedido.mesa?` • Mesa ${pedido.mesa.nombre}${pedido.nombreCuenta ? ` • ${pedido.nombreCuenta}` : (pedido.subCuenta?` C${pedido.subCuenta}`:'')}`:''}</div>
+          <div className="text-xs text-gray-600 mt-1">
+            Ticket #{pedido.numero}
+            {pedido.mesa ? (
+              ` • Mesa ${pedido.mesa.nombre}${pedido.nombreCuenta ? ` • ${pedido.nombreCuenta}` : (pedido.subCuenta ? ` C${pedido.subCuenta}` : '')}`
+            ) : (
+              ` • ${pedido.tipo === 'Delivery' ? 'Delivery' : 'Mostrador'}${pedido.nombreCuenta ? ` • ${pedido.nombreCuenta}` : ''}`
+            )}
+          </div>
           <div className="text-sm text-gray-600" suppressHydrationWarning>{fecha}</div>
           {pedido.ncf && (
             <div className="mt-3 p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-left font-mono grid gap-1">
@@ -91,8 +98,10 @@ export default function TicketClient({
             </div>
           )}
         </div>
-        {pedido.mesa && (
+        {pedido.mesa ? (
           <div className="text-sm font-bold mt-2">Mesa: {pedido.mesa.nombre}{pedido.nombreCuenta ? ` / ${pedido.nombreCuenta}` : (pedido.subCuenta?` / C${pedido.subCuenta}`:'')}</div>
+        ) : (
+          <div className="text-sm font-bold mt-2">{pedido.tipo === 'Delivery' ? '🚗 Delivery' : '🛍️ Mostrador'}{pedido.nombreCuenta ? `: ${pedido.nombreCuenta}` : ''}</div>
         )}
         <hr className="my-3" />
         <div className="text-sm">

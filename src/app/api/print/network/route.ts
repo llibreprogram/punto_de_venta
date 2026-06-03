@@ -36,7 +36,10 @@ export async function POST(req: NextRequest) {
     if (pedidoId) {
       const pedido = await prisma.pedido.findUnique({
         where: { id: Number(pedidoId) },
-        include: { items: { include: { producto: true } } }
+        include: {
+          items: { include: { producto: true } },
+          mesa: true
+        }
       })
       if (!pedido) return NextResponse.json({ error: 'Pedido no encontrado' }, { status: 404 })
 
@@ -45,7 +48,7 @@ export async function POST(req: NextRequest) {
       const fecha = new Intl.DateTimeFormat(locale, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(pedido.createdAt))
       const business = ajustes?.businessName || 'Mi Restaurante'
       const items = (pedido.items as unknown) as Array<{ cantidad:number; precioCents:number; totalCents:number; extras?: string[] | null; removidos?: string[] | null; notas?: string|null; producto:{ nombre:string } }>
-      const mesaNombre = (pedido as { mesa?: { nombre?: string } | null }).mesa?.nombre
+      const mesaNombre = (pedido as any).mesa?.nombre
       const subCuenta: number | undefined = (pedido as unknown as { subCuenta?: number }).subCuenta
       const nombreCuenta: string | undefined | null = (pedido as unknown as { nombreCuenta?: string | null }).nombreCuenta
       const itebisCents: number = (pedido as unknown as { itebisCents?: number }).itebisCents ?? 0
@@ -75,6 +78,7 @@ export async function POST(req: NextRequest) {
         mesa: mesaNombre,
         subCuenta,
         nombreCuenta,
+        tipo: (pedido as any).tipo,
         ncf,
         ncfTipo,
         clienteRnc,

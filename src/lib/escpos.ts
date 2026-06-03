@@ -126,6 +126,7 @@ export function escposTicket(opts: {
   mesa?: string | null
   subCuenta?: number
   nombreCuenta?: string | null
+  tipo?: string | null
   ncf?: string | null
   ncfTipo?: string | null
   clienteRnc?: string | null
@@ -139,7 +140,7 @@ export function escposTicket(opts: {
   total: string
   footer?: string
 }) {
-  const { business, address, rnc, phone, numero, fecha, mesa, subCuenta, nombreCuenta, ncf, ncfTipo, clienteRnc, clienteNombre, items, subtotal, itebis, propina, impuesto, descuento, total, footer } = opts
+  const { business, address, rnc, phone, numero, fecha, mesa, subCuenta, nombreCuenta, tipo, ncf, ncfTipo, clienteRnc, clienteNombre, items, subtotal, itebis, propina, impuesto, descuento, total, footer } = opts
   let out = ''
 
   // Comando ESC/POS para abrir el cajón de dinero (Pin 2 y Pin 5)
@@ -151,7 +152,15 @@ export function escposTicket(opts: {
   if (address) out += `${address}\n`
   if (phone) out += `Tel: ${phone}\n`
   if (rnc || address || phone) out += '\n'
-  out += `Ticket #${numero}` + (mesa ? `  Mesa: ${mesa}${nombreCuenta ? ` - ${nombreCuenta}` : (subCuenta ? ` C${subCuenta}` : '')}` : '') + "\n" + fecha + "\n\n"
+
+  let infoCuenta = ''
+  if (mesa) {
+    infoCuenta = `  Mesa: ${mesa}${nombreCuenta ? ` - ${nombreCuenta}` : (subCuenta ? ` C${subCuenta}` : '')}`
+  } else {
+    const labelTipo = tipo === 'Delivery' ? 'Delivery' : 'Mostrador'
+    infoCuenta = `  ${labelTipo}${nombreCuenta ? `: ${nombreCuenta}` : ''}`
+  }
+  out += `Ticket #${numero}${infoCuenta}\n${fecha}\n\n`
   
   if (ncf) {
     out += escposSeparator()

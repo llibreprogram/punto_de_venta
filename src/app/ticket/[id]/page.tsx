@@ -5,7 +5,7 @@ import TicketClient from './ticketClient'
 
 type AjustesRow = { id:number; updatedAt:Date; locale:string; currency:string; taxPct:number; propinaPct?:number; businessName:string; businessAddress?:string|null; businessRnc?:string|null; businessPhone?:string|null; ticketFooter:string; logoUrl:string; printerIp?:string|null; printerPort?:number|null; serialBaud?:number|null }
 type PedidoItem = { id:number; cantidad:number; precioCents:number; totalCents:number; removidos?: string[] | null; extras?: string[] | null; notas?: string | null; producto:{ nombre:string } }
-type Pedido = { id:number; numero:number; createdAt:Date; subtotalCents:number; impuestoCents:number; itebisCents:number; propinaCents:number; descuentoCents:number; totalCents:number; mesa?:{nombre:string}|null; subCuenta?:number; nombreCuenta?:string|null; ncf?:string|null; ncfTipo?:string|null; notas?:string|null; items:PedidoItem[]; pagos?: Array<{ id:number; metodo:string; montoCents:number; referencia?:string|null }> }
+type Pedido = { id:number; numero:number; tipo?:string|null; createdAt:Date; subtotalCents:number; impuestoCents:number; itebisCents:number; propinaCents:number; descuentoCents:number; totalCents:number; mesa?:{nombre:string}|null; subCuenta?:number; nombreCuenta?:string|null; ncf?:string|null; ncfTipo?:string|null; notas?:string|null; items:PedidoItem[]; pagos?: Array<{ id:number; metodo:string; montoCents:number; referencia?:string|null }> }
 
 export default async function TicketPage({ params, searchParams }: { params: Promise<{ id: string }>, searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { id: idStr } = await params
