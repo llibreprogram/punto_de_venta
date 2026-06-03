@@ -1,4 +1,3 @@
-import sharp from 'sharp'
 import { promises as fs } from 'fs'
 import path from 'path'
 
@@ -43,6 +42,8 @@ export async function getLogoEscposBuffer(logoUrl: string | null | undefined): P
     logContent += `Successfully read image file. Buffer size: ${imageBuffer.length} bytes.\n`
 
     // Procesar la imagen con sharp
+    const sharpModule = await import('sharp')
+    const sharp = sharpModule.default || sharpModule
     const { data, info } = await sharp(imageBuffer)
       .resize({ width: 200 })
       .flatten({ background: { r: 255, g: 255, b: 255 } })
